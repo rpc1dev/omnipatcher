@@ -81,7 +81,9 @@ sub getmctype # ( )
 		{
 			push(@{$file_data{'mcpdata'}}, [ ord($3) * 0x100 + ord($2), ord($8), (length($6)) ? scalar(pos($pdata)) - length($6) - length($7) - length($8) : ord($4) * 0x100 + ord($5), ord($1), length($6) != 0 ]);
 
-			if ($file_data{'mcpdata'}->[-1][4] && ($pdata2 =~ /\x75\xF0$1\xA4\x24$2\xF5\x82(?:\xE5\xF0|\xE4)\x34$3\xF5\x83.{12,43}?(?:\x64\x0A\x70|\xB4\x0A)./sg))
+			my($x, $y, $z) = map { quotemeta } ($1, $2, $3);
+
+			if ($file_data{'mcpdata'}->[-1][4] && ($pdata2 =~ /\x75\xF0$x\xA4\x24$y\xF5\x82(?:\xE5\xF0|\xE4)\x34$z\xF5\x83.{12,43}?(?:\x64\x0A\x70|\xB4\x0A)./sg))
 			{
 				$file_data{'mcpdata'}->[-1][4] = $file_data{'mcpdata'}->[-1][2];
 				$file_data{'mcpdata'}->[-1][2] = pos($pdata2);
@@ -96,7 +98,9 @@ sub getmctype # ( )
 		{
 			push(@{$file_data{'mcddata'}}, [ ord($3) * 0x100 + ord($2), ord($8), (length($6)) ? scalar(pos($ddata)) - length($6) - length($7) - length($8) : ord($4) * 0x100 + ord($5), ord($1), length($6) != 0 ]);
 
-			if ($file_data{'mcddata'}->[-1][4] && ($ddata2 =~ /\x75\xF0$1\xA4\x24$2\xF5\x82(?:\xE5\xF0|\xE4)\x34$3\xF5\x83.{71,90}?(?:\x64\x0D\x70|\xB4\x0D)./sg))
+			my($x, $y, $z) = map { quotemeta } ($1, $2, $3);
+
+			if ($file_data{'mcddata'}->[-1][4] && ($ddata2 =~ /\x75\xF0$x\xA4\x24$y\xF5\x82(?:\xE5\xF0|\xE4)\x34$z\xF5\x83.{71,90}?(?:\x64\x0D\x70|\xB4\x0D)./sg))
 			{
 				$file_data{'mcddata'}->[-1][4] = $file_data{'mcddata'}->[-1][2];
 				$file_data{'mcddata'}->[-1][2] = pos($ddata2);

@@ -1,6 +1,6 @@
 ##
 # XFlash-X Common Library
-# 1.2.2 (10 Nov 2004)
+# 1.2.3 (23 Nov 2004)
 #
 
 require "lib_xflashx_config.pl";
@@ -387,7 +387,7 @@ sub xflashx # ( f_in )
 					{
 						$scrammode = 3;
 					}
-					elsif ($data =~ /(?:\x0F\xB6\x04\x08)\x25(.)\x00\x00\x80(?:\x79\x05)\x48(?:\x83\xC8.)\x40/s)
+					elsif ($data =~ /(?:\x0F\xB6\x04\x08|(?:\x33\xC0)\x8A\x04\x0A)\x25(.)\x00\x00\x80(?:\x79\x05)\x48(?:\x83\xC8.)\x40/s)
 					{
 						$scrammode = 4;
 						$andkey = ord($1);
@@ -397,6 +397,10 @@ sub xflashx # ( f_in )
 						$scrammode = 2;
 						$skip_pre = 0x000400;
 						$skip_len = 0x001000;
+					}
+					else
+					{
+						xfx_debug "Error: Cannot determine scrambling method.\n";
 					}
 				}
 

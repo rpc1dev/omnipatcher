@@ -3,6 +3,26 @@ $DASH_PATTERN_SLIM = '.\xFF{13}|\x00{13}.|(?:\w[\w \-=\.,\xAD\x00\!\/\[\]]{11}..
 $PLUS_LEN_SLIM = $PLUS_LEN;
 $DASH_LEN_SLIM = 14;
 
+sub slim2norm_spd # ( )
+{
+	return 0b00011110 if ($_[0] == 0x08);
+	return 0b00001110 if ($_[0] == 0x06);
+	return 0b00000110 if ($_[0] == 0x04);
+	return 0b00000010 if ($_[0] == 0x02);
+	return 0b00000001 if ($_[0] == 0x01);
+	return 0b00000000;
+}
+
+sub norm2slim_spd # ( )
+{
+	return 0x08 if ($_[0] >= 0b00010000);
+	return 0x06 if ($_[0] >= 0b00001000);
+	return 0x04 if ($_[0] >= 0b00000100);
+	return 0x02 if ($_[0] >= 0b00000010);
+	return 0x01 if ($_[0] >= 0b00000001);
+	return 0x00;
+}
+
 sub getcodes_slim # ( )
 {
 	my($data, $type);
@@ -38,6 +58,8 @@ sub getcodes_slim # ( )
 					$tid = nulltrim(substr($id, 8, 3));
 					$rid = ord(substr($id, 11, 1));
 					$spd = ord(substr($id, 12, 1));
+
+					$spd = slim2norm_spd($spd);
 
 					push @codes, [ $type->[0], [ $mid, $tid, $rid, $spd ], sprintf("%-8s/%-3s/%02X", $mid, $tid, $rid) ];
 				}
@@ -93,6 +115,8 @@ sub getcodes_slim # ( )
 					$rid = ord(substr($id, 12, 1));
 					$spd = ord(substr($id, 13, 1));
 
+					$spd = slim2norm_spd($spd);
+
 					push @codes, [ $type->[0], [ $mid, $rid, $spd ], sprintf("%-12s/%02X", $mid, $rid) ];
 				}
 				else
@@ -133,8 +157,8 @@ sub setcodes_slim # ( )
 
 	foreach $patch (@{$file_data{'plus_patches'}})
 	{
-		$code_old = quotemeta(pcode2str([$patch->[0], $patch->[1], $patch->[2], $patch->[3]], 1));
-		$code_new = pcode2str([$patch->[0], $patch->[1], $patch->[2], $patch->[4]], 1);
+		$code_old = quotemeta(pcode2str([$patch->[0], $patch->[1], $patch->[2], norm2slim_spd($patch->[3])], 1));
+		$code_new = pcode2str([$patch->[0], $patch->[1], $patch->[2], norm2slim_spd($patch->[4])], 1);
 
 		$data =~ s/$code_old/$code_new/g;
 	}
@@ -151,8 +175,8 @@ sub setcodes_slim # ( )
 
 			if ($idx >= 0)
 			{
-				$code_old = quotemeta(nullpad($file_data{'codes'}->[$idx][1][0], 12) .  chr($file_data{'codes'}->[$idx][1][1]) . chr($file_data{'codes'}->[$idx][1][2]));
-				$code_new = nullpad($file_data{'codes'}->[$idx][1][0], 12) .  chr($file_data{'codes'}->[$idx][1][1]) . chr($patch->[1]);
+				$code_old = quotemeta(nullpad($file_data{'codes'}->[$idx][1][0], 12) .  chr($file_data{'codes'}->[$idx][1][1]) . chr(norm2slim_spd($file_data{'codes'}->[$idx][1][2])));
+				$code_new = nullpad($file_data{'codes'}->[$idx][1][0], 12) .  chr($file_data{'codes'}->[$idx][1][1]) . chr(norm2slim_spd($patch->[1]));
 
 				$data =~ s/$code_old/$code_new/g;
 			}
