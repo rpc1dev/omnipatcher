@@ -3,6 +3,23 @@ sub Main_Terminate
 	return -1;
 }
 
+sub Main_Activate
+{
+	if ($ObjStMain->IsVisible())
+	{
+		$ObjStMain->SetForegroundWindow();
+		return 0;
+	}
+
+	return 1;
+}
+
+sub StMain_Terminate
+{
+	$ObjStMain->Hide();
+	return 0;
+}
+
 sub List_Click
 {
 	my($idx) = $ObjList->SelectedItem();
@@ -51,6 +68,41 @@ sub List_Click
 	return 1;
 }
 
+sub List_DblClick
+{
+	my($idx) = $ObjList->SelectedItem();
+	my($i);
+
+	if ($file_data{'strat_status'} >= 0 && $file_data{'codes'}->[$idx][0] =~ /^.R$/)
+	{
+		@StratList = grep { $_->[0] eq $file_data{'codes'}->[$idx][0] } @{$file_data{'codes'}};
+
+		for ($i = 0; $i <= $#StratList; ++$i)
+		{
+			last if ($StratList[$i][3] == $file_data{'strats'}->[$idx]);
+		}
+
+		$ObjStList->Clear();
+		$ObjStList->Add( map { $_->[2] } @StratList );
+		$ObjStList->Select($i);
+
+		if ($file_data{'codes'}->[$idx][0] eq "+R")
+		{
+			$ObjStMain->Text(sprintf("%s%s-%02X", @{$file_data{'codes'}->[$idx][1]}));
+		}
+		else
+		{
+			$ObjStMain->Text($file_data{'codes'}->[$idx][1][0]);
+		}
+
+		$ObjStMain->Left($ObjMain->Left() + $NC_WIDTH);
+		$ObjStMain->Top($ObjMain->Top() + $NC_HEIGHT);
+		$ObjStMain->Show();
+	}
+
+	return 1;
+}
+
 sub Speeds0_Click { return proc_speed(); }
 sub Speeds1_Click { return proc_speed(); }
 sub Speeds2_Click { return proc_speed(); }
@@ -64,7 +116,7 @@ sub SpdRep_Click
 	my(%ofn) =
 	(
 		-owner				=> $hWndMain,
-		-title				=> "Select File Name for the Media Codes Report",
+		-title				=> "Select File Name for the Media Code Report",
 		-directory			=> "",
 		-file					=> "",
 		-filter				=> [ "Text Documents (*.txt)", "*.txt" ],
@@ -75,6 +127,28 @@ sub SpdRep_Click
 	return 1 unless ($ofn{'-ret'} = Win32::GUI::GetSaveFileName(%ofn));
 
 	save_report($ofn{'-ret'});
+
+	return 1;
+}
+
+sub DefStrat_Click
+{
+	my($pair, $a, $b, $count);
+
+	foreach $pair (@DEF_STRATS)
+	{
+		$a = find_index($pair->[0]);
+		$b = find_index($pair->[1]);
+
+		if ($a >= 0 && $b >= 0)
+		{
+			$file_data{'strats'}->[$a] = $file_data{'codes'}->[$b][3];
+			refresh_st_display($a);
+			++$count;
+		}
+	}
+
+	Win32::GUI::MessageBox($hWndMain, sprintf("%d strategy replacements have been applied.", $count), "Status", MB_OK | MB_ICONINFORMATION);
 
 	return 1;
 }
@@ -129,7 +203,7 @@ sub Cmds0_Click
 	{
 		open file, $new_file{'longname'};
 		binmode file;
-		read(file, $new_file{'work'}, -s $new_file{'longname'});
+		read(file, $new_file{'work'}, -s file);
 		close file;
 
 		return error("Invalid .BIN file size!\nAborting load process.", 1) if (length($new_file{'work'}) != 0x100000);
@@ -146,7 +220,7 @@ sub Cmds0_Click
 		$new_file{'exkey'} = $xfx->[0][0][4];
 		$new_file{'exedata'} = $xfx->[1];
 
-		return error("Unable to process this .EXE file!\nPlease make sure that the file is valid.\n\nIf this firmware flasher is scrambled/compressed, you\nshould consider downloading an unscrambled version\nof the flasher from one of these two websites:\n-  http://codeguys.rpc1.org/firmwares.html\n-  http://dhc014.rpc1.org/indexOEM.htm", 1) if (length($new_file{'work'}) != 0x100000);
+		return error("Unable to process this .EXE file!\nPlease make sure that the file is valid.\n\nIf this firmware flasher is scrambled/compressed, you\nshould consider downloading an unscrambled version\nof the flasher from one of these two websites:\n-  http://dhc014.rpc1.org/indexOEM.htm\n-  http://codeguys.rpc1.org/firmwares.html", 1) if (length($new_file{'work'}) != 0x100000);
 	}
 
 	%file_data = %new_file;
@@ -187,6 +261,31 @@ sub Cmds1_Click
 sub Cmds2_Click
 {
 	Win32::GUI::MessageBox($hWndMain, "$PROGRAM_TITLE\nVersion $PROGRAM_VERSION, built on $BUILD_STAMP\n\nWeb: http://codeguys.rpc1.org/", "About", MB_OK | MB_ICONINFORMATION);
+	return 1;
+}
+
+sub StList_DblClick
+{
+	StCmds0_Click();
+	return 1;
+}
+
+sub StCmds0_Click
+{
+	my($idxa) = $ObjList->SelectedItem();
+	my($idxb) = $ObjStList->SelectedItem();
+
+	$ObjStMain->Hide();
+
+	$file_data{'strats'}->[$idxa] = $StratList[$idxb][3];
+	refresh_st_display($idxa);
+
+	return 1;
+}
+
+sub StCmds1_Click
+{
+	$ObjStMain->Hide();
 	return 1;
 }
 

@@ -75,6 +75,20 @@ $hWndMain = 0;
 		}
 	}
 
+	sub ChangeItem # ( obj, idx, str )
+	{
+		my($obj, $idx, $str) = @_;
+
+		if ($obj->GetString($idx) ne $str)
+		{
+			my($cur_idx) = $obj->SelectedItem();
+
+			$obj->RemoveItem($idx);
+			$obj->InsertItem($str, $idx);
+			$obj->Select($idx) if ($idx == $cur_idx);
+		}
+	}
+
 } # END: Section: interface helper functions
 
 
@@ -85,7 +99,7 @@ $hWndMain = 0;
 
 	@PATCH_NAMES =
 	(
-		"Increase DVD±R/RW/DL reading speed to 8x",
+		"Increase DVD±R/R9/RW reading speed to 8x",
 		"Enable auto-bitsetting",
 		"Earlier shift (faster burn) for 8x +R",
 		"Utilize \"shift-fixing\" for 6x/8x burns",
@@ -94,12 +108,18 @@ $hWndMain = 0;
 
 	@CMD_NAMES =
 	(
-		"Load",
-		"Save As",
-		"About",
+		"&Load",
+		"&Save As",
+		"&About",
 	);
 
-	$MGROUP_NAME = "DVD Writing-Speed Limits";
+	@ST_CMD_NAMES =
+	(
+		"&Apply",
+		"&Cancel",
+	);
+
+	$MGROUP_NAME = "DVD Media Codes";
 
 } # END: Section: initialize tool settings
 
@@ -151,7 +171,7 @@ $hWndMain = 0;
 
 
 ################################################################################
-# BEGIN: Section: initialize GUI dimensions
+# BEGIN: Section: initialize primary GUI dimensions
 {
 	$ObjTemp = new GUI::Window( -name => "Temp", -size => [ 64, 64 ], -style => WS_CAPTION | WS_SYSMENU ) or abort("Initialization Error.");
 	$NC_WIDTH = $ObjTemp->Width() - $ObjTemp->ScaleWidth();
@@ -162,19 +182,32 @@ $hWndMain = 0;
 	$MARGIN_GROUP = 10;
 	$MARGINS_GROUP = [ $MARGIN_GROUP, $MARGIN_GROUP + $FONTHEIGHT_TAHOMA ];
 
-	@DIM_LIST = ( 192, $FONTHEIGHT_CNEW * 10 + 4 );
+	@DIM_LIST = ( 198, $FONTHEIGHT_CNEW * 10 + 4 );
 	@DIM_SPEED = ( 44, $FONTHEIGHT_TAHOMA );
 	@DIM_SPDREP = ( $DIM_SPEED[0], 25 );
-	@DIM_PATCH = ( $MARGIN + $DIM_LIST[0] + $DIM_SPEED[0], $FONTHEIGHT_TAHOMA );
-	@DIM_CMD = ( ($DIM_PATCH[0] - $MARGIN * $#CMD_NAMES) / scalar(@CMD_NAMES), $DIM_SPDREP[1] );
+	@DIM_DEFSTRAT = ( $MARGIN + $DIM_LIST[0] + $DIM_SPEED[0], $DIM_SPDREP[1] );
+	@DIM_PATCH = ( $DIM_DEFSTRAT[0], $FONTHEIGHT_TAHOMA );
+	@DIM_CMD = ( ($DIM_DEFSTRAT[0] - $MARGIN * $#CMD_NAMES) / scalar(@CMD_NAMES), $DIM_SPDREP[1] );
 
-	@DIM_MEDIAGRP = ( $MARGIN_GROUP * 2 + $DIM_PATCH[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + $DIM_LIST[1] );
+	@DIM_MEDIAGRP = ( $MARGIN_GROUP * 2 + $DIM_DEFSTRAT[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + $DIM_LIST[1] + $MARGIN + $DIM_DEFSTRAT[1] );
 	@DIM_PATCHGRP = ( $DIM_MEDIAGRP[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + ($DIM_PATCH[1] + $MARGIN_CHECK) * scalar(@PATCH_NAMES) - $MARGIN_CHECK );
 	@DIM_CMDGRP = ( $DIM_MEDIAGRP[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + $DIM_CMD[1] );
 
 	@DIM_WINDOW = ( $MARGIN * 2 + $DIM_MEDIAGRP[0] + $NC_WIDTH, $MARGIN * 4 + $DIM_MEDIAGRP[1] + $DIM_PATCHGRP[1] + $DIM_CMDGRP[1] + $NC_HEIGHT );
 
-} # END: Section: initialize GUI dimensions
+} # END: Section: initialize primary GUI dimensions
+
+
+################################################################################
+# BEGIN: Section: initialize strategy-box GUI dimensions
+{
+	@DIM_ST_LIST = ( 150, $FONTHEIGHT_CNEW * 12 + 4 );
+	@DIM_ST_CMD = ( ($DIM_ST_LIST[0] - $MARGIN * $#ST_CMD_NAMES) / scalar(@ST_CMD_NAMES), $DIM_SPDREP[1] );
+	@DIM_ST_GRP = ( $MARGIN_GROUP * 2 + $DIM_ST_LIST[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + $DIM_ST_LIST[1] + $MARGIN + $DIM_ST_CMD[1] );
+
+	@DIM_ST_WINDOW = ( $MARGIN * 2 + $DIM_ST_GRP[0] + $NC_WIDTH, $MARGIN * 2 + $DIM_ST_GRP[1] + $NC_HEIGHT );
+
+} # END: Section: initialize strategy-box GUI dimensions
 
 
 ################################################################################
@@ -261,6 +294,21 @@ $hWndMain = 0;
 
 	) or abort("Initialization Error.");
 
+	$ObjDefStrat = new Win32::GUI::Button
+	(
+		$ObjMain,
+
+		-name			=> "DefStrat",
+		-text			=> 'Apply recommended &write strategy replacements',
+		-font			=> $FontTahoma,
+		-pos			=> addpairs($MARGINS_GROUP, [ 0, $MARGIN + $DIM_LIST[1] ], getpos($ObjMediaGroup)),
+		-size			=> \@DIM_DEFSTRAT,
+		-addstyle	=> WS_GROUP,
+		-tabstop		=> 1,
+		-disabled	=> 1,
+
+	) or abort("Initialization Error.");
+
 } # END: Section: media codes
 
 
@@ -336,5 +384,62 @@ $hWndMain = 0;
 	} # END: foreach
 
 } # END: Section: command buttons
+
+
+################################################################################
+# BEGIN: Section: strategy box
+{
+	$ObjStMain = new GUI::DialogBox
+	(
+		-name			=> "StMain",
+		-size			=> \@DIM_ST_WINDOW,
+		-remexstyle	=> WS_EX_CONTEXTHELP,
+
+	) or abort("Initialization Error.");
+
+	$ObjStGroup = new Win32::GUI::Groupbox
+	(
+		$ObjStMain,
+
+		-name	=> "StGroup",
+		-text	=> "Select Write Strategy",
+		-font	=> $FontTahomaBold,
+		-pos	=> [ $MARGIN, $MARGIN ],
+		-size	=> \@DIM_ST_GRP,
+
+	) or abort("Initialization Error.");
+
+	$ObjStList = new Win32::GUI::Listbox
+	(
+		$ObjStMain,
+
+		-name			=> "StList",
+		-font			=> $FontCourierNew,
+		-pos			=> addpairs($MARGINS_GROUP, getpos($ObjStGroup)),
+		-size			=> \@DIM_ST_LIST,
+		-addstyle	=> WS_VSCROLL | WS_GROUP,
+		-tabstop		=> 1,
+
+	) or abort("Initialization Error.");
+
+	foreach $i (0 .. $#ST_CMD_NAMES)
+	{
+		$ObjStCmds[$i] = new Win32::GUI::Button
+		(
+			$ObjStMain,
+
+			-name			=> "StCmds$i",
+			-text			=> $ST_CMD_NAMES[$i],
+			-font			=> $FontTahoma,
+			-pos			=> addpairs($MARGINS_GROUP, [ ($DIM_ST_CMD[0] + $MARGIN) * $i, $MARGIN + $DIM_ST_LIST[1] ], getpos($ObjStGroup)),
+			-size			=> \@DIM_ST_CMD,
+			-addstyle	=> (($i == 0) ? 1 : 0) * WS_GROUP,
+			-tabstop		=> 1,
+
+		) or abort("Initialization Error.");
+
+	} # END: foreach
+
+} # END: Section: strategy box
 
 1;

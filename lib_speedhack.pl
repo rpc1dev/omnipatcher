@@ -1,6 +1,6 @@
 ##
 # Speedhacker Common Library
-# 1.0.1 (20 June 2004)
+# 1.1.0 (5 July 2004)
 #
 
 $PLUS_PATTERN = '(?:\x00{12}|\xFF{12}|(?:\w{2}.{6}[\w\x00]{3}.)|(?:\w{3}.{9})|(?:\x00{8}\w.{3}))[\x00-\x7F]';
@@ -99,9 +99,32 @@ sub getcodes # ( )
 			$found_break = $found_break_ff if ($found_break_ff < $found_break && $found_break_ff > 0);
 		}
 
+		%used = ();
+
 		foreach $i (0 .. $#codes)
 		{
 			$codes[$i][0] = ($i < $found_break) ? "+R" : "+RW" if ($found_break > $#codes / 2);
+			$codes[$i][3] = $i;
+
+			if ($codes[$i][1][0] eq "MKM" && $codes[$i][1][1] eq "001")
+			{
+				$codes[$i][0] = "+R9";
+			}
+			elsif ($codes[$i][1][0] eq "RICOHJPN" && $codes[$i][1][1] eq "D00")
+			{
+				$codes[$i][0] = "+R9";
+			}
+			elsif ($codes[$i    ][1][0] eq "RICOHJPN" && $codes[$i    ][1][1] eq "R00" && $codes[$i    ][1][2] == 0x01 &&
+			       $codes[$i + 1][1][0] eq "RICOHJPN" && $codes[$i + 1][1][1] eq "R00" && $codes[$i + 1][1][2] == 0x01)
+			{
+				$codes[$i][1][0] = $codes[$i + 1][1][0] = "";
+				$codes[$i][1][1] = $codes[$i + 1][1][1] = "";
+			}
+			elsif ($codes[$i][1][0] eq "XxXxXxXx" && $codes[$i][1][1] eq "XxX")
+			{
+				$codes[$i][1][0] = "";
+				$codes[$i][1][1] = "";
+			}
 
 			unless ($used{"$codes[$i][0]$codes[$i][2]$codes[$i][1][3]"} == 1 || ($codes[$i][1][0] eq "" && $codes[$i][1][1] eq "") || substr($codes[$i][1][0], 0, 1) eq "\xFF")
 			{
@@ -200,10 +223,9 @@ sub getcodes # ( )
 			{
 				foreach $i (0 .. $#codes)
 				{
-					unless ($used{$codes[$i]} == 1 || substr($codes[$i], 0, 1) eq "\x00")
+					if (substr($codes[$i], 0, 1) ne "\x00")
 					{
-						push @ret, [ "-$dash_type", [ $x = nulltrim(substr($codes[$i], 0, 12)), $y = ord(substr($codes[$i], 12, 1)), ord($speeds[$i]) ], sprintf("%-12s/%02X", $x, $y) ];
-						$used{$codes[$i]} = 1;
+						push @ret, [ "-$dash_type", [ $x = nulltrim(substr($codes[$i], 0, 12)), $y = ord(substr($codes[$i], 12, 1)), ord($speeds[$i]) ], sprintf("%-12s/%02X", $x, $y), $i ];
 					}
 				}
 
@@ -228,7 +250,15 @@ sub setcodes # ( )
 	my($code_id, $code_old, $code_new);
 	my($code_id_m, $code_old_m, $code_new_m);
 
-	my($ricoh_do, $ricoh_count, $ricoh_max) = (0, 0, 0);
+	# Resolve the Ricoh R00 bug
+
+	$code_old_m  = quotemeta(nullbuf("RICOHJPNR00\x01")) . '.\x00';
+	$code_old_m x= 2;
+
+	$code_new  = nullbuf("XxXxXxXxXxX\x01") . "\x02\x00";
+	$code_new x= 2;
+
+	$data =~ s/$code_old_m/$code_new/;
 
 	foreach $patch (@{$file_data{'plus_patches'}})
 	{
@@ -241,28 +271,6 @@ sub setcodes # ( )
 		($code_id_m, $code_old_m, $code_new_m) = map { quotemeta } ($code_id, $code_old, $code_new);
 
 		$data =~ s/$code_old_m/$code_new/g;
-
-		$ricoh_do = 1 if ($mid . $tid eq "RICOHJPNR00");
-	}
-
-	if ($ricoh_do)
-	{
-		foreach $i (0 .. $file_data{'ncodes'} - 1)
-		{
-			if ("$file_data{'codes'}->[$i][1][0]$file_data{'codes'}->[$i][1][1]" eq "RICOHJPNR00")
-			{
-				++$ricoh_count;
-				$ricoh_max = $file_data{'speeds'}->[$i] if ($ricoh_max < $file_data{'speeds'}->[$i]);
-			}
-		}
-
-		if ($ricoh_count > 1)
-		{
-			$code_old_m = quotemeta(nullbuf("RICOHJPNR00")) . '[\x00\x01]\x00';
-			$code_new = nullbuf("RICOHJPNR00\x01") . chr($ricoh_max);
-
-			$data =~ s/$code_old_m[\x00-\xFF]/$code_new/g;
-		}
 	}
 
 	foreach $dash_type ("R", "RW")
@@ -312,17 +320,7 @@ sub setcodes # ( )
 
 			foreach $patch (@dash_patches)
 			{
-				$code_id = nullpad($patch->[0], 12);
-
-				for ($i = 0; $i <= $#codes; ++$i)
-				{
-					if ( (substr($codes[$i], 0, 12) eq $code_id) &&
-					     ($patch->[1] == 0 || ord(substr($codes[$i], 12, 1)) == 0 || ord(substr($codes[$i], 12, 1)) == $patch->[1]) &&
-					     ($speeds[$i] eq chr($patch->[2])) )
-					{
-						$speeds[$i] = chr($patch->[3]);
-					}
-				}
+				$speeds[$patch->[0]] = chr($patch->[1]);
 			}
 
 			$new_data = join("", @codes) . join("", @speeds);

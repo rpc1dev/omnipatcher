@@ -115,7 +115,9 @@ sub patch_sf # ( testmode, mode )
 {
 	my($testmode, $mode) = @_;
 
-	my($offkey) = "\x59\x00\xD0\x00 \x06 \x03 \x17\x17";
+	my($ricohbyte) = chr($file_data{'codes'}->[find_index(["RICOHJPN", "R01", 0x02])][3]);
+
+	my($offkey) = "\x59\x00\xD0\x00 \x06 \x03 $ricohbyte$ricohbyte";
 	my($onkey)  = "\xB2\x00\xA0\x01 \x02 \x02 \xFF\xFF";
 	my($curkey) = "";
 	my($addr);
@@ -154,12 +156,12 @@ sub patch_sf # ( testmode, mode )
 
 	my($temp) = $bankC;
 
-	while ($temp =~ /\x90..\xE0\xFF\x64([\x17\xFF])[\x60\x70]/g)
+	while ($temp =~ /\x90..\xE0\xFF\x64([$ricohbyte\xFF])[\x60\x70]/g)
 	{
 		$addr = pos($temp);
 		$curkey .= $1;
 
-		substr($bankC, $addr - 2, 1, ($mode) ? chr(0xFF) : chr(0x17));
+		substr($bankC, $addr - 2, 1, ($mode) ? chr(0xFF) : $ricohbyte);
 	}
 
 	if ($curkey eq $onkey || $curkey eq $offkey)

@@ -1,6 +1,6 @@
 sub load_file # ( )
 {
-	my($code, $i);
+	my($i, $label);
 
 	my($header) = substr($file_data{'work'}, 0xF0000, 0x200);
 
@@ -19,10 +19,8 @@ sub load_file # ( )
 
 	$file_data{'codes'} = [ getcodes() ];
 	$file_data{'speeds'} = [ map { $_->[1][-1] } @{$file_data{'codes'}} ];
+	$file_data{'strats'} = [ map { $_->[3] } @{$file_data{'codes'}} ];
 	$file_data{'ncodes'} = scalar(@{$file_data{'codes'}});
-
-	$ObjList->Clear();
-	List_Click();
 
 	if ($file_data{'gen'} < 3)
 	{
@@ -37,9 +35,25 @@ sub load_file # ( )
 		$file_data{'rw_limit'} = 8;
 	}
 
-	foreach $code (@{$file_data{'codes'}})
+	$file_data{'strat_status'} = patch_strat(1, -1);
+	($file_data{'strat_status'} < 0) ? SetDisable($ObjDefStrat) : SetEnable($ObjDefStrat);
+	load_strats() if ($file_data{'strat_status'} == 1);
+
+	$ObjList->Clear();
+	List_Click();
+
+	for ($i = 0; $i < $file_data{'ncodes'}; ++$i)
 	{
-		$ObjList->AddString("$code->[2] $code->[0]");
+		$label = "$file_data{'codes'}->[$i][2] $file_data{'codes'}->[$i][0]";
+
+		if ($file_data{'codes'}->[$i][3] == $file_data{'strats'}->[$i])
+		{
+			$ObjList->AddString(" $label");
+		}
+		else
+		{
+			$ObjList->AddString("!$label");
+		}
 	}
 
 	SetEnable($ObjList);
@@ -83,9 +97,11 @@ sub load_file # ( )
 sub save_file # ( file_name )
 {
 	my($file_name) = @_;
-	my($i, $type, @dopatch);
+	my($i, @dopatch);
 
-	$file_data{'plus_patches'} = $file_data{'dashr_patches'} = $file_data{'dashrw_patches'} = [ ];
+	$file_data{'plus_patches'} = [ ];
+	$file_data{'dashr_patches'} = [ ];
+	$file_data{'dashrw_patches'} = [ ];
 
 	foreach $i (0 .. $file_data{'ncodes'} - 1)
 	{
@@ -93,18 +109,16 @@ sub save_file # ( file_name )
 		{
 			if ($file_data{'codes'}->[$i][0] eq "-R")
 			{
-				$type = 'dashr_patches';
+				push(@{$file_data{'dashr_patches'}}, [ $file_data{'codes'}->[$i][3], $file_data{'speeds'}->[$i] ]);
 			}
 			elsif ($file_data{'codes'}->[$i][0] eq "-RW")
 			{
-				$type = 'dashr_patches';
+				push(@{$file_data{'dashrw_patches'}}, [ $file_data{'codes'}->[$i][3], $file_data{'speeds'}->[$i] ]);
 			}
 			else
 			{
-				$type = 'plus_patches';
+				push(@{$file_data{'plus_patches'}}, [ @{$file_data{'codes'}->[$i][1]}, $file_data{'speeds'}->[$i] ]);
 			}
-
-			push(@{$file_data{$type}}, [ @{$file_data{'codes'}->[$i][1]}, $file_data{'speeds'}->[$i] ]);
 		}
 	}
 
@@ -123,6 +137,7 @@ sub save_file # ( file_name )
 	my($temp) = $file_data{'work'};
 
 	setcodes();
+	save_strats();
 
 	patch_rs(0)												if ($dopatch[0]);
 	patch_abs(0, $ObjPatches[1]->GetCheck())		if ($dopatch[1]);
@@ -173,8 +188,6 @@ sub save_file # ( file_name )
 			}
 			else
 			{
-				print length($outdata), "\n";
-				print "$file_data{'offset'}\n";
 				substr($outdata, $file_data{'offset'}, length($file_data{'work'}), $file_data{'work'});
 			}
 		}
@@ -194,7 +207,7 @@ sub save_file # ( file_name )
 
 				open file, $file_name;
 				binmode file;
-				read(file, $strip, -s $file_name);
+				read(file, $strip, -s file);
 				close file;
 
 				$strip =~ s/UPX0/$null4/;
@@ -227,7 +240,7 @@ sub save_report # ( file_name )
 	my($file_name) = @_;
 	my($report);
 	my($type, $entry, $i, $j);
-	my(@speeds, $spdrep);
+	my($strat, @speeds, $curspd, $spdrep);
 
 	my(@types) = ( '+R/W', '+R', '+R9', '+RW', '-R', '-RW' );
 	my(%typelists);
@@ -239,20 +252,42 @@ sub save_report # ( file_name )
 
 	foreach $i (0 .. $#{$file_data{'codes'}})
 	{
+		if ($file_data{'codes'}->[$i][0] eq "+R" || $file_data{'codes'}->[$i][0] eq "-R")
+		{
+			$strat = sprintf("  [ 0x%02X | 0x%02X ]", $file_data{'codes'}->[$i][3], $file_data{'strats'}->[$i]);
+		}
+		elsif ($file_data{'codes'}->[$i][0] eq "-RW")
+		{
+			$strat = sprintf("  [ 0x%02X ]", $file_data{'codes'}->[$i][3]);
+		}
+		else
+		{
+			$strat = "";
+		}
+
 		@speeds = ( );
 
 		foreach $j (0 .. $#MEDIA_SPEEDS)
 		{
-			if ($file_data{'speeds'}->[$i] & (2 ** $j))
-			{
-				push(@speeds, ($MEDIA_SPEEDS[$j] == 2 && substr($file_data{'codes'}->[$i][0], 0, 2) eq "+R") ? "2.4x" : "$MEDIA_SPEEDS[$j]x");
-			}
+			next if ($MEDIA_SPEEDS[$j] == 1 && substr($file_data{'codes'}->[$i][0], 0, 2) eq "+R");
+
+			$curspd = ($MEDIA_SPEEDS[$j] == 2 && substr($file_data{'codes'}->[$i][0], 0, 2) eq "+R") ? "2.4x" : "$MEDIA_SPEEDS[$j]x";
+			$curspd .= ',' unless ($j == $#MEDIA_SPEEDS);
+			$curspd =~ s/./ /g unless ($file_data{'speeds'}->[$i] & (2 ** $j));
+
+			push @speeds, $curspd;
 		}
 
-		$spdrep = "[" . join(", ", @speeds) . "]";
+		$spdrep = "[ " . join(" ", @speeds) . " ]";
+		$spdrep =~ s/,(\s+\])$/ $1/;
 
-		push(@{$typelists{$file_data{'codes'}->[$i][0]}}, "$file_data{'codes'}->[$i][2]  $spdrep");
+		push(@{$typelists{$file_data{'codes'}->[$i][0]}}, "$file_data{'codes'}->[$i][2]  $spdrep$strat");
 	}
+
+	$report  = "OmniPatcher Media Code Report\n";
+	$report .= "=============================\n\n";
+	$report .= "File name: $file_data{'shortname'}\n";
+	$report .= "Last modified: " . localtime((stat($file_data{'longname'}))[9]) . "\n\n\n";
 
 	foreach $type (@types)
 	{
@@ -291,6 +326,12 @@ sub proc_speed
 
 	if ($idx >= 0)
 	{
+		unless ($StratSpeedWarned || $file_data{'codes'}->[$idx][3] == $file_data{'strats'}->[$idx])
+		{
+			$StratSpeedWarned = 1;
+			Win32::GUI::MessageBox($hWndMain, "Please note that media codes with a '!' in front of them are media\ncodes that are currently using another media code's write strategy\nand speed code.  Because they are no longer using their own speed\ncode, changing their burning speed will have no effect.  If you\nwould like to change the burning speed of this media code, you will\nhave to adjust the burning speed of its host media code.\n\nYou will not see this warning message again until the next time this\nprogram is run.", "Notice", MB_OK | MB_ICONWARNING);
+		}
+
 		$file_data{'speeds'}->[$idx] = 0;
 
 		foreach $i (0 .. $#ObjSpeeds)
