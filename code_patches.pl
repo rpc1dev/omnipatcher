@@ -172,6 +172,47 @@ sub patch_sf # ( testmode, mode )
 	return -1;
 }
 
+sub patch_ff # ( testmode, mode )
+{
+	my($testmode, $mode) = @_;
+
+	my($ricohidx) = find_index(["RICOHJPN", "R01", 0x02]);
+	my($ricohbyte) = chr($file_data{'codes'}->[$ricohidx][3]) unless ($ricohidx < 0);
+
+	my($offkey) = "\x64\x64";
+	my($onkey)  = "\xE4\xE4";
+	my($curkey) = "";
+	my($addr, $idbyte, $offbyte);
+
+	my($plusbank) = substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000);
+
+	my($temp) = $plusbank;
+
+	while ($temp =~ /\x90..\xE0\xFF(\x64[$ricohbyte\xFF]|\xE4\x00)[\x60\x70]/sg)
+	{
+		$addr = pos($temp);
+		$curkey .= substr($1, 0, 1);
+
+		$idbyte = substr($1, 1, 1);
+		$offbyte = ($idbyte eq $ricohbyte || $idbyte eq "\xFF") ? $idbyte : $ricohbyte;
+
+		substr($plusbank, $addr - 3, 2, ($mode) ? "\xE4\x00" : "\x64$offbyte");
+	}
+
+	if ($curkey eq $onkey || $curkey eq $offkey)
+	{
+		if (!$testmode)
+		{
+			substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000, $plusbank);
+			helper_patch_recalibrate(0, 0);
+		}
+
+		return ($curkey eq $onkey) ? 1 : 0;
+	}
+
+	return -1;
+}
+
 sub patch_fr # ( testmode, mode )
 {
 	my($testmode, $mode) = @_;

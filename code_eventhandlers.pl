@@ -156,14 +156,17 @@ sub DefStrat_Click
 				{
 					$dst = find_index($entry->[1]);
 
-					if ($dst >= 0 && $file_data{'strats'}->[$src] != $file_data{'codes'}->[$dst][3])
+					if ( $dst >= 0 &&
+					     $file_data{'strats'}->[$src] != $file_data{'codes'}->[$dst][3] &&
+					     length($file_data{'codes'}->[$src][0]) == 2 && length($file_data{'codes'}->[$dst][0]) == 2 )
 					{
 						++$st_count;
 						$file_data{'strats'}->[$src] = $file_data{'codes'}->[$dst][3];
 						refresh_st_display($src);
 					}
 
-					if ($#{$entry->[2]} == 0 && $entry->[2][0] > 0 && $file_data{'speeds'}->[$src] != $entry->[2][0])
+					if ( $#{$entry->[2]} == 0 && $entry->[2][0] > 0 &&
+					     $file_data{'speeds'}->[$src] != $entry->[2][0] )
 					{
 						++$sp_count;
 						$file_data{'speeds'}->[$src] = $entry->[2][0];
@@ -204,7 +207,7 @@ sub Patches4_Click
 	if ($ObjPatches[4]->GetCheck() && !$FRCWarned)
 	{
 		$FRCWarned = 1;
-		Win32::GUI::MessageBox($hWndMain, "It is recommended that you do NOT apply this patch unless your burns\nexhibit a \"mountain\" error effect at the very end of a disc.\n\nPlease refer to the documentation for more information.\n\nYou will not see this message again until the next time this program\nis run.", "Notice", MB_OK | MB_ICONINFORMATION);
+		Win32::GUI::MessageBox($hWndMain, "It is recommended that you apply this patch only if your burns exhibit\na \"mountain\" error effect at the very end of a disc.\n\nPlease refer to the documentation for more information.\n\nYou will not see this message again until the next time this program\nis run.", "Notice", MB_OK | MB_ICONINFORMATION);
 	}
 
 	return 1;

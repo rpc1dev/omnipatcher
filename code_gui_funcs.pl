@@ -65,7 +65,7 @@ sub load_file # ( )
 	{
 		$file_data{'r_limit'} = 16;
 		$file_data{'r9_limit'} = 4;
-		$file_data{'rw_limit'} = 8;
+		$file_data{'rw_limit'} = 4;
 	}
 
 	$file_data{'strat_status'} = patch_strat(1, -1);
@@ -101,7 +101,7 @@ sub load_file # ( )
 		$file_data{'patch_status'}->[1] = patch_abs(1, -1);
 		$file_data{'patch_status'}->[2] = patch_fb(1, -1);
 		$file_data{'patch_status'}->[3] = patch_sf(1, -1);
-		$file_data{'patch_status'}->[4] = patch_fr(1, -1);
+		$file_data{'patch_status'}->[4] = patch_ff(1, -1);
 		$file_data{'patch_status'}->[5] = patch_eeprom(1, -1);
 	}
 	elsif ($file_data{'gen'} == 3)
@@ -182,7 +182,7 @@ sub save_file # ( file_name )
 	patch_abs(0, $ObjPatches[1]->GetCheck())		if ($dopatch[1]);
 	patch_fb(0, $ObjPatches[2]->GetCheck())		if ($dopatch[2]);
 	patch_sf(0, $ObjPatches[3]->GetCheck())		if ($dopatch[3] || $ObjPatches[3]->IsEnabled());	# Override; always patch if enabled
-	patch_fr(0, $ObjPatches[4]->GetCheck())		if ($dopatch[4] || $ObjPatches[4]->IsEnabled());	# Override; always patch if enabled
+	patch_ff(0, $ObjPatches[4]->GetCheck())		if ($dopatch[4] || $ObjPatches[4]->IsEnabled());	# Override; always patch if enabled
 	patch_eeprom(0, $ObjPatches[5]->GetCheck())	if ($dopatch[5]);
 
 	if (length($file_data{'work'}) == 0x100000)
