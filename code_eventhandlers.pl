@@ -52,6 +52,11 @@ sub List_Click
 				SetDisable($ObjSpeeds[$i]);
 				SetInvisible($ObjSpeeds[$i]);
 			}
+			elsif ($MEDIA_SPEEDS[$i] == 16 && $file_data{'speed_type'} == 2 && $file_data{'mctype'} == 4)
+			{
+				SetDisable($ObjSpeeds[$i]);
+				SetVisible($ObjSpeeds[$i]);
+			}
 			else
 			{
 				SetEnable($ObjSpeeds[$i]);

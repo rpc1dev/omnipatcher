@@ -18,9 +18,20 @@ else
 $STRAT_BUF_LEN = 0x02;
 $STRAT_REV_LOC = 0x0FFEF;
 
+###
+# List of codes used for $STRAT_REV_LOC
+#
+# 0x00: Not patched, or, patched with old-style patch
+# 0x01: patch_strat
+# 0x02: patch_strat2
+# 0x03: patch_strat_TS0C
+# 0x04: patch_strat3
+#
+
 sub patch_strat # ( testmode, mode )
 {
 	return patch_strat2(@_) if ($file_data{'mctype'} == 2);
+	return patch_strat3(@_) if ($file_data{'mctype'} >= 3);
 	return patch_strat_TS0C(@_) if ($file_data{'fwrev'} eq 'TS0C');
 
 	my($testmode, $mode) = @_;

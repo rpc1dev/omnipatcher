@@ -1,8 +1,3 @@
-##
-# Speedhacker Common Library
-# 1.3.0 (24 July 2004)
-#
-
 $PLUS_PATTERN = '(?:\x00{12}|\xFF{12}|(?:\w{2}.{6}[\w\x00]{3}.)|(?:[A-Z]\w{2}.{9})|(?:\x00{8}\w.{3}))[\x00-\x7F]';
 $DASHR_PATTERN = '\x00{13}|(?:\w[\w \-=\.,\xAD\x00]{11}.)';
 $DASHRW_PATTERN = '\x00{13}|(?:\w[\w \-=\.,\xAD\x00\!\/\[\]]{11}.)';
@@ -14,6 +9,8 @@ $PLUS_SAMPLE = quotemeta(&nullbuf("RICOHJPNR00"));
 $PLUSD_SAMPLE = quotemeta(&nullbuf("RICOHJPND00"));
 $DASHR_SAMPLE = quotemeta("RITEKG03\x00");
 $DASHRW_SAMPLE = quotemeta("RITEK000V11A");
+
+$STRAT3_PATTERN = '(?:(?:\x90..|\xA3)\xE0(?:\x90..|\x02\xFF[\x00\x02\x04\x06])|(?:\x90..[\xE8-\xEF]|[\xE8-\xEF]\x02\xFF[\x00\x02\x04\x06]))\xF0';
 
 sub nullpad # ( str, len )
 {
@@ -69,14 +66,43 @@ sub getmctype # ( )
 		$file_data{'mcpdata'} = [ ];
 		$file_data{'mcddata'} = [ ];
 
-		while ($pdata =~ /\x75\xF0\x1A\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83.{35,43}?(?:\x64\x0B\x70|\xB4\x0B)\x03\x02(.)(.).{7,15}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)(.)/sg)
+		my($pbs, $dbs);
+		my($pdata2, $ddata2) = ($pdata, $ddata);
+
+		if ($OP_PRINT_DEBUG)
 		{
-			push(@{$file_data{'mcpdata'}}, [ ord($2) * 0x100 + ord($1), ord($5), ord($3) * 0x100 + ord($4) ]);
+			$pbs = sprintf("%X", $file_data{'pbankpos'} / 0x10000);
+			$dbs = sprintf("%X", $file_data{'dbankpos'} / 0x10000);
+
+			dbgout(sprintf("+ bank: 0x%05X\n- bank: 0x%05X\n", $file_data{'pbankpos'}, $file_data{'dbankpos'}));
 		}
 
-		while ($ddata =~ /\x75\xF0\x0D\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83.{256,272}?(?:\x64\x0E\x70|\xB4\x0E)\x03\x02(.)(.)\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)\x0F.{2,8}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)(.)/sg)
+		while ($pdata =~ /\x75\xF0(\x1A|\x0D)\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83.{12,43}?(?:\x64\x0B\x70|\xB4\x0B)(?:\x03\x02(.)(.).{0,8}?|.($STRAT3_PATTERN.{36,66}?(?:(?:\xEF|\x90..\xE0)\x64.\x60.)*.{0,17}?))(\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)\x0C.{2,8}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64))(.)/sg)
 		{
-			push(@{$file_data{'mcddata'}}, [ ord($2) * 0x100 + ord($1), ord($5), ord($3) * 0x100 + ord($4) ]);
+			push(@{$file_data{'mcpdata'}}, [ ord($3) * 0x100 + ord($2), ord($8), (length($6)) ? scalar(pos($pdata)) - length($6) - length($7) - length($8) : ord($4) * 0x100 + ord($5), ord($1), length($6) != 0 ]);
+
+			if ($file_data{'mcpdata'}->[-1][4] && ($pdata2 =~ /\x75\xF0$1\xA4\x24$2\xF5\x82(?:\xE5\xF0|\xE4)\x34$3\xF5\x83.{12,43}?(?:\x64\x0A\x70|\xB4\x0A)./sg))
+			{
+				$file_data{'mcpdata'}->[-1][4] = $file_data{'mcpdata'}->[-1][2];
+				$file_data{'mcpdata'}->[-1][2] = pos($pdata2);
+			}
+
+			$file_data{'mctype'} = 4 if ($file_data{'mctype'} < 4 && $file_data{'mcpdata'}->[-1][3] == 0x0D);
+
+			dbgout(sprintf("+ table: fw_loc=$pbs%04X, start=$pbs%04X, n=%02d, ws_pt=$pbs%04X, len=%02d, ws_ex=$pbs%04X\n", pos($pdata), @{$file_data{'mcpdata'}->[-1]}));
+		}
+
+		while ($ddata =~ /\x75\xF0(\x0D)\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83(?:.{256,272}?|.{154,170}?)(?:\x64\x0E\x70|\xB4\x0E)(?:\x03\x02(.)(.)|.($STRAT3_PATTERN.{36,91}?(?:(?:\xEF|\x90..\xE0)\x64.\x60.)*.{0,6}))(\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)\x0F.{2,8}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64))(.)/sg)
+		{
+			push(@{$file_data{'mcddata'}}, [ ord($3) * 0x100 + ord($2), ord($8), (length($6)) ? scalar(pos($ddata)) - length($6) - length($7) - length($8) : ord($4) * 0x100 + ord($5), ord($1), length($6) != 0 ]);
+
+			if ($file_data{'mcddata'}->[-1][4] && ($ddata2 =~ /\x75\xF0$1\xA4\x24$2\xF5\x82(?:\xE5\xF0|\xE4)\x34$3\xF5\x83.{71,90}?(?:\x64\x0D\x70|\xB4\x0D)./sg))
+			{
+				$file_data{'mcddata'}->[-1][4] = $file_data{'mcddata'}->[-1][2];
+				$file_data{'mcddata'}->[-1][2] = pos($ddata2);
+			}
+
+			dbgout(sprintf("- table: fw_loc=$dbs%04X, start=$dbs%04X, n=%02d, ws_pt=$dbs%04X, len=%02d, ws_ex=$dbs%04X\n", pos($ddata), @{$file_data{'mcddata'}->[-1]}));
 		}
 
 		if (scalar(@{$file_data{'mcpdata'}}) == 0 && scalar(@{$file_data{'mcddata'}}) == 0)
@@ -84,16 +110,12 @@ sub getmctype # ( )
 			$file_data{'mctype'} = 0;
 			$file_data{'mcpdata'} = [ 0, 0, 0 ];
 		}
-
-		# Begin firmware-specific additions...
-		#
-		push(@{$file_data{'mcpdata'}}, [ 0x1784, 10, 0x0000 ]) if ($file_data{'fwrev'} =~ /^BS0[6AC]$/);
 	}
 }
 
 sub getcodes # ( )
 {
-	return getcodes2() if ($file_data{'mctype'} == 2);
+	return getcodes2() if ($file_data{'mctype'} >= 2);
 
 	my($data);
 	my($x, $y, $p, $i);
@@ -275,7 +297,7 @@ sub getcodes # ( )
 
 sub setcodes # ( )
 {
-	return setcodes2() if ($file_data{'mctype'} == 2);
+	return setcodes2() if ($file_data{'mctype'} >= 2);
 
 	my($data);
 	my($x, $y, $p, $i);

@@ -1,4 +1,10 @@
 $OP_REPORT_MODE = 0;
+$OP_PRINT_DEBUG = 0;
+
+sub dbgout # ( debugging_output )
+{
+	print @_ if ($OP_PRINT_DEBUG);
+}
 
 sub load_file # ( )
 {
@@ -10,7 +16,6 @@ sub load_file # ( )
 	my($fwr_pat) = '\x7D(.)\x90.{21,23}' x $fwr_len;
 
 	$file_data{'fwrev'} = '';
-	$file_data{'fwfamily'} = 'Unknown';
 
 	if ($file_data{'core'} =~ /$fwr_pat/s)
 	{
@@ -20,165 +25,10 @@ sub load_file # ( )
 		}
 
 		$file_data{'fwrev'} =~ s/\s+$//;
+		dbgout("Firmware: $file_data{'fwrev'}\n");
 	}
 
-	my(%fwparams) =
-	(
-		# fw_letter => [ gen, genex, fwfamily, ebankpos, pbankpos, dbankpos ]
-
-		'L' => [ 0, 0x110, 'SDW-421S',       0x00000, 0xA0000, 0xD0000 ],
-		'M' => [ 0, 0x110, 'SDW-431S',       0xC0000, 0xA0000, 0xD0000 ],
-		'R' => [ 0, 0x120, 'SOSW-832S',      0xC0000, 0xA0000, 0xD0000 ],
-		'N' => [ 0, 0x120, 'SOSW-842S',      0xC0000, 0xA0000, 0xD0000 ],
-		'P' => [ 0, 0x120, 'SOSW-852S',      0xC0000, 0xA0000, 0xD0000 ],
-		'Q' => [ 0, 0x120, 'SOSW-862S',      0xC0000, 0xA0000, 0xD0000 ],
-		'E' => [ 1, 0x010, 'LDW-401S',       0x00000, 0xC0000, 0xD0000 ],
-		'F' => [ 1, 0x010, 'LDW-411S',       0x00000, 0xC0000, 0xD0000 ],
-		'H' => [ 1, 0x010, 'LDW-811S',       0x90000, 0xC0000, 0xD0000 ],
-		'G' => [ 2, 0x011, 'LDW-451S/851S',  0x90000, 0xC0000, 0xD0000 ],
-		'U' => [ 2, 0x020, 'SOHW-802S/812S', 0x90000, 0xC0000, 0xD0000 ],
-		'V' => [ 2, 0x020, 'SOHW-822S/832S', 0x90000, 0xC0000, 0xD0000 ],
-		'T' => [ 3, 0x030, 'SOHW-1213S',     0x90000, 0xC0000, 0x90000 ],
-		'I' => [ 3, 0x031, 'SOHW-833S',      0x90000, 0xC0000, 0x90000 ],
-		'A' => [ 3, 0x031, 'SOHW-1613S',     0x90000, 0xC0000, 0x90000 ],
-		'B' => [ 3, 0x031, 'SOHW-1633S',     0x90000, 0xC0000, 0x90000 ],
-		'C' => [ 3, 0x032, 'SOHW-1653S',     0x90000, 0xE0000, 0x90000 ],
-		'J' => [ 4, 0x033, 'SOHW-1673S',     0x80000, 0xE0000, 0x90000 ],
-	);
-
-	if (substr($file_data{'fwrev'}, 0, 1) eq 'M')
-	{
-		$file_data{'fwfamily'} = 'SDW-431S';
-		$file_data{'gen'} = 0;
-		error("OmniPatcher does not support media hacking for slimline drives.");
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'R')
-	{
-		$file_data{'fwfamily'} = 'SOSW-832S';
-		$file_data{'gen'} = 0;
-		error("OmniPatcher does not support media hacking for slimline drives.");
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'N')
-	{
-		$file_data{'fwfamily'} = 'SOSW-842S';
-		$file_data{'gen'} = 0;
-		error("OmniPatcher does not support media hacking for slimline drives.");
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'P')
-	{
-		$file_data{'fwfamily'} = 'SOSW-852S';
-		$file_data{'gen'} = 0;
-		error("OmniPatcher does not support media hacking for slimline drives.");
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'Q')
-	{
-		$file_data{'fwfamily'} = 'SOSW-862S';
-		$file_data{'gen'} = 0;
-		error("OmniPatcher does not support media hacking for slimline drives.");
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'E')
-	{
-		$file_data{'fwfamily'} = 'LDW-401S';
-		$file_data{'gen'} = 1;
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'F')
-	{
-		$file_data{'fwfamily'} = 'LDW-411S';
-		$file_data{'gen'} = 1;
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'H')
-	{
-		$file_data{'fwfamily'} = 'LDW-811S';
-		$file_data{'gen'} = 1;
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'G')
-	{
-		$file_data{'fwfamily'} = 'LDW-451S/851S';
-		$file_data{'gen'} = 2;
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'U')
-	{
-		$file_data{'fwfamily'} = 'SOHW-802S/812S';
-		$file_data{'gen'} = 2;
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'V')
-	{
-		$file_data{'fwfamily'} = 'SOHW-822S/832S';
-		$file_data{'gen'} = 2;
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'T')
-	{
-		$file_data{'fwfamily'} = 'SOHW-1213S';
-		$file_data{'gen'} = 3;
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'K')
-	{
-		$file_data{'fwfamily'} = 'SOHW-833S';
-		$file_data{'gen'} = 3;
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'A')
-	{
-		$file_data{'fwfamily'} = 'SOHW-1613S';
-		$file_data{'gen'} = 3;
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'B')
-	{
-		$file_data{'fwfamily'} = 'SOHW-1633S';
-		$file_data{'gen'} = 3;
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'C')
-	{
-		$file_data{'fwfamily'} = 'SOHW-1653S';
-		$file_data{'gen'} = 4;
-	}
-	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'W')
-	{
-		$file_data{'fwfamily'} = 'SOHW-1673S';
-		$file_data{'gen'} = 4;
-	}
-	else
-	{
-		my($header) = substr($file_data{'work'}, 0xF0000, 0x200);
-
-		if ($header =~ /SOHW-8\d2S|DW-.18A|LDW-\d51S/)
-		{
-			$file_data{'gen'} = 2;
-		}
-		elsif ($header =~ /LDW-.[01]1/)
-		{
-			$file_data{'gen'} = 1;
-		}
-		elsif ($header =~ /DW-.(\d{2})A/)
-		{
-			$file_data{'gen'} = (($1 >= 20) ? 3 : 2);
-		}
-		else
-		{
-			$file_data{'gen'} = 0;
-			error("Unable to classify firmware.");
-		}
-	}
-
-	$file_data{'fwrev'} = 'Unknown' if ($file_data{'fwrev'} eq '');
-
-	if ($file_data{'gen'} == 0)
-	{
-		$file_data{'pbankpos'} = 0x00000;
-		$file_data{'dbankpos'} = 0x00000;
-	}
-	elsif ($file_data{'gen'} < 3)
-	{
-		$file_data{'pbankpos'} = 0xC0000;
-		$file_data{'dbankpos'} = 0xD0000;
-	}
-	else
-	{
-		$file_data{'pbankpos'} = 0x00000;
-		$file_data{'dbankpos'} = 0x90000;
-
-		$file_data{'pbankpos'} = 0xC0000 if (substr($file_data{'work'}, 0xC0000, 0x10000) =~ /$PLUS_SAMPLE/);
-		$file_data{'pbankpos'} = 0xE0000 if (substr($file_data{'work'}, 0xE0000, 0x10000) =~ /$PLUS_SAMPLE/);
-	}
+	$file_data{'fwrev'} = ' ' if ($file_data{'fwrev'} eq '');
 
 	$file_data{'driveid'} = 'Unknown';
 	$file_data{'drivevid'} = 'Unknown';
@@ -201,49 +51,123 @@ sub load_file # ( )
 		$file_data{'driveid'} = "$file_data{'drivevid'} $file_data{'drivepid'}";
 	}
 
+	my(%fwparams) =
+	(
+		# fw_letter => [ gen, genex, fwfamily, ebankpos, pbankpos, dbankpos, [ pr, prw, pr9, dr, drw, dr9 ] ]
+
+		'E' => [ 1, 0x011, 'LDW-401S',       0x00000, 0xC0000, 0xD0000, [  4, 4, 0,  0, 0, 0 ] ],
+		'F' => [ 1, 0x011, 'LDW-411S',       0x00000, 0xC0000, 0xD0000, [  4, 4, 0,  4, 2, 0 ] ],
+		'H' => [ 1, 0x011, 'LDW-811S',       0x90000, 0xC0000, 0xD0000, [  8, 4, 0,  4, 2, 0 ] ],
+		'G' => [ 2, 0x012, 'LDW-451S/851S',  0x90000, 0xC0000, 0xD0000, [  8, 4, 0,  4, 2, 0 ] ],
+		'U' => [ 2, 0x021, 'SOHW-802S/812S', 0x90000, 0xC0000, 0xD0000, [  8, 4, 0,  8, 4, 0 ] ],
+		'V' => [ 2, 0x021, 'SOHW-822S/832S', 0x90000, 0xC0000, 0xD0000, [  8, 4, 2,  8, 4, 0 ] ],
+		'T' => [ 3, 0x031, 'SOHW-1213S',     0x90000, 0xE0000, 0x90000, [ 12, 4, 0,  8, 4, 0 ] ],
+		'I' => [ 3, 0x032, 'SOHW-833S',      0x90000, 0xE0000, 0x90000, [  8, 4, 4,  8, 4, 0 ] ],
+		'A' => [ 3, 0x032, 'SOHW-1613S',     0x90000, 0xE0000, 0x90000, [ 16, 4, 0,  8, 4, 0 ] ],
+		'B' => [ 3, 0x032, 'SOHW-1633S',     0x90000, 0xE0000, 0x90000, [ 16, 4, 4,  8, 4, 0 ] ],
+		'C' => [ 3, 0x033, 'SOHW-1653S',     0x90000, 0xE0000, 0x90000, [ 16, 4, 4, 12, 4, 0 ] ],
+		'J' => [ 4, 0x034, 'SOHW-1673S',     0x00000, 0x00000, 0x00000, [  0, 0, 0,  0, 0, 0 ] ],
+
+		'L' => [ 0, 0x111, 'SDW-421S',       0x00000, 0xA0000, 0xD0000, [  4, 2, 0,  0, 0, 0 ] ],
+		'M' => [ 0, 0x111, 'SDW-431S',       0xC0000, 0xA0000, 0xD0000, [  4, 2, 0,  2, 2, 0 ] ],
+		'R' => [ 0, 0x121, 'SOSW-832S',      0xC0000, 0xA0000, 0xD0000, [  8, 4, 0,  8, 4, 0 ] ],
+		'N' => [ 0, 0x121, 'SOSW-842S',      0xC0000, 0xA0000, 0xD0000, [  8, 4, 0,  0, 0, 0 ] ],
+		'P' => [ 0, 0x121, 'SOSW-852S',      0xC0000, 0xA0000, 0xD0000, [  8, 4, 2,  8, 4, 0 ] ],
+		'Q' => [ 0, 0x121, 'SOSW-862S',      0xC0000, 0xA0000, 0xD0000, [  8, 4, 2,  0, 0, 0 ] ],
+	);
+
+	my($fwparam);
+
+	if (exists $fwparams{substr($file_data{'fwrev'}, 0, 1)})
+	{
+		$fwparam = $fwparams{substr($file_data{'fwrev'}, 0, 1)};
+
+		if (substr($file_data{'fwrev'}, 0, 1) eq 'B' && $file_data{'drivevid'} eq 'SONY')
+		{
+			$fwparam = $fwparams{'C'} if ($file_data{'core'} =~ /DW-D2[34]A/);
+		}
+	}
+	else
+	{
+		$fwparam = [ 0, 0x000, 'Unknown', 0x00000, 0x00000, 0x00000, [ 0, 0, 0, 0, 0, 0 ] ];
+		error('Unable to classify firmware.');
+	}
+
+	##
+	# Initialize %file_data parameters
+	{
+		$file_data{'gen'}      = $fwparam->[0];
+		$file_data{'genex'}    = $fwparam->[1];
+		$file_data{'fwfamily'} = $fwparam->[2];
+		$file_data{'ebankpos'} = $fwparam->[3];
+		$file_data{'pbankpos'} = $fwparam->[4];
+		$file_data{'dbankpos'} = $fwparam->[5];
+
+		$file_data{'pr_limit'}  = $fwparam->[-1][0];
+		$file_data{'prw_limit'} = $fwparam->[-1][1];
+		$file_data{'pr9_limit'} = $fwparam->[-1][2];
+		$file_data{'dr_limit'}  = $fwparam->[-1][3];
+		$file_data{'drw_limit'} = $fwparam->[-1][4];
+		$file_data{'dr9_limit'} = $fwparam->[-1][5];
+
+		$file_data{'fwrev'} = 'Unknown' if ($file_data{'fwrev'} eq ' ');
+
+	} # End: Initialize %file_data parameters
+
+	if ($file_data{'genex'} >= 0x100 && $file_data{'genex'} < 0x200)
+	{
+		$file_data{'pbankpos'} = $file_data{'dbankpos'} = 0x00000;
+		error('OmniPatcher does not support media hacking for slimline drives.');
+	}
+	elsif ($file_data{'genex'} >= 0x030 && $file_data{'genex'} < 0x040)
+	{
+		$file_data{'pbankpos'} = 0xC0000 if (substr($file_data{'work'}, 0xC0000, 0x10000) =~ /$PLUS_SAMPLE/);
+	}
+
 	getmctype();
 
 	$file_data{'codes'} = [ getcodes() ];
 	$file_data{'ncodes'} = scalar(@{$file_data{'codes'}});
 
-	if ($file_data{'mctype'} == 2 && $file_data{'fwfamily'} =~ /^SOHW-1[26]([1357])3S$/)
+	dbgout("MC Type: $file_data{'mctype'}\n");
+
+	if ($file_data{'mctype'} >= 2 && $file_data{'fwfamily'} =~ /^SOHW-1[26]([1357])3S$/)
 	{
-		my($codetbl_expected) = ($1 eq '1') ? 8 : 9;
 		my($codetbl_actual) = scalar(@{$file_data{'mcpdata'}}) + scalar(@{$file_data{'mcddata'}});
+		my($codetbl_expected) = ($1 eq '1') ? 8 : 9;
+		++$codetbl_expected if ($file_data{'mctype'} == 4);
 
 		if ($codetbl_actual < $codetbl_expected)
 		{
 			error(sprintf("OmniPatcher expected to find %d media tables in this firmware,\nhowever, only %d tables were recognized.\n\nThere will likely be some media codes in this firmware that\nare present but are not being reported by OmniPatcher.", $codetbl_expected, $codetbl_actual));
 		}
+
+		dbgout(sprintf("%d/%d tables found\n", $codetbl_actual, $codetbl_expected));
 	}
-	elsif ($file_data{'gen'} >= 3 && $file_data{'ncodes'} < 120)
+	elsif ($file_data{'ncodes'} < 50 && ($file_data{'genex'} > 0x000 && $file_data{'genex'} < 0x100))
 	{
 		$file_data{'codes'} = [ ];
 		$file_data{'ncodes'} = 0;
 		error("Unable to read the media code table!\n\nYou may need to upgrade to a newer\nversion of OmniPatcher.");
 	}
 
-	if ($file_data{'fwrev'} eq 'BS06')
-	{
-		$file_data{'speed_type'} = 1;
-	}
-	else
-	{
-		$file_data{'speed_type'} = 0;
+	$file_data{'speed_type'} = 0;
 
-		for ($i = 0; $i < $file_data{'ncodes'}; ++$i)
+	for ($i = 0; $i < $file_data{'ncodes'}; ++$i)
+	{
+		if ($file_data{'codes'}->[$i][1][-1] > 0xFF)
 		{
-			if ($file_data{'codes'}->[$i][1][-1] > 0xFF)
-			{
-				$file_data{'speed_type'} = 2;
-				last;
-			}
-			elsif ($file_data{'codes'}->[$i][1][-1] > 0x7F)
-			{
-				$file_data{'speed_type'} = 1;
-			}
+			$file_data{'speed_type'} = 2;
+			last;
+		}
+		elsif ($file_data{'codes'}->[$i][1][-1] > 0x7F)
+		{
+			$file_data{'speed_type'} = 1;
 		}
 	}
+
+	dbgout(sprintf("%d bits used for speed encoding.\n", 7 + $file_data{'speed_type'}));
+	dbgout("Warning! Possible 9th speed bit conflict!\n") if ($file_data{'speed_type'} == 2 && $file_data{'mctype'} == 4);
 
 	if ($file_data{'speed_type'} == 2)
 	{
@@ -258,43 +182,6 @@ sub load_file # ( )
 
 	$file_data{'speeds'} = [ map { $_->[1][-1] } @{$file_data{'codes'}} ];
 	$file_data{'strats'} = [ map { $_->[3] } @{$file_data{'codes'}} ];
-
-	if ($file_data{'gen'} < 3)
-	{
-		$file_data{'pr_limit'} = 8;
-		$file_data{'dr_limit'} = 8;
-		$file_data{'pr9_limit'} = 4;
-		$file_data{'dr9_limit'} = 0;
-		$file_data{'prw_limit'} = 4;
-		$file_data{'drw_limit'} = 4;
-
-		if ($file_data{'fwfamily'} =~ /1S$/)
-		{
-			$file_data{'pr9_limit'} = 0;
-			$file_data{'dr_limit'} = 4;
-			$file_data{'drw_limit'} = 2;
-		}
-	}
-	else
-	{
-		$file_data{'pr_limit'} = 16;
-		$file_data{'dr_limit'} = 8;
-		$file_data{'pr9_limit'} = 4;
-		$file_data{'dr9_limit'} = 0;
-		$file_data{'prw_limit'} = 4;
-		$file_data{'drw_limit'} = 4;
-
-		if ($file_data{'fwfamily'} =~ /1213S$/)
-		{
-			$file_data{'pr_limit'} = 12;
-			$file_data{'pr9_limit'} = 0;
-		}
-		elsif ($file_data{'gen'} == 4)
-		{
-			$file_data{'dr_limit'} = 16;
-			$file_data{'dr9_limit'} = 4;
-		}
-	}
 
 	$file_data{'strat_status'} = patch_strat(1, -1);
 	($file_data{'strat_status'} < 0) ? SetDisable($ObjDefStrat) : SetEnable($ObjDefStrat);
@@ -334,7 +221,7 @@ sub load_file # ( )
 
 		SetText($ObjPatches[0], $PATCH_0_BASE . " to 8x")
 	}
-	elsif ($file_data{'gen'} == 3 || $file_data{'gen'} == 4)
+	elsif ($file_data{'gen'} == 3)
 	{
 		$file_data{'patch_status'}->[0] = patch_rs2(1);
 		$file_data{'patch_status'}->[1] = patch_abs(1, -1);
@@ -419,7 +306,7 @@ sub save_file # ( file_name )
 	save_strats();
 
 	patch_rs(0)												if ($dopatch[0] && $file_data{'gen'} < 3);
-	patch_rs2(0)											if ($dopatch[0] && ($file_data{'gen'} == 3 || $file_data{'gen'} == 4));
+	patch_rs2(0)											if ($dopatch[0] && $file_data{'gen'} == 3);
 	patch_abs(0, $ObjPatches[1]->GetCheck())		if ($dopatch[1]);
 	patch_fb(0, $ObjPatches[2]->GetCheck())		if ($dopatch[2]);
 	patch_sf(0, $ObjPatches[3]->GetCheck())		if ($dopatch[3] || $ObjPatches[3]->IsEnabled());	# Override; always patch if enabled

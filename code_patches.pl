@@ -1,3 +1,5 @@
+$OP_ALLOW_ADVANCED_AUTOBS = 0;
+
 sub patch_rs # ( testmode )
 {
 	my($testmode) = @_;
@@ -111,14 +113,16 @@ sub patch_abs # ( testmode, mode )
 
 	$off[0] = join('', map { chr } ( 0xEF, 0xF0, 0xE0, 0x54, 0xF7, 0xF0 ));
 	$off[1] = join('', map { chr } ( 0xE4 ));
+	$off[2] = join('', map { chr } ( 0x7F, 0x4A, 0x7E, 0x01 ));
 	$on[0]  = join('', map { chr } ( 0xE7, 0xF0, 0x00, 0x00, 0x00 ));
 	$on[1]  = join('', map { chr } ( 0x74, 0x01 ));
-	($offpat[0], $offpat[1], $onpat[0], $onpat[1]) = map { quotemeta } ( @off, @on );
+	$on[2]  = join('', map { chr } ( 0x7F, 0x10, 0x80, 0x03 ));
+	($offpat[0], $offpat[1], $offpat[2], $onpat[0], $onpat[1], $onpat[2]) = map { quotemeta } ( @off, @on );
 
 	if ($file_data{'work'} =~ /\x90..\xE0\x54($offpat[0]|$onpat[0])(.{0,24}?)($offpat[1]|$onpat[1])\x90..\xF0\x22/sg)
 	{
 		my($addr) = pos($file_data{'work'});
-		pos($file_data{'work'}) = 0;
+		pos $file_data{'work'} = 0;
 
 		return -1 if (length($1) + length($3) != 7);
 
@@ -129,6 +133,19 @@ sub patch_abs # ( testmode, mode )
 		}
 
 		return ($1 eq $on[0]) ? 1 : 0;
+	}
+	elsif ($OP_ALLOW_ADVANCED_AUTOBS && $file_data{'work'} =~ /\x90..\xE0\x54$offpat[0].{0,24}?($offpat[2]|$onpat[2])(\x12..\x90..\xEF\xF0\x22)/sg)
+	{
+		my($addr) = pos($file_data{'work'});
+		pos $file_data{'work'} = 0;
+
+		if (!$testmode)
+		{
+			my($patch) = ($mode) ? "$on[2]$2" : "$off[2]$2";
+			substr($file_data{'work'}, $addr - length($patch), length($patch), $patch);
+		}
+
+		return ($1 eq $on[2]) ? 1 : 0;
 	}
 
 	return -1;
@@ -322,9 +339,7 @@ sub patch_eeprom # ( testmode, mode )
 	my($onc) = join('', map { chr } ( 0xFF, 0xEE, 0x6F, 0x60, 0x00, 0xD3, 0x22 ));
 	my($offpat, $on1pat, $on2pat, $oncpat) = map { quotemeta } ($off, $on1, $on2, $onc);
 
-	my($epbank) = ($file_data{'gen'} == 0) ? 0xC0000 : 0x90000;
-
-	my($work) = substr($file_data{'work'}, $epbank, 0x10000);
+	my($work) = substr($file_data{'work'}, $file_data{'ebankpos'}, 0x10000);
 
 	return -1 if ($work =~ /($oncpat)/s);
 
@@ -337,7 +352,7 @@ sub patch_eeprom # ( testmode, mode )
 		if (!$testmode)
 		{
 			substr($work, $addr - $len, $len, ($mode) ? $on1 : $off);
-			substr($file_data{'work'}, $epbank, 0x10000, $work);
+			substr($file_data{'work'}, $file_data{'ebankpos'}, 0x10000, $work);
 
 			##
 			# Code for multibank patching for VS05+ protections schemes.
@@ -400,7 +415,7 @@ sub patch_eeprom # ( testmode, mode )
 						substr($file_data{'work'}, $check_jump + $check_temp * 0x10000, 4, $check_1);
 					}
 
-					substr($file_data{'work'}, $epbank + 0xFFF0, 8, $check_2);
+					substr($file_data{'work'}, $file_data{'ebankpos'} + 0xFFF0, 8, $check_2);
 				}
 			}
 
