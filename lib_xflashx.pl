@@ -1,6 +1,6 @@
 ##
 # XFlash-X Common Library
-# 1.0.0 (15 June 2004)
+# 1.1.0 (16 June 2004)
 #
 
 require "lib_xflashx_config.pl";
@@ -17,6 +17,13 @@ sub xfx_nulltrim # ( str )
 sub xfx_notstr # ( str )
 {
 	return join('', map { chr(ord($_) ^ 0xFF) } split(//, $_[0]));
+}
+
+sub xfx_sum # ( array )
+{
+	my($ret) = 0;
+	map { $ret += $_ } @_;
+	return $ret;
 }
 
 sub xfx_initpattern # ( )
@@ -58,6 +65,64 @@ sub xfx_status # ( str )
 	print @_ if ($XFX_PRINT_STATUS);
 }
 
+sub xfx_crypt_mode3 # ( str, key, fwrev )
+{
+	my($str, $key, $fwrev) = @_;
+
+	my($fwkey) = xfx_sum( map { ord } split(//, $fwrev) ) % 256;
+
+	my($count);
+	my($curkey);
+	my($changepos);
+	my($changebyte);
+	my($fibcur) = 1;
+	my($fibold) = 0;
+
+	foreach $count (0 .. length($key) - 1)
+	{
+		$curkey = ord(substr($key, $count, 1));
+
+		if (($count + 1) % 3 == 0)
+		{
+			$changepos = $curkey & 0x07;
+		}
+		elsif (($count + 1) % 3 == 1)
+		{
+			$changepos = $curkey % 7;
+		}
+		else
+		{
+			$changepos = $curkey % 5;
+		}
+
+		$changepos += $count * (length($str) / length($key));
+		$changebyte = ord(substr($str, $changepos, 1));
+
+		($fibold, $fibcur) = ($fibcur, $fibold + $fibcur);
+
+		if ($fibcur % 9 == 1)
+		{
+			substr($str, $changepos, 1, chr($changebyte ^ $fwkey));
+		}
+		elsif ($fibcur % 9 == 2)
+		{
+			substr($str, $changepos, 1, chr($changebyte ^ 0xFF));
+		}
+		else
+		{
+			substr($str, $changepos, 1, chr($changebyte ^ $curkey));
+		}
+
+		unless ($fibcur <= 0x2AF90C18)
+		{
+			$fibcur = 1;
+			$fibold = 0;
+		}
+	}
+
+	return $str;
+}
+
 sub xflashx # ( f_in )
 {
 	my($f_in) = @_;
@@ -67,7 +132,7 @@ sub xflashx # ( f_in )
 	my($f_upx);
 
 	my($offset, $nbins, @bins);
-	my($start, $flag_fail, $skip_pre, $skip_len, $s_bin, $bin_fw);
+	my($start, $flag_fail, $scrammode, $skip_pre, $skip_len, $s_bin, $bin_fw);
 
 	xfx_status "Loading and analyzing...\n\n";
 
@@ -186,6 +251,8 @@ sub xflashx # ( f_in )
 
 		foreach $i (0 .. $nbins - 1)
 		{
+			next if ($bins[$i][2] == 0);
+
 			$start = $bins[$i][1] + $offset;
 			xfx_debug sprintf("Extracting '%s.BIN': 0x%06X bytes at offset 0x%X (0x%X + 0x%X)...\n", $bins[$i][0], $bins[$i][2], $start, $bins[$i][1], $offset);
 
@@ -195,27 +262,44 @@ sub xflashx # ( f_in )
 			{
 				if ($data =~ /r\]\x00(v2\.0\.5)\x00/)
 				{
+					$scrammode = 1;
 					$skip_pre = 0x000000;
 					$skip_len = 0x000000;
 				}
 				elsif ($data =~ /r\]\x00(v2\.1\.0)\x00/)
 				{
-					$skip_pre = 0x000400;
-					$skip_len = 0x001000;
+					if ($data =~ /\xFF{256}/)
+					{
+						$scrammode = 2;
+						$skip_pre = 0x000400;
+						$skip_len = 0x001000;
+					}
+					else
+					{
+						$scrammode = 3;
+					}
 				}
 				else
 				{
+					$scrammode = 0;
 					$flag_fail = 1;
 				}
 
-				xfx_debug "Using unscrambler for XFlash $1...\n" unless($flag_fail);
+				xfx_debug "Using unscrambler for XFlash $1, mode $scrammode...\n" unless($flag_fail);
 
-				$s_bin  = xfx_notstr(substr($data, $start, $skip_pre));
-				$s_bin .= substr($data, $start + $skip_pre + $skip_len, $bins[$i][2] - $skip_pre);
-				$bin_fw = $s_bin;
+				unless ($scrammode == 3)
+				{
+					$s_bin  = xfx_notstr(substr($data, $start, $skip_pre));
+					$s_bin .= substr($data, $start + $skip_pre + $skip_len, $bins[$i][2] - $skip_pre);
+					$bin_fw = $s_bin;
 
-				substr($bin_fw, 0x0, 0x8000, reverse(substr($s_bin, length($s_bin) - 0x8000, 0x8000)));
-				substr($bin_fw, length($s_bin) - 0x8000, 0x8000, reverse(substr($s_bin, 0x0, 0x8000)));
+					substr($bin_fw, 0x0, 0x8000, reverse(substr($s_bin, length($s_bin) - 0x8000, 0x8000)));
+					substr($bin_fw, length($s_bin) - 0x8000, 0x8000, reverse(substr($s_bin, 0x0, 0x8000)));
+				}
+				else
+				{
+					$bin_fw = xfx_crypt_mode3(substr($data, $start + 0x1000, $bins[$i][2]), substr($data, $offset + 0x400 * $i, 0x400), $bins[$i][0]);
+				}
 			}
 			else
 			{
@@ -232,12 +316,12 @@ sub xflashx # ( f_in )
 
 			unless ($flag_fail)
 			{
-				push @ret, [ $bins[$i][0], $bin_fw, $start ];
+				push @ret, [ $bins[$i][0], $bin_fw, $start, $offset + 0x400 * $i ];
 				xfx_status "'$bins[$i][0]' has been extracted...\n\n";
 			}
 			else
 			{
-				push @ret, [ $bins[$i][0], '', $start ];
+				push @ret, [ $bins[$i][0], '', 0, 0 ];
 				xfx_status "Error extracting '$bins[$i][0]'...\n\n";
 			}
 		}
@@ -249,7 +333,7 @@ sub xflashx # ( f_in )
 
 	if ($XFX_RET_EXTENDED)
 	{
-		return [ [ @ret ], [ $data, $mode, $skip_pre, $skip_len ] ];
+		return [ [ @ret ], [ $data, $mode, $scrammode, $skip_pre, $skip_len ] ];
 	}
 	else
 	{

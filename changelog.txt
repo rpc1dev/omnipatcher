@@ -1,3 +1,6 @@
+1.1.1 (16 Jun 2004)
+	* Fixed: Problems with opening certain .EXE files.
+
 1.1.0 (15 Jun 2004)
 	* Added: Ability to save an executable firmware flasher as a raw firmware (.BIN).
 	* Added: New feature: all executable firmware flashers are now FlashFixed when saved (FF does not alter the firmware).

@@ -152,11 +152,18 @@ sub save_file # ( file_name )
 			{
 				my($s_bin) = $file_data{'work'};
 
-				substr($s_bin, 0x0, 0x8000, reverse(substr($file_data{'work'}, length($file_data{'work'}) - 0x8000, 0x8000)));
-				substr($s_bin, length($file_data{'work'}) - 0x8000, 0x8000, reverse(substr($file_data{'work'}, 0x0, 0x8000)));
+				unless ($file_data{'exedata'}->[2] == 3)
+				{
+					substr($s_bin, 0x0, 0x8000, reverse(substr($file_data{'work'}, length($file_data{'work'}) - 0x8000, 0x8000)));
+					substr($s_bin, length($file_data{'work'}) - 0x8000, 0x8000, reverse(substr($file_data{'work'}, 0x0, 0x8000)));
 
-				substr($outdata, $file_data{'offset'}, $file_data{'exedata'}->[2], xfx_notstr(substr($s_bin, 0, $file_data{'exedata'}->[2])));
-				substr($outdata, $file_data{'offset'} + $file_data{'exedata'}->[2] + $file_data{'exedata'}->[3], length($s_bin) - $file_data{'exedata'}->[2], substr($s_bin, $file_data{'exedata'}->[2], length($s_bin) - $file_data{'exedata'}->[2]));
+					substr($outdata, $file_data{'offset'}, $file_data{'exedata'}->[3], xfx_notstr(substr($s_bin, 0, $file_data{'exedata'}->[3])));
+					substr($outdata, $file_data{'offset'} + $file_data{'exedata'}->[3] + $file_data{'exedata'}->[4], length($s_bin) - $file_data{'exedata'}->[3], substr($s_bin, $file_data{'exedata'}->[3], length($s_bin) - $file_data{'exedata'}->[3]));
+				}
+				else
+				{
+					substr($outdata, $file_data{'offset'} + 0x1000, length($s_bin), xfx_crypt_mode3($s_bin, substr($outdata, $file_data{'key_offset'}, 0x400), $file_data{'name'}));
+				}
 
 				$recompress = 1;
 			}
@@ -176,7 +183,7 @@ sub save_file # ( file_name )
 
 			if ($recompress && xfx_check_helper())
 			{
-				qx($XFX_HELPER -1 -q "$file_name");
+				qx($XFX_HELPER -9 -q "$file_name");
 
 				open file, $file_name;
 				binmode file;

@@ -139,8 +139,10 @@ sub Cmds0_Click
 	{
 		my($xfx) = xflashx($new_file{'longname'});
 
+		$new_file{'name'} = $xfx->[0][0][0];
 		$new_file{'work'} = $xfx->[0][0][1];
 		$new_file{'offset'} = $xfx->[0][0][2];
+		$new_file{'key_offset'} = $xfx->[0][0][3];
 		$new_file{'exedata'} = $xfx->[1];
 
 		return error("Unable to process this .EXE file!\nPlease make sure that the file is valid.\n\nYou might also consider using XFlash-X to\nextract a .BIN file to work with instead.", 1) if (length($new_file{'work'}) != 0x100000);
