@@ -4,24 +4,89 @@ sub load_file # ( )
 {
 	my($i, $label);
 
-	my($header) = substr($file_data{'work'}, 0xF0000, 0x200);
+	my($fwr_len) = 16;
+	my($fwr_pat) = '\x7D(.)\x90.{21,23}' x $fwr_len;
 
-	if ($header =~ /SOHW-8\d2S|DW-.18A|LDW-\d51S/)
+	$file_data{'fwrev'} = '';
+	$file_data{'fwfamily'} = '';
+
+	if ($file_data{'work'} =~ /$fwr_pat/s)
 	{
-		$file_data{'gen'} = 2;
+		for ($i = 1; $i <= $fwr_len; ++$i)
+		{
+			$file_data{'fwrev'} .= substr($file_data{'work'}, $-[$i], $+[$i] - $-[$i]);
+		}
+
+		$file_data{'fwrev'} =~ s/\s+$//;
 	}
-	elsif ($header =~ /LDW-.[01]1/)
+
+	if (substr($file_data{'fwrev'}, 0, 1) eq 'M')
 	{
+		$file_data{'fwfamily'} = 'SDW-431S';
+		$file_data{'gen'} = 0;
+		error("OmniPatcher does not support slimline drives.");
+	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'E')
+	{
+		$file_data{'fwfamily'} = 'LDW-401S';
 		$file_data{'gen'} = 1;
 	}
-	elsif ($header =~ /DW-.(\d{2})A/)
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'F')
 	{
-		$file_data{'gen'} = (($1 >= 20) ? 3 : 2);
+		$file_data{'fwfamily'} = 'LDW-411S';
+		$file_data{'gen'} = 1;
+	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'H')
+	{
+		$file_data{'fwfamily'} = 'LDW-811S';
+		$file_data{'gen'} = 1;
+	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'G')
+	{
+		$file_data{'fwfamily'} = 'LDW-451S/851S';
+		$file_data{'gen'} = 2;
+	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'U')
+	{
+		$file_data{'fwfamily'} = 'SOHW-802S/812S';
+		$file_data{'gen'} = 2;
+	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'V')
+	{
+		$file_data{'fwfamily'} = 'SOHW-822S/832S';
+		$file_data{'gen'} = 2;
+	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'T')
+	{
+		$file_data{'fwfamily'} = 'SOHW-1213S';
+		$file_data{'gen'} = 3;
+	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'B')
+	{
+		$file_data{'fwfamily'} = 'SOHW-1633S';
+		$file_data{'gen'} = 3;
 	}
 	else
 	{
-		$file_data{'gen'} = 0;
-		error("Unable to classify firmware.");
+		my($header) = substr($file_data{'work'}, 0xF0000, 0x200);
+
+		if ($header =~ /SOHW-8\d2S|DW-.18A|LDW-\d51S/)
+		{
+			$file_data{'gen'} = 2;
+		}
+		elsif ($header =~ /LDW-.[01]1/)
+		{
+			$file_data{'gen'} = 1;
+		}
+		elsif ($header =~ /DW-.(\d{2})A/)
+		{
+			$file_data{'gen'} = (($1 >= 20) ? 3 : 2);
+		}
+		else
+		{
+			$file_data{'gen'} = 0;
+			error("Unable to classify firmware.");
+		}
 	}
 
 	if ($file_data{'gen'} == 0)
@@ -57,15 +122,34 @@ sub load_file # ( )
 
 	if ($file_data{'gen'} < 3)
 	{
-		$file_data{'r_limit'} = 8;
-		$file_data{'r9_limit'} = 4;
-		$file_data{'rw_limit'} = 4;
+		$file_data{'pr_limit'} = 8;
+		$file_data{'dr_limit'} = 8;
+		$file_data{'pr9_limit'} = 4;
+		$file_data{'dr9_limit'} = 0;
+		$file_data{'prw_limit'} = 4;
+		$file_data{'drw_limit'} = 4;
+
+		if ($file_data{'fwfamily'} =~ /1S$/)
+		{
+			$file_data{'pr9_limit'} = 0;
+			$file_data{'dr_limit'} = 4;
+			$file_data{'drw_limit'} = 2;
+		}
 	}
 	else
 	{
-		$file_data{'r_limit'} = 16;
-		$file_data{'r9_limit'} = 4;
-		$file_data{'rw_limit'} = 4;
+		$file_data{'pr_limit'} = 16;
+		$file_data{'dr_limit'} = 8;
+		$file_data{'pr9_limit'} = 4;
+		$file_data{'dr9_limit'} = 0;
+		$file_data{'prw_limit'} = 4;
+		$file_data{'drw_limit'} = 4;
+
+		if ($file_data{'fwfamily'} =~ /1213S$/)
+		{
+			$file_data{'pr_limit'} = 12;
+			$file_data{'pr9_limit'} = 0;
+		}
 	}
 
 	$file_data{'strat_status'} = patch_strat(1, -1);
@@ -106,6 +190,7 @@ sub load_file # ( )
 	}
 	elsif ($file_data{'gen'} == 3)
 	{
+		$file_data{'patch_status'}->[0] = patch_rs2(1);
 		$file_data{'patch_status'}->[1] = patch_abs(1, -1);
 		$file_data{'patch_status'}->[5] = patch_eeprom(1, -1);
 	}
@@ -127,7 +212,7 @@ sub load_file # ( )
 	SetEnable($ObjSpdRep);
 	SetEnable($ObjCmds[1]);
 
-	$ObjCmdGroup->Text($file_data{'shortname'});
+	$ObjCmdGroup->Text(($file_data{'fwrev'} eq '') ? $file_data{'shortname'} : "$file_data{'fwrev'} ($file_data{'shortname'})");
 }
 
 sub save_file # ( file_name )
@@ -178,7 +263,8 @@ sub save_file # ( file_name )
 	setcodes();
 	save_strats();
 
-	patch_rs(0)												if ($dopatch[0]);
+	patch_rs(0)												if ($dopatch[0] && $file_data{'gen'} < 3);
+	patch_rs2(0)											if ($dopatch[0] && $file_data{'gen'} == 3);
 	patch_abs(0, $ObjPatches[1]->GetCheck())		if ($dopatch[1]);
 	patch_fb(0, $ObjPatches[2]->GetCheck())		if ($dopatch[2]);
 	patch_sf(0, $ObjPatches[3]->GetCheck())		if ($dopatch[3] || $ObjPatches[3]->IsEnabled());	# Override; always patch if enabled
@@ -283,6 +369,19 @@ sub save_report # ( file_name )
 	my($index, $strat, @speeds, $curspd, $spdrep);
 
 	my(@types) = ( '+R/W', '+R', '+R9', '+RW', '-R', '-RW' );
+
+	my(%typelimits) =
+	(
+		'+R/W' => $file_data{'pr_limit'},
+		'+R'   => $file_data{'pr_limit'},
+		'+R9'  => $file_data{'pr9_limit'},
+		'+RW'  => $file_data{'prw_limit'},
+		'-R/W' => $file_data{'dr_limit'},
+		'-R',  => $file_data{'dr_limit'},
+		'-R9'  => $file_data{'dr9_limit'},
+		'-RW'  => $file_data{'drw_limit'},
+	);
+
 	my(%typelists);
 
 	foreach $type (@types)
@@ -308,10 +407,10 @@ sub save_report # ( file_name )
 		foreach $j (0 .. $#MEDIA_SPEEDS)
 		{
 			next if ($MEDIA_SPEEDS[$j] == 1 && substr($file_data{'codes'}->[$i][0], 0, 2) eq "+R");
-			next if ($MEDIA_SPEEDS[$j] > $file_data{'r_limit'});
+			next if ($MEDIA_SPEEDS[$j] > $typelimits{$file_data{'codes'}->[$i][0]});
 
 			$curspd = ($MEDIA_SPEEDS[$j] == 2 && substr($file_data{'codes'}->[$i][0], 0, 2) eq "+R") ? "2.4x" : "$MEDIA_SPEEDS[$j]x";
-			$curspd .= ',' unless ($MEDIA_SPEEDS[$j] == $file_data{'r_limit'});
+			$curspd .= ',' unless ($MEDIA_SPEEDS[$j] == $typelimits{$file_data{'codes'}->[$i][0]});
 			$curspd =~ s/./ /g unless ($file_data{'speeds'}->[$i] & (2 ** $j));
 
 			push @speeds, $curspd;
@@ -325,8 +424,10 @@ sub save_report # ( file_name )
 
 	$report  = "OmniPatcher Media Code Report\n";
 	$report .= "=============================\n\n";
-	$report .= "File name: $file_data{'shortname'}\n";
-	$report .= "Last modified: " . localtime((stat($file_data{'longname'}))[9]) . "\n\n\n";
+	$report .= " Firmware revision: $file_data{'fwrev'}\n" if ($file_data{'fwrev'} ne "");
+	$report .= "        Drive type: $file_data{'fwfamily'}\n" if ($file_data{'fwfamily'} ne "");
+	$report .= "         File name: $file_data{'shortname'}\n";
+	$report .= "File last modified: " . localtime((stat($file_data{'longname'}))[9]) . "\n\n\n";
 
 	foreach $type (@types)
 	{

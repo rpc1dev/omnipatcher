@@ -1,3 +1,10 @@
+1.3.9 (15 Aug 2004)
+	* Added: Increase reading speed to 12x for 3S firmwares.
+	* Improved: OmniPatcher will now display the true firmware revision.
+	* Improved: The media code report format has been revised somewhat.
+	* Fixed: Strategy switching works for TS0C.
+	* Fixed: 6x/8x -R speeds are no longer shown for 1S firmwares, 12x/16x -R speeds are no longer shown for 3S firmwares, and 16x +R speeds are no longer shown for 1213S firmwares.
+
 1.3.8 (26 Jul 2004)
 	* Added: Force-fallback.
 	* Removed: Force-recalibration.

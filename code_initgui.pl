@@ -119,7 +119,7 @@ $hWndMain = 0;
 
 	@PATCH_NAMES =
 	(
-		"Increase DVD±R/R9/RW reading speed to 8x",
+		"Increase DVD±R/R9/RW reading speed",
 		"Enable auto-bitsetting",
 		"Earlier shift (faster burn) for 8x +R",
 		"Utilize \"force-shifting\" for 6x/8x burns",

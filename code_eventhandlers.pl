@@ -32,7 +32,7 @@ sub List_Click
 			SetDisable($ObjSpeeds[$i]);
 			SetCheck($ObjSpeeds[$i], 0);
 			SetText($ObjSpeeds[$i], "$MEDIA_SPEEDS[$i]x");
-			($MEDIA_SPEEDS[$i] > $file_data{'r_limit'}) ? SetInvisible($ObjSpeeds[$i]) : SetVisible($ObjSpeeds[$i])
+			($MEDIA_SPEEDS[$i] > $file_data{'pr_limit'}) ? SetInvisible($ObjSpeeds[$i]) : SetVisible($ObjSpeeds[$i])
 		}
 	}
 	else
@@ -41,9 +41,12 @@ sub List_Click
 
 		foreach $i (0 .. $#ObjSpeeds)
 		{
-			if ( ($MEDIA_SPEEDS[$i] > $file_data{'r_limit'}) ||
-			     ($MEDIA_SPEEDS[$i] > $file_data{'r9_limit'} && $type =~ /^.R9/) ||
-			     ($MEDIA_SPEEDS[$i] > $file_data{'rw_limit'} && $type =~ /^.RW/) ||
+			if ( ($MEDIA_SPEEDS[$i] > $file_data{'pr_limit'}  && $type =~ /^\+R/)  ||
+			     ($MEDIA_SPEEDS[$i] > $file_data{'dr_limit'}  && $type =~ /^\-R/)  ||
+			     ($MEDIA_SPEEDS[$i] > $file_data{'pr9_limit'} && $type =~ /^\+R9/) ||
+			     ($MEDIA_SPEEDS[$i] > $file_data{'dr9_limit'} && $type =~ /^\-R9/) ||
+			     ($MEDIA_SPEEDS[$i] > $file_data{'prw_limit'} && $type =~ /^\+RW/) ||
+			     ($MEDIA_SPEEDS[$i] > $file_data{'drw_limit'} && $type =~ /^\-RW/) ||
 			     ($MEDIA_SPEEDS[$i] == 1 && $type =~ /^\+/) )
 			{
 				SetDisable($ObjSpeeds[$i]);

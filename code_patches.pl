@@ -51,6 +51,59 @@ sub patch_rs # ( testmode )
 	return ($changes) ? 0 : -1;
 }
 
+sub patch_rs2 # ( testmode )
+{
+	my($testmode) = @_;
+	my($i, $j, $counter, $jmppos);
+
+	my($MIN_SEQ) = 4;
+	my($changes) = 0;
+
+	my($work) = substr($file_data{'work'}, 0x20000, 0x10000);
+
+	for ($i = 0; $i < length($work) - 4; ++$i)
+	{
+		if (substr($work, $i, 3) =~ /^\x7F[\x06\x08\x0A\x0C\x0E\x10]\x80$/)
+		{
+			$counter = 1;
+			$jmppos = $i + ord(substr($work, $i + 3, 1));
+
+			for ($j = $i + 4; $j < length($work) - 4 && substr($work, $j, 3) =~ /^\x7F[\x06\x08\x0A\x0C]\x80$/; $j += 4)
+			{
+				if ($j + ord(substr($work, $j + 3, 1)) == $jmppos)
+				{
+					++$counter;
+				}
+				else
+				{
+					last;
+				}
+			}
+
+			if ($counter >= $MIN_SEQ)
+			{
+				for ($j = 0; $j < $counter * 4; $j += 4)
+				{
+					if (ord(substr($work, $i + $j + 1, 1)) < 0x0C)
+					{
+						substr($work, $i + $j + 1, 1, chr(0x0C));
+						++$changes;
+					}
+				}
+
+				last;
+			}
+		}
+	}
+
+	if (!$testmode)
+	{
+		substr($file_data{'work'}, 0x20000, 0x10000, $work);
+	}
+
+	return ($changes) ? 0 : -1;
+}
+
 sub patch_abs # ( testmode, mode )
 {
 	my($testmode, $mode) = @_;

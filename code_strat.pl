@@ -21,6 +21,7 @@ $STRAT_REV_LOC = 0x0FFEF;
 sub patch_strat # ( testmode, mode )
 {
 	return patch_strat2(@_) if ($file_data{'mctype'} == 2);
+	return patch_strat_TS0C(@_) if ($file_data{'fwrev'} eq 'TS0C');
 
 	my($testmode, $mode) = @_;
 	my($curmode) = 0;
@@ -108,6 +109,106 @@ sub patch_strat # ( testmode, mode )
 
 	return $curmode;
 }
+
+##
+# BEGIN: TS0C special insert
+# Yes, I know this is very crude to just duplicate the function, but I don't
+# have the time to do anything but a quick-and-dirty solution.  In the future
+# when I get more time, I can clean this up and use a general function for this
+# instead of using different functions for these variations.
+#
+
+sub patch_strat_TS0C # ( testmode, mode )
+{
+	my($testmode, $mode) = @_;
+	my($curmode) = 0;
+
+	$file_data{'stbloffset'} = 0xFF70;
+
+	my($insert) = join '', map { chr }
+	(
+		0xC0, 0x82, 0xC0, 0x83, 0xFF, 0xE5, 0x24, 0xB4, 0x00, 0x12, 0x90, 0xFF, 0x70, 0xE4, 0x93, 0x60,
+		0x0B, 0x6F, 0x60, 0x04, 0xA3, 0xA3, 0x80, 0xF5, 0x74, 0x01, 0x93, 0xFF, 0xEF, 0xD0, 0x83, 0xD0,
+		0x82, 0xF0, 0x90, 0x00, 0x00, 0x22
+	);
+
+	my($pat_pattern) = '\x90..\xE0\x64[\x0A\x0B\x0D\x0E](?:\x60\x03\x02..|\x70.)(?:\x90..|\xA3)\xE0(?:\x90..|\x12\xFF\x40)\xF0';
+
+	my(@pat_points, $pat_point, $pat_dptr);
+
+	my($pbank) = substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000);
+	my($dbank) = substr($file_data{'work'}, $file_data{'dbankpos'}, 0x10000);
+
+	# First, let's make sure that we even have the space...
+
+	if ( (substr($pbank, 0xFF40 - $STRAT_BUF_LEN, $STRAT_BUF_LEN) ne chr(0x00) x $STRAT_BUF_LEN) ||
+	     (substr($dbank, 0xFF40 - $STRAT_BUF_LEN, $STRAT_BUF_LEN) ne chr(0x00) x $STRAT_BUF_LEN) )
+	{
+		return -1;
+	}
+
+	while ($pbank =~ /$pat_pattern/sg)
+	{
+		$pat_point = pos($pbank);
+		$pat_point += $file_data{'pbankpos'} - 4;
+		$pat_dptr = substr($file_data{'work'}, $pat_point + 1, 2);
+		push @pat_points, [ $pat_point, $pat_dptr ];
+	}
+
+	while ($dbank =~ /$pat_pattern/sg)
+	{
+		$pat_point = pos($dbank);
+		$pat_point += $file_data{'dbankpos'} - 4;
+		$pat_dptr = substr($file_data{'work'}, $pat_point + 1, 2);
+		push @pat_points, [ $pat_point, $pat_dptr ];
+	}
+
+	if ($pat_dptr eq "\xFF\x40")
+	{
+		$curmode = 1;
+		$pat_dptr = substr($pbank, 0xFF63, 2);
+	}
+
+	# Early exits...
+
+	return -1 unless ($#pat_points == 3 && $pat_points[0][1] eq $pat_points[1][1] && $pat_points[0][1] eq $pat_points[2][1] && $pat_points[0][1] eq $pat_points[3][1]);
+	return $curmode if ($testmode);
+
+	substr($file_data{'work'}, $file_data{'pbankpos'} + 0xFF40, 0xB0, chr(0x00) x 0xB0);
+	substr($file_data{'work'}, $file_data{'dbankpos'} + 0xFF40, 0xB0, chr(0x00) x 0xB0);
+
+	if ($mode == 0)
+	{
+		foreach $pat_point (@pat_points)
+		{
+			substr($file_data{'work'}, $pat_point->[0], 3, "\x90$pat_dptr");
+		}
+
+		substr($file_data{'work'}, $STRAT_REV_LOC, 1, chr(0x00));
+	}
+	else
+	{
+		foreach $pat_point (@pat_points)
+		{
+			substr($file_data{'work'}, $pat_point->[0], 3, "\x12\xFF\x40");
+		}
+
+		substr($insert, 0x23, 2, $pat_dptr);
+
+		substr($insert, 0x08, 1, chr(0x94));
+		substr($file_data{'work'}, $file_data{'pbankpos'} + 0xFF40, length($insert), $insert);
+
+		substr($insert, 0x08, 1, chr(0x90));
+		substr($file_data{'work'}, $file_data{'dbankpos'} + 0xFF40, length($insert), $insert);
+
+		substr($file_data{'work'}, $STRAT_REV_LOC, 1, chr(0x03));
+	}
+
+	return $curmode;
+}
+
+# END: TS0C special insert
+##
 
 sub load_strats # ( )
 {
