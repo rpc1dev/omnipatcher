@@ -23,8 +23,8 @@ sub List_Click
 
 		foreach $i (0 .. $#ObjSpeeds)
 		{
-			if ( ($MEDIA_SPEEDS[$i] > 4 && $type =~ /^.RW/) ||
-			     ($MEDIA_SPEEDS[$i] > 2 && $type =~ /^.R9/) ||
+			if ( ($MEDIA_SPEEDS[$i] > $RW_LIMIT && $type =~ /^.RW/) ||
+			     ($MEDIA_SPEEDS[$i] > $R9_LIMIT && $type =~ /^.R9/) ||
 			     ($MEDIA_SPEEDS[$i] == 1 && $type =~ /^\+/) )
 			{
 				SetDisable($ObjSpeeds[$i]);
@@ -56,6 +56,26 @@ sub Speeds2_Click { return proc_speed(); }
 sub Speeds3_Click { return proc_speed(); }
 sub Speeds4_Click { return proc_speed(); }
 
+sub SpdRep_Click
+{
+	my(%ofn) =
+	(
+		-owner				=> $hWndMain,
+		-title				=> "Select File Name for the Media Codes Report",
+		-directory			=> "",
+		-file					=> "",
+		-filter				=> [ "Text Documents (*.txt)", "*.txt" ],
+		-defaultextention	=> "txt",
+		-pathmustexist		=> 1,
+	);
+
+	return 1 unless ($ofn{'-ret'} = Win32::GUI::GetSaveFileName(%ofn));
+
+	save_report($ofn{'-ret'});
+
+	return 1;
+}
+
 sub Patches2_Click
 {
 	if ($ObjPatches[2]->GetCheck() && $ObjPatches[3]->IsEnabled())
@@ -72,22 +92,28 @@ sub Patches2_Click
 
 sub Cmds0_Click
 {
-	my(%ofn) = %ofn_def;
+	my(%ofn) =
+	(
+		-owner				=> $hWndMain,
+		-title				=> "Select File to Patch",
+		-directory			=> "",
+		-file					=> "",
+		-filter				=> [ "Firmwares (*.bin;*.exe)", "*.bin;*.exe" ],
+		-defaultextention	=> "bin",
+		-filemustexist		=> 1,
+		-hidereadonly		=> 1,
+		-pathmustexist		=> 1,
+	);
 
-	$ofn{'filter'} = [ [ "Firmwares (*.bin;*.exe)", "*.bin;*.exe" ] ];
-	$ofn{'title'} = "Select File to Patch";
-	$ofn{'flags'} = $OFN_ENABLESIZING | $OFN_FILEMUSTEXIST | $OFN_HIDEREADONLY | $OFN_PATHMUSTEXIST;
-	$ofn{'def_ext'} = "bin";
-
-	return 1 unless (OFNDialog($GetOpenFileName, \%ofn));
+	return 1 unless ($ofn{'-ret'} = Win32::GUI::GetOpenFileName(%ofn));
 
 	my(%new_file) =
 	(
-		longname => $ofn{'file'},
-		shortname => $ofn{'file_title'},
+		longname => $ofn{'-ret'},
+		shortname => substr($ofn{'-ret'}, rindex($ofn{'-ret'}, '\\') + 1),
 	);
 
-	if ($ofn{'file'} =~ /\.(bin|exe)$/i)
+	if ($new_file{'shortname'} =~ /\.(bin|exe)$/i)
 	{
 		$new_file{'ext'} = lc($1);
 	}
@@ -96,7 +122,7 @@ sub Cmds0_Click
 		return error("Invalid file type.", 1)
 	}
 
-	open file, $ofn{'file'};
+	open file, $new_file{'longname'};
 	binmode file;
 	$new_file{'raw'} = join('', <file>);
 	close file;
@@ -125,25 +151,29 @@ sub Cmds0_Click
 
 sub Cmds1_Click
 {
-	my(%ofn) = %ofn_def;
-
-	$ofn{'title'} = "Select Output File";
-	$ofn{'flags'} = $OFN_ENABLESIZING | $OFN_HIDEREADONLY | $OFN_PATHMUSTEXIST | $OFN_OVERWRITEPROMPT;
+	my(%ofn) =
+	(
+		-owner				=> $hWndMain,
+		-title				=> "Select Output File",
+		-directory			=> "",
+		-file					=> "",
+		-pathmustexist		=> 1,
+	);
 
 	if ($file_data{'ext'} eq "bin")
 	{
-		$ofn{'filter'} = [ [ "Firmwares (*.bin)", "*.bin" ] ];
-		$ofn{'def_ext'} = "bin";
+		$ofn{'-filter'} = [ "Firmwares (*.bin)", "*.bin" ];
+		$ofn{'-defaultextention'} = "bin";
 	}
 	else
 	{
-		$ofn{'filter'} = [ [ "Firmwares (*.exe)", "*.exe" ] ];
-		$ofn{'def_ext'} = "exe";
+		$ofn{'-filter'} = [ "Firmwares (*.exe)", "*.exe" ];
+		$ofn{'-defaultextention'} = "exe";
 	}
 
-	return 1 unless (OFNDialog($GetSaveFileName, \%ofn));
+	return 1 unless ($ofn{'-ret'} = Win32::GUI::GetSaveFileName(%ofn));
 
-	save_file($ofn{'file'});
+	save_file($ofn{'-ret'});
 
 	return 1;
 }

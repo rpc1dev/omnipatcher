@@ -2,7 +2,7 @@ $hWndMain = 0;
 
 
 ################################################################################
-# BEGIN: Section: interface functions
+# BEGIN: Section: interface helper functions
 {
 	sub abort # ( message )
 	{
@@ -35,7 +35,47 @@ $hWndMain = 0;
 		return [ $_[0]->Left(), $_[0]->Top() ];
 	}
 
-} # END: Section: interface functions
+	sub SetText # ( obj, str )
+	{
+		my($obj, $str) = @_;
+
+		if ($obj->Text() ne $str)
+		{
+			$obj->Text($str);
+		}
+	}
+
+	sub SetCheck # ( obj, check )
+	{
+		my($obj, $check) = @_;
+
+		if ($obj->GetCheck() != $check)
+		{
+			$obj->SetCheck($check);
+		}
+	}
+
+	sub SetEnable # ( obj )
+	{
+		my($obj) = @_;
+
+		if (!$obj->IsEnabled())
+		{
+			$obj->Enable();
+		}
+	}
+
+	sub SetDisable # ( obj )
+	{
+		my($obj) = @_;
+
+		if ($obj->IsEnabled())
+		{
+			$obj->Disable();
+		}
+	}
+
+} # END: Section: interface helper functions
 
 
 ################################################################################
@@ -61,6 +101,9 @@ $hWndMain = 0;
 
 	$MGROUP_NAME = "DVD Writing-Speed Limits";
 
+	$RW_LIMIT = 4;
+	$R9_LIMIT = 2;
+
 } # END: Section: initialize tool settings
 
 
@@ -70,7 +113,7 @@ $hWndMain = 0;
 	$FontTahoma = Win32::GUI::Font->new
 	(
 		-face		=> "Tahoma",
-		-size		=> 13,
+		-size		=> 8,
 		-bold		=> 0,
 		-italic	=>	0,
 
@@ -79,7 +122,7 @@ $hWndMain = 0;
 	$FontTahomaBold = Win32::GUI::Font->new
 	(
 		-face		=> "Tahoma",
-		-size		=> 13,
+		-size		=> 8,
 		-bold		=> 1,
 		-italic	=>	0,
 
@@ -88,7 +131,16 @@ $hWndMain = 0;
 	$FontCourierNew = Win32::GUI::Font->new
 	(
 		-face		=> "Courier New",
-		-size		=> 16,
+		-size		=> 10,
+		-bold		=> 0,
+		-italic	=>	0,
+
+	) or abort("Initialization Error.");
+
+	$FontWingdings = Win32::GUI::Font->new
+	(
+		-face		=> "Wingdings",
+		-size		=> 13,
 		-bold		=> 0,
 		-italic	=>	0,
 
@@ -96,6 +148,7 @@ $hWndMain = 0;
 
 	$FONTHEIGHT_TAHOMA = {$FontTahoma->GetMetrics()}->{'-height'};
 	$FONTHEIGHT_CNEW = {$FontCourierNew->GetMetrics()}->{'-height'};
+	$FONTHEIGHT_WINGDINGS = {$FontWingdings->GetMetrics()}->{'-height'};
 
 } # END: Section: initialize fonts
 
@@ -114,8 +167,9 @@ $hWndMain = 0;
 
 	@DIM_LIST = ( 192, $FONTHEIGHT_CNEW * 10 + 4 );
 	@DIM_SPEED = ( 44, $FONTHEIGHT_TAHOMA );
+	@DIM_SPDREP = ( $DIM_SPEED[0], 25 );
 	@DIM_PATCH = ( $MARGIN + $DIM_LIST[0] + $DIM_SPEED[0], $FONTHEIGHT_TAHOMA );
-	@DIM_CMD = ( ($DIM_PATCH[0] - $MARGIN * $#CMD_NAMES) / scalar(@CMD_NAMES), 25 );
+	@DIM_CMD = ( ($DIM_PATCH[0] - $MARGIN * $#CMD_NAMES) / scalar(@CMD_NAMES), $DIM_SPDREP[1] );
 
 	@DIM_MEDIAGRP = ( $MARGIN_GROUP * 2 + $DIM_PATCH[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + $DIM_LIST[1] );
 	@DIM_PATCHGRP = ( $DIM_MEDIAGRP[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + ($DIM_PATCH[1] + $MARGIN_CHECK) * scalar(@PATCH_NAMES) - $MARGIN_CHECK );
@@ -137,11 +191,11 @@ $hWndMain = 0;
 		-text			=> $unique_title,
 		-pos			=> [ 64, 47 ],
 		-size			=> \@DIM_WINDOW,
-		-remexstyle	=> WS_EX_CONTEXTHELP
+		-remexstyle	=> WS_EX_CONTEXTHELP,
 
 	) or abort("Initialization Error.");
 
-	$hWndMain = Win32::API->new('user32', 'FindWindow', 'PP', 'N')->Call(0, $unique_title);
+	$hWndMain = Win32::GUI::FindWindow('', $unique_title);
 	$ObjMain->Change(-text => $PROGRAM_TITLE);
 
 } # END: Section: create window
@@ -194,6 +248,21 @@ $hWndMain = 0;
 		) or abort("Initialization Error.");
 
 	} # END: foreach
+
+	$ObjSpdRep = new Win32::GUI::Button
+	(
+		$ObjMain,
+
+		-name			=> "SpdRep",
+		-text			=> '$',
+		-font			=> $FontWingdings,
+		-pos			=> addpairs($MARGINS_GROUP, [ $MARGIN + $DIM_LIST[0], ($DIM_LIST[1] - $DIM_SPDREP[1]) ], getpos($ObjMediaGroup)),
+		-size			=> \@DIM_SPDREP,
+		-addstyle	=> WS_GROUP,
+		-tabstop		=> 1,
+		-disabled	=> 1,
+
+	) or abort("Initialization Error.");
 
 } # END: Section: media codes
 
@@ -270,24 +339,5 @@ $hWndMain = 0;
 	} # END: foreach
 
 } # END: Section: command buttons
-
-
-################################################################################
-# BEGIN: Section: initialize default OFN data
-{
-	%ofn_def =
-	(
-		hwnd => $hWndMain,
-		filter => [ ],
-		filter_idx => 0,
-		file => "",
-		file_title => "",
-		initial_dir => "",
-		title => "Select File",
-		flags => 0,
-		def_ext => "",
-	);
-
-} # END: Section: initialize default OFN data
 
 1;

@@ -1,2 +1,8 @@
+1.0.1 (10 Jun 2004)
+	* Added: Ability to save a report of the media codes to a text file.
+	* Fixed: Color problems with the Windows XP "Luna" theme.
+	* Fixed: The documentation now warns against +RW speedhacking.
+	* Other: Changed/updated the libraries used to build the executable.
+
 1.0.0 (6 Jun 2004)
 	* First version.

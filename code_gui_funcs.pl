@@ -39,7 +39,9 @@ sub load_file # ( )
 		}
 	}
 
+	SetEnable($ObjSpdRep);
 	SetEnable($ObjCmds[1]);
+
 	$ObjCmdGroup->Text("$file_data{'shortname'} loaded");
 }
 
@@ -116,6 +118,68 @@ sub save_file # ( file_name )
 	}
 
 	$file_data{'work'} = [ @temp ];
+}
+
+sub save_report # ( file_name )
+{
+	my($file_name) = @_;
+	my($report);
+	my($type, $entry, $i, $j);
+	my(@speeds, $spdrep);
+
+	my(@types) = ( '+R/W', '+R', '+R9', '+RW', '-R', '-RW' );
+	my(%typelists);
+
+	foreach $type (@types)
+	{
+		$typelists{$type} = [ ];
+	}
+
+	foreach $i (0 .. $#{$file_data{'codes'}})
+	{
+		@speeds = ( );
+
+		foreach $j (0 .. $#MEDIA_SPEEDS)
+		{
+			if ($file_data{'speeds'}->[$i] & (2 ** $j))
+			{
+				push(@speeds, ($MEDIA_SPEEDS[$j] == 2 && substr($file_data{'codes'}->[$i][0], 0, 2) eq "+R") ? "2.4x" : "$MEDIA_SPEEDS[$j]x");
+			}
+		}
+
+		$spdrep = "[" . join(", ", @speeds) . "]";
+
+		push(@{$typelists{$file_data{'codes'}->[$i][0]}}, "$file_data{'codes'}->[$i][2]  $spdrep");
+	}
+
+	foreach $type (@types)
+	{
+		if (scalar(@{$typelists{$type}}))
+		{
+			$report .= "-" x 80 . "\n";
+			$report .= "$type Media Codes (" . scalar(@{$typelists{$type}}) . ")\n";
+			$report .= "-" x 80 . "\n";
+
+			foreach $entry (@{$typelists{$type}})
+			{
+				$report .= "$entry\n";
+			}
+
+			$report .= "\n";
+		}
+	}
+
+	if (open file, ">$file_name")
+	{
+		print file $report;
+		close file;
+
+		Win32::GUI::MessageBox($hWndMain, "The media codes report has been created.", "Done!", MB_OK | MB_ICONINFORMATION);
+	}
+	else
+	{
+		error("File access error.", 0);
+	}
 }
 
 sub proc_speed
