@@ -1,3 +1,15 @@
+1.3.2 (8 Jul 2004)
+	* Added: Force-fallback patch that will slow down high-speed +R burns at the end.  This is intended for people with high climbing error rates at the end of burns.
+	* Added: There is now a note about the use of the double-click in the interface.
+	* Added: Warning message when trying to modify the speeds of +RW media.
+	* Improved: The old "Apply recommended write strategy replacements" feature has been overhauled and renamed.
+	* Improved: The formatting of the media code report has been refined.
+	* Improved: The sorting of +R/W media codes into +R and +RW has been improved (this fixes a sorting problem with a few of the old firmwares).
+	* Fixed: Loading an incompatible firmware could, under certain circumstances, cause OmniPatcher to crash.  This has been resolved.
+	* Other: The handling of disallowed speeds has been changed.  Instead of disabling them, they are now hidden to reduce clutter.
+	* Other: Minor changes in some texts throughout the program, including a renaming of "shift-fixing" to "force-shifting".
+	* Other: The documentation was revised.
+
 1.3.1 (6 Jul 2004)
 	* Fixed: When removing (unpatching) strategy replacements from a patched firmware, the removal would not always be successful.  The bug causing this has been fixed.
 

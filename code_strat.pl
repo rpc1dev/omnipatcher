@@ -1,10 +1,12 @@
-$DEFSTRATCONF = 'rec_strat.conf';
+$DEFSTRATCONF = 'rec_tweak.conf';
 
 if (-f $DEFSTRATCONF)
 {
 	open file, $DEFSTRATCONF;
 	read(file, $dsr_eval, -s file);
 	close file;
+
+	$DEF_STRAT_REV = ($dsr_eval =~ /# Revision (.-.. \(\d{4}\/\d{2}\/\d{2}\))/) ? $1 : "";
 
 	eval("\@DEF_STRATS = ($dsr_eval);");
 }
@@ -152,15 +154,18 @@ sub find_index # ( params )
 	my($code);
 	my($i) = 0;
 
-	foreach $code (@{$file_data{'codes'}})
+	if ($#{$params} == 1 || $#{$params} == 2)
 	{
-		if ( ($#{$params} == 2 && $params->[0] eq $code->[1][0] && $params->[1] eq $code->[1][1] && $params->[2] == $code->[1][2]) ||
-		     ($#{$params} == 1 && $params->[0] eq $code->[1][0] && $params->[1] == $code->[1][1]) )
+		foreach $code (@{$file_data{'codes'}})
 		{
-			return $i;
-		}
+			if ( ($#{$params} == 2 && $params->[0] eq $code->[1][0] && $params->[1] eq $code->[1][1] && $params->[2] == $code->[1][2]) ||
+			     ($#{$params} == 1 && $params->[0] eq $code->[1][0] && $params->[1] == $code->[1][1]) )
+			{
+				return $i;
+			}
 
-		++$i;
+			++$i;
+		}
 	}
 
 	return -1;

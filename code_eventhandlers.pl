@@ -32,6 +32,7 @@ sub List_Click
 			SetDisable($ObjSpeeds[$i]);
 			SetCheck($ObjSpeeds[$i], 0);
 			SetText($ObjSpeeds[$i], "$MEDIA_SPEEDS[$i]x");
+			($MEDIA_SPEEDS[$i] > $file_data{'r_limit'}) ? SetInvisible($ObjSpeeds[$i]) : SetVisible($ObjSpeeds[$i])
 		}
 	}
 	else
@@ -46,10 +47,12 @@ sub List_Click
 			     ($MEDIA_SPEEDS[$i] == 1 && $type =~ /^\+/) )
 			{
 				SetDisable($ObjSpeeds[$i]);
+				SetInvisible($ObjSpeeds[$i]);
 			}
 			else
 			{
 				SetEnable($ObjSpeeds[$i]);
+				SetVisible($ObjSpeeds[$i]);
 			}
 
 			if ($MEDIA_SPEEDS[$i] == 2 && $type =~ /^\+/)
@@ -133,22 +136,45 @@ sub SpdRep_Click
 
 sub DefStrat_Click
 {
-	my($pair, $a, $b, $count);
+	my($entry, $gen, $src, $dst, $st_count, $sp_count);
 
-	foreach $pair (@DEF_STRATS)
+	foreach $entry (@DEF_STRATS)
 	{
-		$a = find_index($pair->[0]);
-		$b = find_index($pair->[1]);
-
-		if ($a >= 0 && $b >= 0)
+		foreach $gen (@{$entry->[3]})
 		{
-			$file_data{'strats'}->[$a] = $file_data{'codes'}->[$b][3];
-			refresh_st_display($a);
-			++$count;
-		}
-	}
+			if ($file_data{'gen'} == $gen)
+			{
+				$src = find_index($entry->[0]);
 
-	Win32::GUI::MessageBox($hWndMain, sprintf("%d strategy replacement(s) applied.", $count), "Status", MB_OK | MB_ICONINFORMATION);
+				if ($src >= 0)
+				{
+					$dst = find_index($entry->[1]);
+
+					if ($dst >= 0 && $file_data{'strats'}->[$src] != $file_data{'codes'}->[$dst][3])
+					{
+						++$st_count;
+						$file_data{'strats'}->[$src] = $file_data{'codes'}->[$dst][3];
+						refresh_st_display($src);
+					}
+
+					if ($#{$entry->[2]} == 0 && $entry->[2][0] > 0 && $file_data{'speeds'}->[$src] != $entry->[2][0])
+					{
+						++$sp_count;
+						$file_data{'speeds'}->[$src] = $entry->[2][0];
+					}
+				}
+
+				last;
+
+			} # END: if $gen
+
+		} # END: foreach $gen
+
+	} # END: foreach $entry
+
+	List_Click();
+
+	Win32::GUI::MessageBox($hWndMain, sprintf("%d write strategy replacement(s) applied.\n%d writing speed adjustment(s) applied.\n\nRevision %s", $st_count, $sp_count, $DEF_STRAT_REV), "Status", MB_OK | MB_ICONINFORMATION);
 
 	return 1;
 }

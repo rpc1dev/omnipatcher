@@ -1,6 +1,6 @@
 ##
 # Speedhacker Common Library
-# 1.1.0 (5 July 2004)
+# 1.2.0 (7 July 2004)
 #
 
 $PLUS_PATTERN = '(?:\x00{12}|\xFF{12}|(?:\w{2}.{6}[\w\x00]{3}.)|(?:\w{3}.{9})|(?:\x00{8}\w.{3}))[\x00-\x7F]';
@@ -57,9 +57,23 @@ sub getcodes # ( )
 
 	my($x, $y, $p, $i);
 	my(@codes, @speeds, @ret);
-	my($found_break, $found_break_ff, $break_pos);
 	my($id, $mid, $tid, $rid, %used);
 	my($dash_type, $dash_pattern, $dash_len, $dash_sample);
+
+	my($plus_bank) = substr($file_data{'work'}, 0xC0000, 0x10000);
+	my($plus_r_cnt, $plus_rw_cnt, $plus_cnt);
+
+	if ( $plus_bank =~ /\xE5\x24\x90..\xB4\x94\x05\x74(.)\xF0\x80\x03\x74(.)\xF0/ ||
+	     $plus_bank =~ /\xE5\x24\x64\x94\x60\x05\xE5\x24\xB4\x97\x08\x90..\x74(.)\xF0\x80\x06\x90..\x74(.)\xF0/ )
+	{
+		$plus_r_cnt = ord($1);
+		$plus_rw_cnt = ord($2);
+		$plus_cnt = $plus_r_cnt + $plus_rw_cnt;
+	}
+	else
+	{
+		$plus_cnt = $plus_r_cnt = $plus_rw_cnt = 0;
+	}
 
 	if ($data =~ /($PLUS_SAMPLE)/g)
 	{
@@ -69,10 +83,6 @@ sub getcodes # ( )
 		for ($p = $x - $y; nullunbuf(substr($data, $p - $PLUS_LEN, $PLUS_LEN)) =~ /$PLUS_PATTERN/; $p -= $PLUS_LEN) { }
 
 		@codes = ();
-
-		$found_break = 0;
-		$found_break_ff = 0;
-		$break_pos = 0;
 
 		for ($i = $p; ; $i += $PLUS_LEN)
 		{
@@ -86,25 +96,19 @@ sub getcodes # ( )
 				$spd = ord(substr($id, 12, 1));
 
 				push @codes, [ "+R/W", [ $mid, $tid, $rid, $spd ], sprintf("%-8s/%-3s/%02X", $mid, $tid, $rid) ];
-
-				$found_break = $break_pos if ($mid eq "" || $mid =~ /^[\xFF]/);
-				$found_break_ff = $break_pos if ($mid =~ /^[\xFF]/);
-				++$break_pos;
 			}
 			else
 			{
 				last;
 			}
-
-			$found_break = $found_break_ff if ($found_break_ff < $found_break && $found_break_ff > 0);
 		}
 
 		%used = ();
 
 		foreach $i (0 .. $#codes)
 		{
-			$codes[$i][0] = ($i < $found_break) ? "+R" : "+RW" if ($found_break > $#codes / 2);
-			$codes[$i][3] = $i;
+			$codes[$i][0] = ($i < $plus_r_cnt) ? "+R" : "+RW" if ($#codes == $plus_cnt - 1);
+			$codes[$i][3] = ($codes[$i][0] eq "+RW" ) ? $i - $plus_r_cnt : $i;
 
 			if ($codes[$i][1][0] eq "MKM" && $codes[$i][1][1] eq "001")
 			{
@@ -167,6 +171,8 @@ sub getcodes # ( )
 
 		foreach $i (0 .. $#codes)
 		{
+			$codes[$i][3] = $i;
+
 			unless ($used{"$codes[$i][0]$codes[$i][2]$codes[$i][1][3]"} == 1 || ($codes[$i][1][0] eq "" && $codes[$i][1][1] eq "") || substr($codes[$i][1][0], 0, 1) eq "\xFF")
 			{
 				push @ret, $codes[$i];

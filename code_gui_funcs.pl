@@ -1,12 +1,18 @@
+$OP_REPORT_MODE = 0;
+
 sub load_file # ( )
 {
 	my($i, $label);
 
 	my($header) = substr($file_data{'work'}, 0xF0000, 0x200);
 
-	if ($header =~ /SOHW-8.2S|DW-.18A/)
+	if ($header =~ /SOHW-8\d2S|DW-.18A|LDW-\d51S/)
 	{
 		$file_data{'gen'} = 2;
+	}
+	elsif ($header =~ /LDW-.[01]1/)
+	{
+		$file_data{'gen'} = 1;
 	}
 	elsif ($header =~ /DW-.(\d{2})A/)
 	{
@@ -14,7 +20,8 @@ sub load_file # ( )
 	}
 	else
 	{
-		$file_data{'gen'} = 1;
+		$file_data{'gen'} = 0;
+		error("Unable to classify firmware.");
 	}
 
 	$file_data{'codes'} = [ getcodes() ];
@@ -25,7 +32,7 @@ sub load_file # ( )
 	if ($file_data{'gen'} < 3)
 	{
 		$file_data{'r_limit'} = 8;
-		$file_data{'r9_limit'} = 2;
+		$file_data{'r9_limit'} = 4;
 		$file_data{'rw_limit'} = 4;
 	}
 	else
@@ -59,19 +66,16 @@ sub load_file # ( )
 	SetEnable($ObjList);
 	$ObjMediaGroup->Text("$MGROUP_NAME ($file_data{'ncodes'} codes)");
 
-	$file_data{'patch_status'} = [ ];
+	$file_data{'patch_status'} = [ -1, -1, -1, -1, -1, -1 ];
 
-	if ($file_data{'gen'} < 3)
+	if ($file_data{'gen'} > 0 && $file_data{'gen'} < 3)
 	{
 		$file_data{'patch_status'}->[0] = patch_rs(1);
 		$file_data{'patch_status'}->[1] = patch_abs(1, -1);
 		$file_data{'patch_status'}->[2] = patch_fb(1, -1);
 		$file_data{'patch_status'}->[3] = patch_sf(1, -1);
-		$file_data{'patch_status'}->[4] = patch_eeprom(1, -1);
-	}
-	else
-	{
-		$file_data{'patch_status'} = [ -1, -1, -1, -1, -1 ];
+		$file_data{'patch_status'}->[4] = patch_ff(1, -1);
+		$file_data{'patch_status'}->[5] = patch_eeprom(1, -1);
 	}
 
 	foreach $i (0 .. $#ObjPatches)
@@ -143,7 +147,8 @@ sub save_file # ( file_name )
 	patch_abs(0, $ObjPatches[1]->GetCheck())		if ($dopatch[1]);
 	patch_fb(0, $ObjPatches[2]->GetCheck())		if ($dopatch[2]);
 	patch_sf(0, $ObjPatches[3]->GetCheck())		if ($dopatch[3]);
-	patch_eeprom(0, $ObjPatches[4]->GetCheck())	if ($dopatch[4]);
+	patch_ff(0, $ObjPatches[4]->GetCheck())		if ($dopatch[4]);
+	patch_eeprom(0, $ObjPatches[5]->GetCheck())	if ($dopatch[5]);
 
 	if (length($file_data{'work'}) == 0x100000)
 	{
@@ -240,7 +245,7 @@ sub save_report # ( file_name )
 	my($file_name) = @_;
 	my($report);
 	my($type, $entry, $i, $j);
-	my($strat, @speeds, $curspd, $spdrep);
+	my($index, $strat, @speeds, $curspd, $spdrep);
 
 	my(@types) = ( '+R/W', '+R', '+R9', '+RW', '-R', '-RW' );
 	my(%typelists);
@@ -252,13 +257,11 @@ sub save_report # ( file_name )
 
 	foreach $i (0 .. $#{$file_data{'codes'}})
 	{
-		if ($file_data{'codes'}->[$i][0] eq "+R" || $file_data{'codes'}->[$i][0] eq "-R")
+		$index = ($OP_REPORT_MODE > 0) ? sprintf("0x%02X: ", $file_data{'codes'}->[$i][3]) : "";
+
+		if ($file_data{'codes'}->[$i][3] != $file_data{'strats'}->[$i])
 		{
-			$strat = sprintf("  [ 0x%02X | 0x%02X ]", $file_data{'codes'}->[$i][3], $file_data{'strats'}->[$i]);
-		}
-		elsif ($file_data{'codes'}->[$i][0] eq "-RW")
-		{
-			$strat = sprintf("  [ 0x%02X ]", $file_data{'codes'}->[$i][3]);
+			$strat = " -> $file_data{'codes'}[translate_index([ $file_data{'codes'}->[$i][0], $file_data{'strats'}->[$i] ])][2]";
 		}
 		else
 		{
@@ -270,9 +273,10 @@ sub save_report # ( file_name )
 		foreach $j (0 .. $#MEDIA_SPEEDS)
 		{
 			next if ($MEDIA_SPEEDS[$j] == 1 && substr($file_data{'codes'}->[$i][0], 0, 2) eq "+R");
+			next if ($MEDIA_SPEEDS[$j] > $file_data{'r_limit'});
 
 			$curspd = ($MEDIA_SPEEDS[$j] == 2 && substr($file_data{'codes'}->[$i][0], 0, 2) eq "+R") ? "2.4x" : "$MEDIA_SPEEDS[$j]x";
-			$curspd .= ',' unless ($j == $#MEDIA_SPEEDS);
+			$curspd .= ',' unless ($MEDIA_SPEEDS[$j] == $file_data{'r_limit'});
 			$curspd =~ s/./ /g unless ($file_data{'speeds'}->[$i] & (2 ** $j));
 
 			push @speeds, $curspd;
@@ -281,7 +285,7 @@ sub save_report # ( file_name )
 		$spdrep = "[ " . join(" ", @speeds) . " ]";
 		$spdrep =~ s/,(\s+\])$/ $1/;
 
-		push(@{$typelists{$file_data{'codes'}->[$i][0]}}, "$file_data{'codes'}->[$i][2]  $spdrep$strat");
+		push(@{$typelists{$file_data{'codes'}->[$i][0]}}, "$index$file_data{'codes'}->[$i][2]  $spdrep$strat");
 	}
 
 	$report  = "OmniPatcher Media Code Report\n";
@@ -297,6 +301,8 @@ sub save_report # ( file_name )
 			$report .= "$type Media Codes (" . scalar(@{$typelists{$type}}) . ")\n";
 			$report .= "-" x 80 . "\n";
 
+			@{$typelists{$type}} = sort(@{$typelists{$type}}) if ($OP_REPORT_MODE > 1);
+
 			foreach $entry (@{$typelists{$type}})
 			{
 				$report .= "$entry\n";
@@ -311,7 +317,7 @@ sub save_report # ( file_name )
 		print file $report;
 		close file;
 
-		Win32::GUI::MessageBox($hWndMain, "The media codes report has been created.", "Done!", MB_OK | MB_ICONINFORMATION);
+		Win32::GUI::MessageBox($hWndMain, "The media code report has been created.", "Done!", MB_OK | MB_ICONINFORMATION);
 	}
 	else
 	{
@@ -329,7 +335,13 @@ sub proc_speed
 		unless ($StratSpeedWarned || $file_data{'codes'}->[$idx][3] == $file_data{'strats'}->[$idx])
 		{
 			$StratSpeedWarned = 1;
-			Win32::GUI::MessageBox($hWndMain, "Please note that media codes with a '!' in front of them are media\ncodes that are currently using another media code's write strategy\nand speed code.  Because they are no longer using their own speed\ncode, changing their burning speed will have no effect.  If you\nwould like to change the burning speed of this media code, you will\nhave to adjust the burning speed of its host media code.\n\nYou will not see this warning message again until the next time this\nprogram is run.", "Notice", MB_OK | MB_ICONWARNING);
+			Win32::GUI::MessageBox($hWndMain, "Please note that media codes with a '!' in front of them are media\ncodes that are currently using another media code's write strategy\nand speed code.  Because they are no longer using their own speed\ncode, changing their burning speed will have no effect.  If you\nwould like to change the burning speed of this media code, you will\nhave to adjust the burning speed of its host media code.\n\nPlease refer to the documentation for more information.\n\nYou will not see this warning message again until the next time this\nprogram is run.", "Notice", MB_OK | MB_ICONWARNING);
+		}
+
+		unless ($PlusRWWarned || $file_data{'codes'}->[$idx][0] ne "+RW")
+		{
+			$PlusRWWarned = 1;
+			Win32::GUI::MessageBox($hWndMain, "Adjusting +RW speeds is not recommended!\n\nPlease refer to the documentation for more information.\n\nYou will not see this warning message again until the next time this\nprogram is run.", "Notice", MB_OK | MB_ICONWARNING);
 		}
 
 		$file_data{'speeds'}->[$idx] = 0;

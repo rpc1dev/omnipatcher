@@ -75,6 +75,26 @@ $hWndMain = 0;
 		}
 	}
 
+	sub SetVisible # ( obj )
+	{
+		my($obj) = @_;
+
+		if (!$obj->IsVisible())
+		{
+			$obj->Show();
+		}
+	}
+
+	sub SetInvisible # ( obj )
+	{
+		my($obj) = @_;
+
+		if ($obj->IsVisible())
+		{
+			$obj->Hide();
+		}
+	}
+
 	sub ChangeItem # ( obj, idx, str )
 	{
 		my($obj, $idx, $str) = @_;
@@ -95,14 +115,15 @@ $hWndMain = 0;
 ################################################################################
 # BEGIN: Section: initialize tool settings
 {
-	@MEDIA_SPEEDS = ( 1, 2, 4, 6, 8, 12, 16 );
+	@MEDIA_SPEEDS = ( 1, 2, 4, 6, 8, 12, 16, 20 );
 
 	@PATCH_NAMES =
 	(
 		"Increase DVD±R/R9/RW reading speed to 8x",
 		"Enable auto-bitsetting",
 		"Earlier shift (faster burn) for 8x +R",
-		"Utilize \"shift-fixing\" for 6x/8x burns",
+		"Utilize \"force-shifting\" for 6x/8x burns",
+		"Utilize \"force-fallback\" for high-speed +R",
 		"Fix blinking orange light / Enable cross-flashing",
 	);
 
@@ -142,6 +163,15 @@ $hWndMain = 0;
 		-size		=> 8,
 		-bold		=> 1,
 		-italic	=>	0,
+
+	) or abort("Initialization Error.");
+
+	$FontTahomaItalic = Win32::GUI::Font->new
+	(
+		-face		=> "Tahoma",
+		-size		=> 8,
+		-bold		=> 0,
+		-italic	=>	1,
 
 	) or abort("Initialization Error.");
 
@@ -186,10 +216,11 @@ $hWndMain = 0;
 	@DIM_SPEED = ( 44, $FONTHEIGHT_TAHOMA );
 	@DIM_SPDREP = ( $DIM_SPEED[0], 25 );
 	@DIM_DEFSTRAT = ( $MARGIN + $DIM_LIST[0] + $DIM_SPEED[0], $DIM_SPDREP[1] );
+	@DIM_MEDIALABEL = ( $DIM_DEFSTRAT[0], $FONTHEIGHT_TAHOMA );
 	@DIM_PATCH = ( $DIM_DEFSTRAT[0], $FONTHEIGHT_TAHOMA );
 	@DIM_CMD = ( ($DIM_DEFSTRAT[0] - $MARGIN * $#CMD_NAMES) / scalar(@CMD_NAMES), $DIM_SPDREP[1] );
 
-	@DIM_MEDIAGRP = ( $MARGIN_GROUP * 2 + $DIM_DEFSTRAT[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + $DIM_LIST[1] + $MARGIN + $DIM_DEFSTRAT[1] );
+	@DIM_MEDIAGRP = ( $MARGIN_GROUP * 2 + $DIM_DEFSTRAT[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + $DIM_LIST[1] + $MARGIN + $DIM_DEFSTRAT[1] + $MARGIN + $DIM_MEDIALABEL[1] );
 	@DIM_PATCHGRP = ( $DIM_MEDIAGRP[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + ($DIM_PATCH[1] + $MARGIN_CHECK) * scalar(@PATCH_NAMES) - $MARGIN_CHECK );
 	@DIM_CMDGRP = ( $DIM_MEDIAGRP[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + $DIM_CMD[1] );
 
@@ -274,6 +305,7 @@ $hWndMain = 0;
 			-addstyle	=> (($i == 0) ? 1 : 0) * WS_GROUP,
 			-tabstop		=> 1,
 			-disabled	=> 1,
+			-visible		=> ($MEDIA_SPEEDS[$i] > 16) ? 0 : 1,
 
 		) or abort("Initialization Error.");
 
@@ -299,13 +331,26 @@ $hWndMain = 0;
 		$ObjMain,
 
 		-name			=> "DefStrat",
-		-text			=> 'Apply recommended &write strategy replacements',
+		-text			=> 'Apply recommended DVD media &tweaks',
 		-font			=> $FontTahoma,
 		-pos			=> addpairs($MARGINS_GROUP, [ 0, $MARGIN + $DIM_LIST[1] ], getpos($ObjMediaGroup)),
 		-size			=> \@DIM_DEFSTRAT,
 		-addstyle	=> WS_GROUP,
 		-tabstop		=> 1,
 		-disabled	=> 1,
+
+	) or abort("Initialization Error.");
+
+	$ObjMediaLabel = new Win32::GUI::Label
+	(
+		$ObjMain,
+
+		-name			=> "MediaLabel",
+		-text			=> 'Double-click on a +/-R code to edit its strategy.',
+		-font			=> $FontTahomaItalic,
+		-align		=> center,
+		-pos			=> addpairs([ 0, $MARGIN + $DIM_DEFSTRAT[1] ], getpos($ObjDefStrat)),
+		-size			=> \@DIM_MEDIALABEL,
 
 	) or abort("Initialization Error.");
 
@@ -320,7 +365,7 @@ $hWndMain = 0;
 		$ObjMain,
 
 		-name	=> "PatchGroup",
-		-text	=> "Patches to Apply",
+		-text	=> "General Patches",
 		-font	=> $FontTahomaBold,
 		-pos	=> [ $MARGIN, $MARGIN * 2 + $DIM_MEDIAGRP[1] ],
 		-size	=> \@DIM_PATCHGRP,

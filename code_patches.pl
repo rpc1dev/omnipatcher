@@ -115,16 +115,13 @@ sub patch_sf # ( testmode, mode )
 {
 	my($testmode, $mode) = @_;
 
-	my($ricohbyte) = chr($file_data{'codes'}->[find_index(["RICOHJPN", "R01", 0x02])][3]);
-
-	my($offkey) = "\x59\x00\xD0\x00 \x06 \x03 $ricohbyte$ricohbyte";
-	my($onkey)  = "\xB2\x00\xA0\x01 \x02 \x02 \xFF\xFF";
+	my($offkey) = "\x59\x00\xD0\x00 \x06 \x03";
+	my($onkey)  = "\xB2\x00\xA0\x01 \x02 \x02";
 	my($curkey) = "";
 	my($addr);
 
 	my($bank6) = substr($file_data{'work'}, 0x60000, 0x10000);
 	my($bank7) = substr($file_data{'work'}, 0x70000, 0x10000);
-	my($bankC) = substr($file_data{'work'}, 0xC0000, 0x10000);
 	my($bankD) = substr($file_data{'work'}, 0xD0000, 0x10000);
 
 	if ($bank6 =~ /\xC3\x90..\xE0\x94([\x59\xB2])\x90..\xE0\x94(\x00)\x50.\xC3\x90..\xE0\x94([\xD0\xA0])\x90..\xE0\x94([\x00\x01])\x50./g)
@@ -149,19 +146,9 @@ sub patch_sf # ( testmode, mode )
 	if ($bankD =~ /\x90..\xE0\xB4\x01.\xE4\xFF\xFE\x7D([\x03\x02])\xFC/g)
 	{
 		$addr = pos($bankD);
-		$curkey .= "$1 ";
+		$curkey .= "$1";
 
 		substr($bankD, $addr - 2, 1, ($mode) ? chr(0x02) : chr(0x03));
-	}
-
-	my($temp) = $bankC;
-
-	while ($temp =~ /\x90..\xE0\xFF\x64([$ricohbyte\xFF])[\x60\x70]/g)
-	{
-		$addr = pos($temp);
-		$curkey .= $1;
-
-		substr($bankC, $addr - 2, 1, ($mode) ? chr(0xFF) : $ricohbyte);
 	}
 
 	if ($curkey eq $onkey || $curkey eq $offkey)
@@ -170,8 +157,44 @@ sub patch_sf # ( testmode, mode )
 		{
 			substr($file_data{'work'}, 0x60000, 0x10000, $bank6);
 			substr($file_data{'work'}, 0x70000, 0x10000, $bank7);
-			substr($file_data{'work'}, 0xC0000, 0x10000, $bankC);
 			substr($file_data{'work'}, 0xD0000, 0x10000, $bankD);
+		}
+
+		return ($curkey eq $onkey) ? 1 : 0;
+	}
+
+	return -1;
+}
+
+sub patch_ff # ( testmode, mode )
+{
+	my($testmode, $mode) = @_;
+
+	my($ricohidx) = find_index(["RICOHJPN", "R01", 0x02]);
+	my($ricohbyte) = chr($file_data{'codes'}->[$ricohidx][3]) unless ($ricohidx < 0);
+
+	my($offkey) = "\x64\x64";
+	my($onkey)  = "\xE4\xE4";
+	my($curkey) = "";
+	my($addr);
+
+	my($bankC) = substr($file_data{'work'}, 0xC0000, 0x10000);
+
+	my($temp) = $bankC;
+
+	while ($temp =~ /\x90..\xE0\xFF(\x64[$ricohbyte\xFF]|\xE4\x00)[\x60\x70]/g)
+	{
+		$addr = pos($temp);
+		$curkey .= substr($1, 0, 1);
+
+		substr($bankC, $addr - 3, 2, ($mode) ? "\xE4\x00" : "\x64$ricohbyte");
+	}
+
+	if ($curkey eq $onkey || $curkey eq $offkey)
+	{
+		if (!$testmode)
+		{
+			substr($file_data{'work'}, 0xC0000, 0x10000, $bankC);
 		}
 
 		return ($curkey eq $onkey) ? 1 : 0;
