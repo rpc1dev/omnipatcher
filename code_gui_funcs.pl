@@ -40,6 +40,8 @@ sub load_file # ( )
 		$file_data{'dbankpos'} = 0x90000;
 	}
 
+	getmctype();
+
 	$file_data{'codes'} = [ getcodes() ];
 	$file_data{'ncodes'} = scalar(@{$file_data{'codes'}});
 
@@ -148,6 +150,9 @@ sub save_file # ( file_name )
 			elsif ($file_data{'codes'}->[$i][0] eq "-RW")
 			{
 				push(@{$file_data{'dashrw_patches'}}, [ $file_data{'codes'}->[$i][3], $file_data{'speeds'}->[$i] ]);
+			}
+			elsif ($file_data{'codes'}->[$i][0] eq "-R/W")
+			{
 			}
 			else
 			{

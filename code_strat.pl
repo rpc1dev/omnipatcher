@@ -16,11 +16,16 @@ else
 }
 
 $STRAT_BUF_LEN = 0x02;
+$STRAT_REV_LOC = 0x0FFEF;
 
 sub patch_strat # ( testmode, mode )
 {
+	return patch_strat2(@_) if ($file_data{'mctype'} == 2);
+
 	my($testmode, $mode) = @_;
 	my($curmode) = 0;
+
+	$file_data{'stbloffset'} = 0xFF30;
 
 	my($insert) = join '', map { chr }
 	(
@@ -71,8 +76,8 @@ sub patch_strat # ( testmode, mode )
 	return -1 unless ($#pat_points == 3 && $pat_points[0][1] eq $pat_points[1][1] && $pat_points[0][1] eq $pat_points[2][1] && $pat_points[0][1] eq $pat_points[3][1]);
 	return $curmode if ($testmode);
 
-	substr($file_data{'work'}, $file_data{'pbankpos'} + 0xFF00, 0x100, chr(0x00) x 0x100);
-	substr($file_data{'work'}, $file_data{'dbankpos'} + 0xFF00, 0x100, chr(0x00) x 0x100);
+	substr($file_data{'work'}, $file_data{'pbankpos'} + 0xFF00, 0xF0, chr(0x00) x 0xF0);
+	substr($file_data{'work'}, $file_data{'dbankpos'} + 0xFF00, 0xF0, chr(0x00) x 0xF0);
 
 	if ($mode == 0)
 	{
@@ -80,6 +85,8 @@ sub patch_strat # ( testmode, mode )
 		{
 			substr($file_data{'work'}, $pat_point->[0], 3, "\x90$pat_dptr");
 		}
+
+		substr($file_data{'work'}, $STRAT_REV_LOC, 1, chr(0x00));
 	}
 	else
 	{
@@ -95,6 +102,8 @@ sub patch_strat # ( testmode, mode )
 
 		substr($insert, 0x08, 1, chr(0x90));
 		substr($file_data{'work'}, $file_data{'dbankpos'} + 0xFF00, length($insert), $insert);
+
+		substr($file_data{'work'}, $STRAT_REV_LOC, 1, chr(0x01));
 	}
 
 	return $curmode;
@@ -109,7 +118,7 @@ sub load_strats # ( )
 		$pos = $file_data{'pbankpos'} if ($type eq "+R");
 		$pos = $file_data{'dbankpos'} if ($type eq "-R");
 
-		for ($curpos = $pos + 0xFF30; ord(substr($file_data{'work'}, $curpos, 1)) != 0; $curpos += 2)
+		for ($curpos = $pos + $file_data{'stbloffset'}; ord(substr($file_data{'work'}, $curpos, 1)) != 0; $curpos += 2)
 		{
 			$idx = translate_index([$type, ord(substr($file_data{'work'}, $curpos, 1))]);
 			$file_data{'strats'}[$idx] = ord(substr($file_data{'work'}, $curpos + 1, 1)) if ($idx >= 0);
@@ -144,8 +153,8 @@ sub save_strats # ( )
 	else
 	{
 		patch_strat(0, 1);
-		substr($file_data{'work'}, $file_data{'pbankpos'} + 0xFF30, length($pcodes), $pcodes);
-		substr($file_data{'work'}, $file_data{'dbankpos'} + 0xFF30, length($dcodes), $dcodes);
+		substr($file_data{'work'}, $file_data{'pbankpos'} + $file_data{'stbloffset'}, length($pcodes), $pcodes);
+		substr($file_data{'work'}, $file_data{'dbankpos'} + $file_data{'stbloffset'}, length($dcodes), $dcodes);
 	}
 }
 

@@ -1,6 +1,6 @@
 ##
 # Speedhacker Common Library
-# 1.2.3 (22 July 2004)
+# 1.3.0 (24 July 2004)
 #
 
 $PLUS_PATTERN = '(?:\x00{12}|\xFF{12}|(?:\w{2}.{6}[\w\x00]{3}.)|(?:[A-Z]\w{2}.{9})|(?:\x00{8}\w.{3}))[\x00-\x7F]';
@@ -31,7 +31,7 @@ sub nulltrim # ( str )
 sub nullbuf # ( str )
 {
 	my($str) = @_;
-	return join("\x00", split(//, $str)) . "\x00";
+	return "\x00" . join("\x00", split(//, $str));
 }
 
 sub nullunbuf # ( str )
@@ -41,7 +41,7 @@ sub nullunbuf # ( str )
 
 	@str_arr = split(//, $str);
 
-	for ($i = 0; $i <= $#str_arr; $i += 2)
+	for ($i = 1; $i <= $#str_arr; $i += 2)
 	{
 		$ret .= $str_arr[$i];
 	}
@@ -49,28 +49,56 @@ sub nullunbuf # ( str )
 	return $ret;
 }
 
+sub getmctype # ( )
+{
+	my($pdata, $ddata);
+
+	$pdata = substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000);
+	$ddata = substr($file_data{'work'}, $file_data{'dbankpos'}, 0x10000);
+
+	if ( $pdata =~ /\xE5\x24\x90..\xB4\x94\x05\x74(.)\xF0\x80\x03\x74(.)\xF0/s ||
+	     $pdata =~ /\xE5\x24\x64\x94\x60\x05\xE5\x24\xB4\x97\x08\x90..\x74(.)\xF0\x80\x06\x90..\x74(.)\xF0/s )
+	{
+		$file_data{'mctype'} = 1;
+		$file_data{'mcpdata'} = [ ord($1), ord($2), ord($1) + ord($2) ];
+		$file_data{'mcddata'} = [ ];
+	}
+	else
+	{
+		$file_data{'mctype'} = 2;
+		$file_data{'mcpdata'} = [ ];
+		$file_data{'mcddata'} = [ ];
+
+		while ($pdata =~ /\x75\xF0\x1A\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83.{35,43}?(?:\x64\x0B\x70|\xB4\x0B)\x03\x02(.)(.).{7,15}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)(.)/sg)
+		{
+			push(@{$file_data{'mcpdata'}}, [ ord($2) * 0x100 + ord($1), ord($5), ord($3) * 0x100 + ord($4) ]);
+		}
+
+		while ($ddata =~ /\x75\xF0\x0D\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83.{256,272}?(?:\x64\x0E\x70|\xB4\x0E)\x03\x02(.)(.)\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)\x0F.{2,8}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)(.)/sg)
+		{
+			push(@{$file_data{'mcddata'}}, [ ord($2) * 0x100 + ord($1), ord($5), ord($3) * 0x100 + ord($4) ]);
+		}
+
+		if (scalar(@{$file_data{'mcpdata'}}) == 0 && scalar(@{$file_data{'mcddata'}}) == 0)
+		{
+			$file_data{'mctype'} = 0;
+			$file_data{'mcpdata'} = [ 0, 0, 0 ];
+		}
+	}
+}
+
 sub getcodes # ( )
 {
+	return getcodes2() if ($file_data{'mctype'} == 2);
+
 	my($data);
 	my($x, $y, $p, $i);
 	my(@codes, @speeds, @ret);
-	my($plus_r_cnt, $plus_rw_cnt, $plus_cnt);
+	my($plus_r_cnt, $plus_rw_cnt, $plus_cnt) = @{$file_data{'mcpdata'}};
 	my($id, $mid, $tid, $rid, %used);
 	my($dash_type, $dash_pattern, $dash_sample);
 
 	$data = substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000);
-
-	if ( $data =~ /\xE5\x24\x90..\xB4\x94\x05\x74(.)\xF0\x80\x03\x74(.)\xF0/s ||
-	     $data =~ /\xE5\x24\x64\x94\x60\x05\xE5\x24\xB4\x97\x08\x90..\x74(.)\xF0\x80\x06\x90..\x74(.)\xF0/s )
-	{
-		$plus_r_cnt = ord($1);
-		$plus_rw_cnt = ord($2);
-		$plus_cnt = $plus_r_cnt + $plus_rw_cnt;
-	}
-	else
-	{
-		$plus_cnt = $plus_r_cnt = $plus_rw_cnt = 0;
-	}
 
 	if ($data =~ /($PLUS_SAMPLE)/sg)
 	{
@@ -243,6 +271,8 @@ sub getcodes # ( )
 
 sub setcodes # ( )
 {
+	return setcodes2() if ($file_data{'mctype'} == 2);
+
 	my($data);
 	my($x, $y, $p, $i);
 	my($patch, $mid, $tid);
@@ -255,10 +285,10 @@ sub setcodes # ( )
 
 	# Resolve the Ricoh R00 bug
 
-	$code_old_m  = quotemeta(nullbuf("RICOHJPNR00\x01")) . '.\x00';
+	$code_old_m  = quotemeta(nullbuf("RICOHJPNR00\x01")) . '\x00.';
 	$code_old_m x= 2;
 
-	$code_new  = nullbuf("XxXxXxXxXxX\x01") . "\x02\x00";
+	$code_new  = nullbuf("XxXxXxXxXxX\x01") . "\x00\x02";
 	$code_new x= 2;
 
 	$data =~ s/$code_old_m/$code_new/s;
@@ -269,8 +299,8 @@ sub setcodes # ( )
 		$tid = nullpad($patch->[1], 3);
 
 		$code_id = nullbuf($mid . $tid . chr($patch->[2]));
-		$code_old = $code_id . chr($patch->[3]);
-		$code_new = $code_id . chr($patch->[4]);
+		$code_old = $code_id . nullbuf(chr($patch->[3]));
+		$code_new = $code_id . nullbuf(chr($patch->[4]));
 		($code_id_m, $code_old_m, $code_new_m) = map { quotemeta } ($code_id, $code_old, $code_new);
 
 		$data =~ s/$code_old_m/$code_new/sg;

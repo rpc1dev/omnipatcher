@@ -201,9 +201,10 @@ sub Patches2_Click
 
 sub Patches4_Click
 {
-	if ($ObjPatches[4]->GetCheck())
+	if ($ObjPatches[4]->GetCheck() && !$FRCWarned)
 	{
-		Win32::GUI::MessageBox($hWndMain, "It is recommended that you do not apply this patch unless your burns\nexhibit a \"mountain\" error effect at the very end of a disc.  This patch\nmay cause undesirable linking-related side effects.\n\nPlease refer to the documentation for more information.", "Warning!", MB_OK | MB_ICONWARNING);
+		$FRCWarned = 1;
+		Win32::GUI::MessageBox($hWndMain, "It is recommended that you do NOT apply this patch unless your burns\nexhibit a \"mountain\" error effect at the very end of a disc.\n\nPlease refer to the documentation for more information.\n\nYou will not see this message again until the next time this program\nis run.", "Notice", MB_OK | MB_ICONINFORMATION);
 	}
 
 	return 1;
