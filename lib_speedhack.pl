@@ -1,6 +1,6 @@
 ##
 # Speedhacker Common Library
-# 1.2.2 (17 July 2004)
+# 1.2.3 (22 July 2004)
 #
 
 $PLUS_PATTERN = '(?:\x00{12}|\xFF{12}|(?:\w{2}.{6}[\w\x00]{3}.)|(?:[A-Z]\w{2}.{9})|(?:\x00{8}\w.{3}))[\x00-\x7F]';
@@ -8,8 +8,7 @@ $DASHR_PATTERN = '\x00{13}|(?:\w[\w \-=\.,\xAD\x00]{11}.)';
 $DASHRW_PATTERN = '\x00{13}|(?:\w[\w \-=\.,\xAD\x00\!\/\[\]]{11}.)';
 
 $PLUS_LEN = 26;
-$DASHR_LEN = 13;
-$DASHRW_LEN = 13;
+$DASH_LEN = 13;
 
 $PLUS_SAMPLE = quotemeta(&nullbuf("RICOHJPNR00"));
 $PLUSD_SAMPLE = quotemeta(&nullbuf("RICOHJPND00"));
@@ -57,12 +56,12 @@ sub getcodes # ( )
 	my(@codes, @speeds, @ret);
 	my($plus_r_cnt, $plus_rw_cnt, $plus_cnt);
 	my($id, $mid, $tid, $rid, %used);
-	my($dash_type, $dash_pattern, $dash_len, $dash_sample);
+	my($dash_type, $dash_pattern, $dash_sample);
 
 	$data = substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000);
 
-	if ( $data =~ /\xE5\x24\x90..\xB4\x94\x05\x74(.)\xF0\x80\x03\x74(.)\xF0/ ||
-	     $data =~ /\xE5\x24\x64\x94\x60\x05\xE5\x24\xB4\x97\x08\x90..\x74(.)\xF0\x80\x06\x90..\x74(.)\xF0/ )
+	if ( $data =~ /\xE5\x24\x90..\xB4\x94\x05\x74(.)\xF0\x80\x03\x74(.)\xF0/s ||
+	     $data =~ /\xE5\x24\x64\x94\x60\x05\xE5\x24\xB4\x97\x08\x90..\x74(.)\xF0\x80\x06\x90..\x74(.)\xF0/s )
 	{
 		$plus_r_cnt = ord($1);
 		$plus_rw_cnt = ord($2);
@@ -73,12 +72,12 @@ sub getcodes # ( )
 		$plus_cnt = $plus_r_cnt = $plus_rw_cnt = 0;
 	}
 
-	if ($data =~ /($PLUS_SAMPLE)/g)
+	if ($data =~ /($PLUS_SAMPLE)/sg)
 	{
 		$x = pos($data);
 		$y = length($1);
 
-		for ($p = $x - $y; nullunbuf(substr($data, $p - $PLUS_LEN, $PLUS_LEN)) =~ /$PLUS_PATTERN/; $p -= $PLUS_LEN) { }
+		for ($p = $x - $y; nullunbuf(substr($data, $p - $PLUS_LEN, $PLUS_LEN)) =~ /$PLUS_PATTERN/s; $p -= $PLUS_LEN) { }
 
 		@codes = ();
 
@@ -86,7 +85,7 @@ sub getcodes # ( )
 		{
 			$id = nullunbuf(substr($data, $i, $PLUS_LEN));
 
-			if ($id =~ /$PLUS_PATTERN/)
+			if ($id =~ /$PLUS_PATTERN/s)
 			{
 				$mid = nulltrim(substr($id, 0, 8));
 				$tid = nulltrim(substr($id, 8, 3));
@@ -137,12 +136,12 @@ sub getcodes # ( )
 
 	} # End: +R/W
 
-	if ($data =~ /($PLUSD_SAMPLE)/g)
+	if ($data =~ /($PLUSD_SAMPLE)/sg)
 	{
 		$x = pos($data);
 		$y = length($1);
 
-		for ($p = $x - $y; nullunbuf(substr($data, $p - $PLUS_LEN, $PLUS_LEN)) =~ /$PLUS_PATTERN/; $p -= $PLUS_LEN) { }
+		for ($p = $x - $y; nullunbuf(substr($data, $p - $PLUS_LEN, $PLUS_LEN)) =~ /$PLUS_PATTERN/s; $p -= $PLUS_LEN) { }
 
 		@codes = ();
 
@@ -150,7 +149,7 @@ sub getcodes # ( )
 		{
 			$id = nullunbuf(substr($data, $i, $PLUS_LEN));
 
-			if ($id =~ /$PLUS_PATTERN/)
+			if ($id =~ /$PLUS_PATTERN/s)
 			{
 				$mid = nulltrim(substr($id, 0, 8));
 				$tid = nulltrim(substr($id, 8, 3));
@@ -188,29 +187,27 @@ sub getcodes # ( )
 		{
 			$dash_sample = $DASHR_SAMPLE;
 			$dash_pattern = $DASHR_PATTERN;
-			$dash_len = $DASHR_LEN;
 		}
 		else
 		{
 			$dash_sample = $DASHRW_SAMPLE;
 			$dash_pattern = $DASHRW_PATTERN;
-			$dash_len = $DASHRW_LEN;
 		}
 
-		if ($data =~ /($dash_sample)/g)
+		if ($data =~ /($dash_sample)/sg)
 		{
 			$x = pos($data);
 			$y = length($1);
 
-			for ($p = $x - $y; substr($data, $p - $dash_len, $dash_len) =~ /$dash_pattern/; $p -= $dash_len) { }
+			for ($p = $x - $y; substr($data, $p - $DASH_LEN, $DASH_LEN) =~ /$dash_pattern/s; $p -= $DASH_LEN) { }
 
 			@codes = @speeds = ();
 
-			for ($i = $p; ; $i += $dash_len)
+			for ($i = $p; ; $i += $DASH_LEN)
 			{
-				$mid = substr($data, $i, $dash_len);
+				$mid = substr($data, $i, $DASH_LEN);
 
-				if ($mid =~ /$dash_pattern/)
+				if ($mid =~ /$dash_pattern/s)
 				{
 					push @codes, $mid;
 				}
@@ -264,7 +261,7 @@ sub setcodes # ( )
 	$code_new  = nullbuf("XxXxXxXxXxX\x01") . "\x02\x00";
 	$code_new x= 2;
 
-	$data =~ s/$code_old_m/$code_new/;
+	$data =~ s/$code_old_m/$code_new/s;
 
 	foreach $patch (@{$file_data{'plus_patches'}})
 	{
@@ -276,7 +273,7 @@ sub setcodes # ( )
 		$code_new = $code_id . chr($patch->[4]);
 		($code_id_m, $code_old_m, $code_new_m) = map { quotemeta } ($code_id, $code_old, $code_new);
 
-		$data =~ s/$code_old_m/$code_new/g;
+		$data =~ s/$code_old_m/$code_new/sg;
 	}
 
 	substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000, $data);
@@ -288,31 +285,29 @@ sub setcodes # ( )
 		{
 			$dash_sample = $DASHR_SAMPLE;
 			$dash_pattern = $DASHR_PATTERN;
-			$dash_len = $DASHR_LEN;
 			@dash_patches = @{$file_data{'dashr_patches'}};
 		}
 		else
 		{
 			$dash_sample = $DASHRW_SAMPLE;
 			$dash_pattern = $DASHRW_PATTERN;
-			$dash_len = $DASHRW_LEN;
 			@dash_patches = @{$file_data{'dashrw_patches'}};
 		}
 
-		if ($data =~ /($dash_sample)/g)
+		if ($data =~ /($dash_sample)/sg)
 		{
 			$x = pos($data);
 			$y = length($1);
 
-			for ($p = $x - $y; substr($data, $p - $dash_len, $dash_len) =~ /$dash_pattern/; $p -= $dash_len) { }
+			for ($p = $x - $y; substr($data, $p - $DASH_LEN, $DASH_LEN) =~ /$dash_pattern/s; $p -= $DASH_LEN) { }
 
 			@codes = @speeds = ();
 
-			for ($i = $p; ; $i += $dash_len)
+			for ($i = $p; ; $i += $DASH_LEN)
 			{
-				$mid = substr($data, $i, $dash_len);
+				$mid = substr($data, $i, $DASH_LEN);
 
-				if ($mid =~ /$dash_pattern/)
+				if ($mid =~ /$dash_pattern/s)
 				{
 					push @codes, $mid;
 				}

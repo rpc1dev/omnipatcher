@@ -44,7 +44,7 @@ sub patch_strat # ( testmode, mode )
 		return -1;
 	}
 
-	while ($pbank =~ /$pat_pattern/g)
+	while ($pbank =~ /$pat_pattern/sg)
 	{
 		$pat_point = pos($pbank);
 		$pat_point += $file_data{'pbankpos'} - 4;
@@ -52,7 +52,7 @@ sub patch_strat # ( testmode, mode )
 		push @pat_points, [ $pat_point, $pat_dptr ];
 	}
 
-	while ($dbank =~ /$pat_pattern/g)
+	while ($dbank =~ /$pat_pattern/sg)
 	{
 		$pat_point = pos($dbank);
 		$pat_point += $file_data{'dbankpos'} - 4;

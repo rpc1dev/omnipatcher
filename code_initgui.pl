@@ -124,7 +124,7 @@ $hWndMain = 0;
 		"Earlier shift (faster burn) for 8x +R",
 		"Utilize \"force-shifting\" for 6x/8x burns",
 		"Utilize \"force-recalibration\" for 8x +R",
-		"Fix the \"dead drive\" blink / Enable cross-flashing",
+		"Fix the \"dead drive blink\" / Enable cross-flashing",
 	);
 
 	@CMD_NAMES =

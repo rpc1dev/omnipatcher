@@ -43,7 +43,7 @@ sub load_file # ( )
 	$file_data{'codes'} = [ getcodes() ];
 	$file_data{'ncodes'} = scalar(@{$file_data{'codes'}});
 
-	if ($file_data{'gen'} == 3 && $file_data{'ncodes'} < 120)
+	if ($file_data{'gen'} >= 3 && $file_data{'ncodes'} < 120)
 	{
 		$file_data{'codes'} = [ ];
 		$file_data{'ncodes'} = 0;
@@ -374,7 +374,7 @@ sub proc_speed
 			unless ($used)
 			{
 				$StratSpeedWarned = 1;
-				Win32::GUI::MessageBox($hWndMain, "Please note that media codes with a '!' in front of them are media\ncodes that are currently using another media code's write strategy\nand speed code.  Because they are no longer using their own speed\ncode, changing their burning speed will have no effect.  If you\nwould like to change the burning speed of this media code, you will\nhave to adjust the burning speed of its host media code.\n\nPlease refer to the documentation for more information.\n\nYou will not see this message again until the next time this program\nis run.", "Notice", MB_OK | MB_ICONWARNING);
+				Win32::GUI::MessageBox($hWndMain, "Please note that media codes with a '!' in front of them are media\ncodes that are currently using another media code's write strategy\nand speed code.  Because they are no longer using their own speed\ncode, changing their burning speed will have no effect.  If you\nwould like to change the burning speed of this media code, you will\nhave to adjust the burning speed of its host media code.\n\nPlease refer to the documentation for more information.\n\nYou will not see this message again until the next time this program\nis run.", "Notice", MB_OK | MB_ICONINFORMATION);
 			}
 		}
 

@@ -199,6 +199,16 @@ sub Patches2_Click
 	return 1;
 }
 
+sub Patches4_Click
+{
+	if ($ObjPatches[4]->GetCheck())
+	{
+		Win32::GUI::MessageBox($hWndMain, "It is recommended that you do not apply this patch unless your burns\nexhibit a \"mountain\" error effect at the very end of a disc.  This patch\nmay cause undesirable linking-related side effects.\n\nPlease refer to the documentation for more information.", "Warning!", MB_OK | MB_ICONWARNING);
+	}
+
+	return 1;
+}
+
 sub Cmds0_Click
 {
 	my(%ofn) =

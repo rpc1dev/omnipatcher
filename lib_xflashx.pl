@@ -1,6 +1,6 @@
 ##
 # XFlash-X Common Library
-# 1.1.5 (9 July 2004)
+# 1.1.7 (22 July 2004)
 #
 
 require "lib_xflashx_config.pl";
@@ -30,7 +30,7 @@ sub xfx_initpattern # ( )
 {
 	my($count_pattern, $start_pattern, $size_pattern, $name_pattern, $i);
 
-	$count_pattern = 'HOW_MANY_BIN=(\d+\x00+)';
+	$count_pattern = 'HOW_MANY_BIN=(\d+\x00+).*?';
 
 	foreach $i (1 .. 4)
 	{
@@ -208,7 +208,7 @@ sub xflashx # ( f_in )
 		close file;
 
 		$loaded = 1;
-		$mode = ($data =~ /$XFX_PATTERN/g) ? 1 : 2;
+		$mode = ($data =~ /$XFX_PATTERN/sg) ? 1 : 2;
 		pos($data) = 0;
 	}
 	else
@@ -289,7 +289,7 @@ sub xflashx # ( f_in )
 
 	xfx_debug "Determining XFlash version...\n";
 
-	if ($data =~ /(?:(?:rr.\x00v)|(?:Ver ))(\d\.\d{1,2}\.\d{1,2})\x00{2}/)
+	if ($data =~ /(?:(?:rr.\x00v)|(?:Ver ))(\d\.\d{1,2}\.\d{1,2})\x00{2}/s)
 	{
 		$xfversion = $1;
 		$xfvernum = sprintf("%d%02d%02d", split(/\./, $xfversion));
@@ -320,7 +320,7 @@ sub xflashx # ( f_in )
 
 	xfx_debug "Searching for the BIN descriptor table...\n";
 
-	if ($data =~ /$XFX_PATTERN/g)
+	if ($data =~ /$XFX_PATTERN/sg)
 	{
 		xfx_debug "BIN descriptor table found... parsing...\n\n";
 
@@ -374,15 +374,15 @@ sub xflashx # ( f_in )
 				}
 				elsif ($xfversion eq "2.1.0")
 				{
-					if ($data =~ /\x30\x02\xEB\x2B.{12}\x80\x34\x02\xFF.{25}\x30\x10/)
+					if ($data =~ /\x30\x02\xEB\x2B.{12}\x80\x34\x02\xFF.{25}\x30\x10/s)
 					{
 						$scrammode = 3;
 					}
-					elsif ($data =~ /\x25\x7F\x00\x00\x80\x79\x05/)
+					elsif ($data =~ /\x25\x7F\x00\x00\x80\x79\x05/s)
 					{
 						$scrammode = 4;
 					}
-					elsif ($data =~ /\xFF{256}/)
+					elsif ($data =~ /\xFF{256}/s)
 					{
 						$scrammode = 2;
 						$skip_pre = 0x000400;
