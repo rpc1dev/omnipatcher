@@ -1,3 +1,6 @@
+1.1.2 (16 Jun 2004)
+	* Fixed: File open error in Windows 9x/ME (does not affect 2K/XP).
+
 1.1.1 (16 Jun 2004)
 	* Fixed: Problems with opening certain .EXE files.
 

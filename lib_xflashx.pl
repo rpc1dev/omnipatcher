@@ -1,6 +1,6 @@
 ##
 # XFlash-X Common Library
-# 1.1.0 (16 June 2004)
+# 1.1.1 (16 June 2004)
 #
 
 require "lib_xflashx_config.pl";
@@ -194,7 +194,7 @@ sub xflashx # ( f_in )
 
 		xfx_debug "Preparing '$f_upx'...\n\n";
 
-		qx($XFX_HELPER -d -q "$f_upx");
+		system(qq($XFX_HELPER -d -q "$f_upx"));
 
 		$f_in = $f_upx;
 	}

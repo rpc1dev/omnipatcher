@@ -183,7 +183,7 @@ sub save_file # ( file_name )
 
 			if ($recompress && xfx_check_helper())
 			{
-				qx($XFX_HELPER -9 -q "$file_name");
+				system(qq($XFX_HELPER -9 -q "$file_name"));
 
 				open file, $file_name;
 				binmode file;
