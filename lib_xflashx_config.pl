@@ -1,6 +1,6 @@
 # XFlash-X helper
 #
-$XFX_HELPER = 'xflashx_helper.exe';
+$XFX_HELPER = 'upx.exe';
 
 
 # XFlash-X helper not-found error handling
@@ -11,14 +11,24 @@ sub XFX_HELPER_ERR # ( )
 }
 
 
-# XFlash-X tempfile suffix
+# XFlash-X helper execution method... use system() or not; 0=no (def), 1=yes
+#
+$XFX_HELPER_SYSTEM = 1;
+
+
+# XFlash-X helper tempfile suffix
 #
 $XFX_TEMP_SUFFIX = '.xflashx-temp';
 
 
-# Delete temp file; 0=no, 1=yes (def)
+# Allow unscrambling of scrambled firmwares; 0=no (def), 1=yes
 #
-$XFX_DELETE_TEMP = 1;
+$XFX_UNSCRAMBLE = 0;
+
+
+# Keep the UPX temp file; 0=no (def), 1=yes
+#
+$XFX_KEEP_TEMP = 0;
 
 
 # Print debug messages; 0=no (def), 1=yes

@@ -1,6 +1,15 @@
+##
+# Speedhacker Common Library
+# 1.0.1 (20 June 2004)
+#
+
 $PLUS_PATTERN = '(?:\x00{12}|\xFF{12}|(?:\w{2}.{6}[\w\x00]{3}.)|(?:\w{3}.{9})|(?:\x00{8}\w.{3}))[\x00-\x7F]';
-$DASHR_PATTERN = '\x00{13}|(?:\w[\w \-\.,\xAD\x00]{11}.)';
-$DASHRW_PATTERN = '\x00{13}|(?:\w[\w \-\.,\xAD\x00\!\/\[\]]{11}.)';
+$DASHR_PATTERN = '\x00{13}|(?:\w[\w \-=\.,\xAD\x00]{11}.)';
+$DASHRW_PATTERN = '\x00{13}|(?:\w[\w \-=\.,\xAD\x00\!\/\[\]]{11}.)';
+
+$PLUS_LEN = 26;
+$DASHR_LEN = 13;
+$DASHRW_LEN = 13;
 
 $PLUS_SAMPLE = quotemeta(&nullbuf("RICOHJPNR00"));
 $PLUSD_SAMPLE = quotemeta(&nullbuf("RICOHJPND00"));
@@ -50,14 +59,14 @@ sub getcodes # ( )
 	my(@codes, @speeds, @ret);
 	my($found_break, $found_break_ff, $break_pos);
 	my($id, $mid, $tid, $rid, %used);
-	my($dash_type, $dash_pattern, $dash_sample);
+	my($dash_type, $dash_pattern, $dash_len, $dash_sample);
 
 	if ($data =~ /($PLUS_SAMPLE)/g)
 	{
 		$x = pos($data);
 		$y = length($1);
 
-		for ($p = $x - $y; nullunbuf(substr($data, $p - 26, 26)) =~ /$PLUS_PATTERN/; $p -= 26) { }
+		for ($p = $x - $y; nullunbuf(substr($data, $p - $PLUS_LEN, $PLUS_LEN)) =~ /$PLUS_PATTERN/; $p -= $PLUS_LEN) { }
 
 		@codes = ();
 
@@ -65,9 +74,9 @@ sub getcodes # ( )
 		$found_break_ff = 0;
 		$break_pos = 0;
 
-		for ($i = $p; ; $i += 26)
+		for ($i = $p; ; $i += $PLUS_LEN)
 		{
-			$id = nullunbuf(substr($data, $i, 26));
+			$id = nullunbuf(substr($data, $i, $PLUS_LEN));
 
 			if ($id =~ /$PLUS_PATTERN/)
 			{
@@ -108,13 +117,13 @@ sub getcodes # ( )
 		$x = pos($data);
 		$y = length($1);
 
-		for ($p = $x - $y; nullunbuf(substr($data, $p - 26, 26)) =~ /$PLUS_PATTERN/; $p -= 26) { }
+		for ($p = $x - $y; nullunbuf(substr($data, $p - $PLUS_LEN, $PLUS_LEN)) =~ /$PLUS_PATTERN/; $p -= $PLUS_LEN) { }
 
 		@codes = ();
 
-		for ($i = $p; ; $i += 26)
+		for ($i = $p; ; $i += $PLUS_LEN)
 		{
-			$id = nullunbuf(substr($data, $i, 26));
+			$id = nullunbuf(substr($data, $i, $PLUS_LEN));
 
 			if ($id =~ /$PLUS_PATTERN/)
 			{
@@ -150,11 +159,13 @@ sub getcodes # ( )
 		{
 			$dash_sample = $DASHR_SAMPLE;
 			$dash_pattern = $DASHR_PATTERN;
+			$dash_len = $DASHR_LEN;
 		}
 		else
 		{
 			$dash_sample = $DASHRW_SAMPLE;
 			$dash_pattern = $DASHRW_PATTERN;
+			$dash_len = $DASHRW_LEN;
 		}
 
 		if ($data =~ /($dash_sample)/g)
@@ -162,13 +173,13 @@ sub getcodes # ( )
 			$x = pos($data);
 			$y = length($1);
 
-			for ($p = $x - $y; substr($data, $p - 13, 13) =~ /$dash_pattern/; $p -= 13) { }
+			for ($p = $x - $y; substr($data, $p - $dash_len, $dash_len) =~ /$dash_pattern/; $p -= $dash_len) { }
 
 			@codes = @speeds = ();
 
-			for ($i = $p; ; $i += 13)
+			for ($i = $p; ; $i += $dash_len)
 			{
-				$mid = substr($data, $i, 13);
+				$mid = substr($data, $i, $dash_len);
 
 				if ($mid =~ /$dash_pattern/)
 				{
@@ -217,7 +228,7 @@ sub setcodes # ( )
 	my($code_id, $code_old, $code_new);
 	my($code_id_m, $code_old_m, $code_new_m);
 
-	my($ricoh_do, $ricoh_count, $ricoh_max) = (0, 0, 0, 0);
+	my($ricoh_do, $ricoh_count, $ricoh_max) = (0, 0, 0);
 
 	foreach $patch (@{$file_data{'plus_patches'}})
 	{
@@ -260,12 +271,14 @@ sub setcodes # ( )
 		{
 			$dash_sample = $DASHR_SAMPLE;
 			$dash_pattern = $DASHR_PATTERN;
+			$dash_len = $DASHR_LEN;
 			@dash_patches = @{$file_data{'dashr_patches'}};
 		}
 		else
 		{
 			$dash_sample = $DASHRW_SAMPLE;
 			$dash_pattern = $DASHRW_PATTERN;
+			$dash_len = $DASHRW_LEN;
 			@dash_patches = @{$file_data{'dashrw_patches'}};
 		}
 
@@ -274,13 +287,13 @@ sub setcodes # ( )
 			$x = pos($data);
 			$y = length($1);
 
-			for ($p = $x - $y; substr($data, $p - 13, 13) =~ /$dash_pattern/; $p -= 13) { }
+			for ($p = $x - $y; substr($data, $p - $dash_len, $dash_len) =~ /$dash_pattern/; $p -= $dash_len) { }
 
 			@codes = @speeds = ();
 
-			for ($i = $p; ; $i += 13)
+			for ($i = $p; ; $i += $dash_len)
 			{
-				$mid = substr($data, $i, 13);
+				$mid = substr($data, $i, $dash_len);
 
 				if ($mid =~ /$dash_pattern/)
 				{

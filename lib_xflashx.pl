@@ -1,6 +1,6 @@
 ##
 # XFlash-X Common Library
-# 1.1.1 (16 June 2004)
+# 1.1.4 (28 June 2004)
 #
 
 require "lib_xflashx_config.pl";
@@ -123,6 +123,60 @@ sub xfx_crypt_mode3 # ( str, key, fwrev )
 	return $str;
 }
 
+sub xfx_crypt_mode4 # ( str, key, fwrev, exkey )
+{
+	my($str, $key, $fwrev, $exkey) = @_;
+
+	my($fwkey) = xfx_sum( map { ord } split(//, $fwrev) ) % 256;
+
+	my($count);
+	my($curkey);
+	my($changepos);
+	my($changebyte);
+
+	unless (defined($exkey))
+	{
+		my(@excount) = (0) x 0x100;
+
+		foreach $count (0 .. length($key) - 1)
+		{
+			$curkey = ord(substr($key, $count, 1));
+
+			$changepos = $curkey & 0x7F;
+			$changepos += $count * (length($str) / length($key));
+			$changebyte = ord(substr($str, $changepos, 1));
+
+			if (($count + 1) % 7 == 1 || ($count + 1) % 7 == 3)
+			{
+				$excount[$changebyte ^ $fwkey]++;
+			}
+		}
+
+		$exkey = (sort { $excount[$b] <=> $excount[$a] } (0x00 .. 0xFF))[0];
+	}
+
+	foreach $count (0 .. length($key) - 1)
+	{
+		$curkey = ord(substr($key, $count, 1));
+
+		$changepos = $curkey & 0x7F;
+		$changepos += $count * (length($str) / length($key));
+		$changebyte = ord(substr($str, $changepos, 1));
+
+		if (($count + 1) % 7 == 1 || ($count + 1) % 7 == 3)
+		{
+			substr($str, $changepos, 1, chr($changebyte ^ $fwkey ^ $exkey));
+		}
+		else
+		{
+			substr($str, $changepos, 1, chr($changebyte ^ $curkey));
+		}
+
+	}
+
+	return ($str, $exkey);
+}
+
 sub xflashx # ( f_in )
 {
 	my($f_in) = @_;
@@ -131,8 +185,11 @@ sub xflashx # ( f_in )
 	my($data, $mode, $loaded);
 	my($f_upx);
 
+	my($xfversion, $xfvernum);
+
 	my($offset, $nbins, @bins);
 	my($start, $flag_fail, $scrammode, $skip_pre, $skip_len, $s_bin, $bin_fw);
+	my($exkey);
 
 	xfx_status "Loading and analyzing...\n\n";
 
@@ -147,7 +204,7 @@ sub xflashx # ( f_in )
 	{
 		open file, $f_in;
 		binmode file;
-		$data = join("", <file>);
+		read(file, $data, -s $f_in);
 		close file;
 
 		$loaded = 1;
@@ -157,6 +214,13 @@ sub xflashx # ( f_in )
 	else
 	{
 		$mode = ((-s $f_in) > $XFX_SCRAMSIZE) ? 1 : 2;
+	}
+
+	if ($mode == 2 && $XFX_UNSCRAMBLE == 0)
+	{
+		xfx_debug "\n";
+		xfx_status "This flasher is scrambled/compressed and cannot be processed.\n";
+		return [ [ ], [ ] ];
 	}
 
 	xfx_debug "done, entering mode $mode\n\n";
@@ -177,7 +241,7 @@ sub xflashx # ( f_in )
 		{
 			open file, $f_in;
 			binmode file;
-			$data = join("", <file>);
+			read(file, $data, -s $f_in);
 			close file;
 		}
 
@@ -194,7 +258,16 @@ sub xflashx # ( f_in )
 
 		xfx_debug "Preparing '$f_upx'...\n\n";
 
-		system(qq($XFX_HELPER -d -q "$f_upx"));
+		my($xfx_cmd) = qq($XFX_HELPER -d -q "$f_upx");
+
+		if ($XFX_HELPER_SYSTEM)
+		{
+			system($xfx_cmd);
+		}
+		else
+		{
+			qx($xfx_cmd);
+		}
 
 		$f_in = $f_upx;
 	}
@@ -208,11 +281,42 @@ sub xflashx # ( f_in )
 	{
 		open file, $f_in;
 		binmode file;
-		$data = join("", <file>);
+		read(file, $data, -s $f_in);
 		close file;
 	}
 
-	unlink $f_upx if ($mode == 2 && $XFX_DELETE_TEMP);
+	unlink $f_upx if ($mode == 2 && !$XFX_KEEP_TEMP);
+
+	xfx_debug "Determining XFlash version...\n";
+
+	if ($data =~ /(?:(?:rr.\x00v)|(?:Ver ))(\d\.\d{1,2}\.\d{1,2})\x00{2}/)
+	{
+		$xfversion = $1;
+		$xfvernum = sprintf("%d%02d%02d", split(/\./, $xfversion));
+
+		xfx_debug "Version detected: XFlash v$xfversion...\n";
+
+		if ($mode != 2 && $xfvernum >= 20005)
+		{
+			$mode = 2;
+			xfx_debug "Mode correction initiated, entering mode $mode...\n";
+
+			if ($mode == 2 && $XFX_UNSCRAMBLE == 0)
+			{
+				xfx_status "This flasher is scrambled/compressed and cannot be processed.\n";
+				return [ [ ], [ ] ];
+			}
+		}
+		elsif ($mode == 2 && $xfvernum < 20005)
+		{
+			$mode = 1;
+			xfx_debug "Mode correction initiated, entering mode $mode...\n";
+		}
+	}
+	else
+	{
+		xfx_debug "Unknown XFlash version...\n";
+	}
 
 	xfx_debug "Searching for the BIN descriptor table...\n";
 
@@ -260,19 +364,23 @@ sub xflashx # ( f_in )
 
 			if ($mode == 2)
 			{
-				if ($data =~ /r\]\x00(v2\.0\.5)\x00/)
+				if ($xfversion eq "2.0.5")
 				{
 					$scrammode = 1;
 					$skip_pre = 0x000000;
 					$skip_len = 0x000000;
 				}
-				elsif ($data =~ /r\]\x00(v2\.1\.0)\x00/)
+				elsif ($xfversion eq "2.1.0")
 				{
 					if ($data =~ /\xFF{256}/)
 					{
 						$scrammode = 2;
 						$skip_pre = 0x000400;
 						$skip_len = 0x001000;
+					}
+					elsif ($data =~ /\x25\x7F\x00\x00\x80\x79\x05/)
+					{
+						$scrammode = 4;
 					}
 					else
 					{
@@ -285,9 +393,18 @@ sub xflashx # ( f_in )
 					$flag_fail = 1;
 				}
 
-				xfx_debug "Using unscrambler for XFlash $1, mode $scrammode...\n" unless($flag_fail);
+				xfx_debug "Using unscrambler for XFlash v$xfversion, mode $scrammode...\n" unless($flag_fail);
 
-				unless ($scrammode == 3)
+				if ($scrammode == 3)
+				{
+					$bin_fw = xfx_crypt_mode3(substr($data, $start + 0x1000, $bins[$i][2]), substr($data, $offset + 0x400 * $i, 0x400), $bins[$i][0]);
+				}
+				elsif ($scrammode == 4)
+				{
+					($bin_fw, $exkey) = xfx_crypt_mode4(substr($data, $start + 0x1000, $bins[$i][2]), substr($data, $offset + 0x400 * $i, 0x400), $bins[$i][0]);
+					xfx_debug sprintf("Extended key used: 0x%02x\n", $exkey);
+				}
+				else
 				{
 					$s_bin  = xfx_notstr(substr($data, $start, $skip_pre));
 					$s_bin .= substr($data, $start + $skip_pre + $skip_len, $bins[$i][2] - $skip_pre);
@@ -295,10 +412,6 @@ sub xflashx # ( f_in )
 
 					substr($bin_fw, 0x0, 0x8000, reverse(substr($s_bin, length($s_bin) - 0x8000, 0x8000)));
 					substr($bin_fw, length($s_bin) - 0x8000, 0x8000, reverse(substr($s_bin, 0x0, 0x8000)));
-				}
-				else
-				{
-					$bin_fw = xfx_crypt_mode3(substr($data, $start + 0x1000, $bins[$i][2]), substr($data, $offset + 0x400 * $i, 0x400), $bins[$i][0]);
 				}
 			}
 			else
@@ -316,7 +429,7 @@ sub xflashx # ( f_in )
 
 			unless ($flag_fail)
 			{
-				push @ret, [ $bins[$i][0], $bin_fw, $start, $offset + 0x400 * $i ];
+				push @ret, [ $bins[$i][0], $bin_fw, $start, $offset + 0x400 * $i, $exkey ];
 				xfx_status "'$bins[$i][0]' has been extracted...\n\n";
 			}
 			else

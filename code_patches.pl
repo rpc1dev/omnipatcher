@@ -57,7 +57,7 @@ sub patch_abs # ( testmode, mode )
 
 	my($off) = join('', map { chr } ( 0x54, 0xEF, 0xF0, 0xE0, 0x54, 0xF7, 0xF0, 0xE4 ));
 	my($on)  = join('', map { chr } ( 0x54, 0xE7, 0xF0, 0x00, 0x00, 0x00, 0x74, 0x01 ));
-	my($offpat, $onpat) = (quotemeta($off), quotemeta($on));
+	my($offpat, $onpat) = map { quotemeta } ($off, $on);
 
 	if ($file_data{'work'} =~ /($offpat|$onpat)/g)
 	{
@@ -185,9 +185,12 @@ sub patch_eeprom # ( testmode, mode )
 	my($off) = join('', map { chr } ( 0xFF, 0xEE, 0x6F, 0x60, 0x02, 0xC3, 0x22 ));
 	my($on1) = join('', map { chr } ( 0xFF, 0xEE, 0x6F, 0x00, 0x00, 0xD3, 0x22 ));
 	my($on2) = join('', map { chr } ( 0xFF, 0xEE, 0x6F, 0xD3, 0xD3, 0xD3, 0x22 ));
-	my($offpat, $on1pat, $on2pat) = (quotemeta($off), quotemeta($on1), quotemeta($on2));
+	my($onc) = join('', map { chr } ( 0xFF, 0xEE, 0x6F, 0x60, 0x00, 0xD3, 0x22 ));
+	my($offpat, $on1pat, $on2pat, $oncpat) = map { quotemeta } ($off, $on1, $on2, $onc);
 
 	my($work) = substr($file_data{'work'}, 0x90000, 0x10000);
+
+	return -1 if ($work =~ /($oncpat)/);
 
 	if ($work =~ /($offpat|$on1pat|$on2pat)/g)
 	{

@@ -129,7 +129,7 @@ sub Cmds0_Click
 	{
 		open file, $new_file{'longname'};
 		binmode file;
-		$new_file{'work'} = join('', <file>);
+		read(file, $new_file{'work'}, -s $new_file{'longname'});
 		close file;
 
 		return error("Invalid .BIN file size!\nAborting load process.", 1) if (length($new_file{'work'}) != 0x100000);
@@ -143,9 +143,10 @@ sub Cmds0_Click
 		$new_file{'work'} = $xfx->[0][0][1];
 		$new_file{'offset'} = $xfx->[0][0][2];
 		$new_file{'key_offset'} = $xfx->[0][0][3];
+		$new_file{'exkey'} = $xfx->[0][0][4];
 		$new_file{'exedata'} = $xfx->[1];
 
-		return error("Unable to process this .EXE file!\nPlease make sure that the file is valid.\n\nYou might also consider using XFlash-X to\nextract a .BIN file to work with instead.", 1) if (length($new_file{'work'}) != 0x100000);
+		return error("Unable to process this .EXE file!\nPlease make sure that the file is valid.\n\nIf this firmware flasher is scrambled/compressed, you\nshould consider downloading an unscrambled version\nof the flasher from one of these two websites:\n-  http://codeguys.rpc1.org/firmwares.html\n-  http://dhc014.rpc1.org/indexOEM.htm", 1) if (length($new_file{'work'}) != 0x100000);
 	}
 
 	%file_data = %new_file;

@@ -152,17 +152,21 @@ sub save_file # ( file_name )
 			{
 				my($s_bin) = $file_data{'work'};
 
-				unless ($file_data{'exedata'}->[2] == 3)
+				if ($file_data{'exedata'}->[2] == 3)
+				{
+					substr($outdata, $file_data{'offset'} + 0x1000, length($s_bin), xfx_crypt_mode3($s_bin, substr($outdata, $file_data{'key_offset'}, 0x400), $file_data{'name'}));
+				}
+				elsif ($file_data{'exedata'}->[2] == 4)
+				{
+					substr($outdata, $file_data{'offset'} + 0x1000, length($s_bin), (xfx_crypt_mode4($s_bin, substr($outdata, $file_data{'key_offset'}, 0x400), $file_data{'name'}, $file_data{'exkey'}))[0]);
+				}
+				else
 				{
 					substr($s_bin, 0x0, 0x8000, reverse(substr($file_data{'work'}, length($file_data{'work'}) - 0x8000, 0x8000)));
 					substr($s_bin, length($file_data{'work'}) - 0x8000, 0x8000, reverse(substr($file_data{'work'}, 0x0, 0x8000)));
 
 					substr($outdata, $file_data{'offset'}, $file_data{'exedata'}->[3], xfx_notstr(substr($s_bin, 0, $file_data{'exedata'}->[3])));
 					substr($outdata, $file_data{'offset'} + $file_data{'exedata'}->[3] + $file_data{'exedata'}->[4], length($s_bin) - $file_data{'exedata'}->[3], substr($s_bin, $file_data{'exedata'}->[3], length($s_bin) - $file_data{'exedata'}->[3]));
-				}
-				else
-				{
-					substr($outdata, $file_data{'offset'} + 0x1000, length($s_bin), xfx_crypt_mode3($s_bin, substr($outdata, $file_data{'key_offset'}, 0x400), $file_data{'name'}));
 				}
 
 				$recompress = 1;
@@ -183,18 +187,19 @@ sub save_file # ( file_name )
 
 			if ($recompress && xfx_check_helper())
 			{
+				my($null4) = chr(0x00) x 4;
+				my($strip);
+
 				system(qq($XFX_HELPER -9 -q "$file_name"));
 
 				open file, $file_name;
 				binmode file;
-				my($strip) = join("", <file>);
+				read(file, $strip, -s $file_name);
 				close file;
-
-				my($null4) = chr(0x00) x 4;
 
 				$strip =~ s/UPX0/$null4/;
 				$strip =~ s/UPX1/$null4/;
-				$strip =~ s/1\.24\x00UPX/$null4$null4/;
+				$strip =~ s/1\.\d{2}\x00UPX/$null4$null4/;
 
 				open file, ">$file_name";
 				binmode file;

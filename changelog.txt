@@ -1,3 +1,9 @@
+1.2.0 (28 Jun 2004)
+	* Removed: No more support for scrambled/compressed flashers.  OmniPatcher will no longer work with these flashers.
+	* Improved: Optimized code for faster file loading.
+	* Fixed: Minor problems with detecting the flasher type.
+	* Fixed: The crossflashing checkbox is now disabled for GSU1 and GSC_ (it never had any effect on these firmwares anyway).
+
 1.1.2 (16 Jun 2004)
 	* Fixed: File open error in Windows 9x/ME (does not affect 2K/XP).
 
