@@ -1,0 +1,14 @@
+To compile this Perl project, you will need several things...
+
+1/ ActiveState's Perl 5.8
+2/ ActiveState's PDK 6
+3/ A specially modified version of the Perl Win32::GUI module
+   (found in the resources/ directory)
+4/ This source code.  ;)
+5/ UPX
+
+Install Perl and PDK.  Use PPM to install the modified Win32::GUI module 
+(the regular module found at CPAN will not do!).
+If needed update appinfo.txt, and run make.bat!
+
+PS: Set your editor's tab stops to 3.
