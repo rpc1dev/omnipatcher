@@ -1,3 +1,8 @@
+1.3.13 (2 Oct 2004)
+	* Added: A new "Info" button that displays general information about the loaded firmware.
+	* Fixed: OmniPatcher crashing upon startup on Windows 2000. (thanks, rdgrimes)
+	* Other: Modified (once again) the formatting of the media codes report.  By request, the OmniPatcher version is now included in the report file.
+
 1.3.12 (27 Sep 2004)
 	* Other: Updated one of the libraries used to build the executable.
 

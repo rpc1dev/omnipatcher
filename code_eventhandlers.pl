@@ -312,6 +312,18 @@ sub Cmds1_Click
 
 sub Cmds2_Click
 {
+	my($report);
+
+	$report  = "Drive name string:  $file_data{'driveid'}\n";
+	$report .= "Firmware revision:  $file_data{'fwrev'}\n";
+	$report .= "Firmware timestamp:  $file_data{'timestamp'}";
+
+	Win32::GUI::MessageBox($hWndMain, $report, "Firmware Information", MB_OK | MB_ICONINFORMATION);
+	return 1;
+}
+
+sub Cmds3_Click
+{
 	Win32::GUI::MessageBox($hWndMain, "$PROGRAM_TITLE\nVersion $PROGRAM_VERSION, built on $BUILD_STAMP\n\nWeb: http://codeguys.rpc1.org/", "About", MB_OK | MB_ICONINFORMATION);
 	return 1;
 }

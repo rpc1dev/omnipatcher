@@ -1,6 +1,6 @@
 ##
 # XFlash-X Common Library
-# 1.2.0 (24 Sept 2004)
+# 1.2.1 (2 Oct 2004)
 #
 
 require "lib_xflashx_config.pl";
@@ -443,7 +443,7 @@ sub xflashx # ( f_in )
 			}
 			else
 			{
-				push @ret, [ $bins[$i][0], '', 0, 0 ];
+				push @ret, [ $bins[$i][0], '', 0, 0, 0, 0 ];
 				xfx_status "Error extracting '$bins[$i][0]'...\n\n";
 			}
 		}

@@ -28,6 +28,30 @@ sub load_file # ( )
 		$file_data{'gen'} = 0;
 		error("OmniPatcher does not support slimline drives.");
 	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'R')
+	{
+		$file_data{'fwfamily'} = 'SOSW-832S';
+		$file_data{'gen'} = 0;
+		error("OmniPatcher does not support slimline drives.");
+	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'N')
+	{
+		$file_data{'fwfamily'} = 'SOSW-842S';
+		$file_data{'gen'} = 0;
+		error("OmniPatcher does not support slimline drives.");
+	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'P')
+	{
+		$file_data{'fwfamily'} = 'SOSW-852S';
+		$file_data{'gen'} = 0;
+		error("OmniPatcher does not support slimline drives.");
+	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'Q')
+	{
+		$file_data{'fwfamily'} = 'SOSW-862S';
+		$file_data{'gen'} = 0;
+		error("OmniPatcher does not support slimline drives.");
+	}
 	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'E')
 	{
 		$file_data{'fwfamily'} = 'LDW-401S';
@@ -63,6 +87,11 @@ sub load_file # ( )
 		$file_data{'fwfamily'} = 'SOHW-1213S';
 		$file_data{'gen'} = 3;
 	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'K')
+	{
+		$file_data{'fwfamily'} = 'SOHW-833S';
+		$file_data{'gen'} = 3;
+	}
 	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'A')
 	{
 		$file_data{'fwfamily'} = 'SOHW-1613S';
@@ -72,6 +101,16 @@ sub load_file # ( )
 	{
 		$file_data{'fwfamily'} = 'SOHW-1633S';
 		$file_data{'gen'} = 3;
+	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'C')
+	{
+		$file_data{'fwfamily'} = 'SOHW-1653S';
+		$file_data{'gen'} = 4;
+	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'W')
+	{
+		$file_data{'fwfamily'} = 'SOHW-1673S';
+		$file_data{'gen'} = 4;
 	}
 	else
 	{
@@ -117,6 +156,7 @@ sub load_file # ( )
 		$file_data{'pbankpos'} = 0xE0000 if (substr($file_data{'work'}, 0xE0000, 0x10000) =~ /$PLUS_SAMPLE/);
 	}
 
+	$file_data{'driveid'} = 'Unknown';
 	$file_data{'drivevid'} = 'Unknown';
 	$file_data{'drivepid'} = 'Unknown';
 	$file_data{'timestamp'} = 'Unknown';
@@ -133,6 +173,8 @@ sub load_file # ( )
 
 		$file_data{'timestamp'} =~ s/^\s+//;
 		$file_data{'timestamp'} = 'Unknown' if ($file_data{'timestamp'} eq '');
+
+		$file_data{'driveid'} = "$file_data{'drivevid'} $file_data{'drivepid'}";
 	}
 
 	getmctype();
@@ -223,6 +265,11 @@ sub load_file # ( )
 			$file_data{'pr_limit'} = 12;
 			$file_data{'pr9_limit'} = 0;
 		}
+		elsif ($file_data{'gen'} == 4)
+		{
+			$file_data{'dr_limit'} = 16;
+			$file_data{'dr9_limit'} = 4;
+		}
 	}
 
 	$file_data{'strat_status'} = patch_strat(1, -1);
@@ -292,6 +339,7 @@ sub load_file # ( )
 
 	SetEnable($ObjSpdRep);
 	SetEnable($ObjCmds[1]);
+	SetEnable($ObjCmds[2]);
 
 	$ObjCmdGroup->Text(($file_data{'fwrev'} eq 'Unknown') ? $file_data{'shortname'} : "$file_data{'fwrev'} ($file_data{'shortname'})");
 }
@@ -505,12 +553,18 @@ sub save_report # ( file_name )
 
 	$report  = "OmniPatcher Media Code Report\n";
 	$report .= "=============================\n\n";
-	$report .= "         File name: $file_data{'shortname'}\n";
+
+	$report .= "OmniPatcher version: $PROGRAM_VERSION\n";
+	$report .= "Firmware file name: $file_data{'shortname'}\n\n\n";
+
+	$report .= "-" x 80 . "\n";
+	$report .= "General Information\n";
+	$report .= "-" x 80 . "\n";
 	$report .= "        Drive type: $file_data{'fwfamily'}\n";
 	$report .= "     Vendor string: $file_data{'drivevid'}\n";
 	$report .= "    Product string: $file_data{'drivepid'}\n";
 	$report .= " Firmware revision: $file_data{'fwrev'}\n";
-	$report .= "Firmware timestamp: $file_data{'timestamp'}\n\n\n";
+	$report .= "Firmware timestamp: $file_data{'timestamp'}\n\n";
 
 	foreach $type (@types)
 	{

@@ -157,6 +157,7 @@ $hWndMain = 0;
 	(
 		"&Load",
 		"&Save As",
+		"&Info",
 		"&About",
 	);
 
@@ -232,6 +233,7 @@ $hWndMain = 0;
 	$NC_HEIGHT = $ObjTemp->Height() - $ObjTemp->ScaleHeight();
 
 	$MARGIN = 8;
+	$MARGIN_CMD = 6;
 	$MARGIN_CHECK = 4;
 	$MARGIN_GROUP = 10;
 	$MARGINS_GROUP = [ $MARGIN_GROUP, $MARGIN_GROUP + $FONTHEIGHT_TAHOMA ];
@@ -242,7 +244,7 @@ $hWndMain = 0;
 	@DIM_DEFSTRAT = ( $MARGIN + $DIM_LIST[0] + $DIM_SPEED[0], $DIM_SPDREP[1] );
 	@DIM_MEDIALABEL = ( $DIM_DEFSTRAT[0], $FONTHEIGHT_TAHOMA );
 	@DIM_PATCH = ( $DIM_DEFSTRAT[0], $FONTHEIGHT_TAHOMA );
-	@DIM_CMD = ( ($DIM_DEFSTRAT[0] - $MARGIN * $#CMD_NAMES) / scalar(@CMD_NAMES), $DIM_SPDREP[1] );
+	@DIM_CMD = ( ($DIM_DEFSTRAT[0] - $MARGIN_CMD * $#CMD_NAMES) / scalar(@CMD_NAMES), $DIM_SPDREP[1] );
 
 	@DIM_MEDIAGRP = ( $MARGIN_GROUP * 2 + $DIM_DEFSTRAT[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + $DIM_LIST[1] + $MARGIN + $DIM_DEFSTRAT[1] + $MARGIN + $DIM_MEDIALABEL[1] );
 	@DIM_PATCHGRP = ( $DIM_MEDIAGRP[0], $MARGIN_GROUP * 2 + $FONTHEIGHT_TAHOMA + ($DIM_PATCH[1] + $MARGIN_CHECK) * scalar(@PATCH_NAMES) - $MARGIN_CHECK );
@@ -445,11 +447,11 @@ $hWndMain = 0;
 			-name			=> "Cmds$i",
 			-text			=> $CMD_NAMES[$i],
 			-font			=> $FontTahoma,
-			-pos			=> addpairs($MARGINS_GROUP, [ ($DIM_CMD[0] + $MARGIN) * $i, 0 ], getpos($ObjCmdGroup)),
+			-pos			=> addpairs($MARGINS_GROUP, [ ($DIM_CMD[0] + $MARGIN_CMD) * $i, 0 ], getpos($ObjCmdGroup)),
 			-size			=> \@DIM_CMD,
 			-addstyle	=> (($i == 0) ? 1 : 0) * WS_GROUP,
 			-tabstop		=> 1,
-			-disabled	=> ($i == 1) ? 1 : 0,
+			-disabled	=> ($i == 1 || $i == 2) ? 1 : 0,
 
 		) or abort("Initialization Error.");
 
