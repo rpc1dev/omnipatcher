@@ -62,33 +62,30 @@ sub patch_strat # ( testmode, mode )
 	return -1 unless ($#pat_points == 3 && $pat_points[0][1] eq $pat_points[1][1] && $pat_points[0][1] eq $pat_points[2][1] && $pat_points[0][1] eq $pat_points[3][1]);
 	return $curmode if ($testmode);
 
-	if ($curmode != $mode)
+	substr($file_data{'work'}, $pbpos + 0xFF00, 0x100, chr(0x00) x 0x100);
+	substr($file_data{'work'}, $dbpos + 0xFF00, 0x100, chr(0x00) x 0x100);
+
+	if ($mode == 0)
 	{
-		substr($file_data{'work'}, $pbpos + 0xFF00, 0x100, chr(0x00) x 0x100);
-		substr($file_data{'work'}, $dbpos + 0xFF00, 0x100, chr(0x00) x 0x100);
-
-		if ($mode == 0)
+		foreach $pat_point (@pat_points)
 		{
-			foreach $pat_point (@pat_points)
-			{
-				substr($file_data{'work'}, $pat_point->[0], 3, "\x90$pat_dptr");
-			}
+			substr($file_data{'work'}, $pat_point->[0], 3, "\x90$pat_dptr");
 		}
-		else
+	}
+	else
+	{
+		foreach $pat_point (@pat_points)
 		{
-			foreach $pat_point (@pat_points)
-			{
-				substr($file_data{'work'}, $pat_point->[0], 3, "\x12\xFF\x00");
-			}
-
-			substr($insert, 0x23, 2, $pat_dptr);
-
-			substr($insert, 0x08, 1, chr(0x94));
-			substr($file_data{'work'}, $pbpos + 0xFF00, length($insert), $insert);
-
-			substr($insert, 0x08, 1, chr(0x90));
-			substr($file_data{'work'}, $dbpos + 0xFF00, length($insert), $insert);
+			substr($file_data{'work'}, $pat_point->[0], 3, "\x12\xFF\x00");
 		}
+
+		substr($insert, 0x23, 2, $pat_dptr);
+
+		substr($insert, 0x08, 1, chr(0x94));
+		substr($file_data{'work'}, $pbpos + 0xFF00, length($insert), $insert);
+
+		substr($insert, 0x08, 1, chr(0x90));
+		substr($file_data{'work'}, $dbpos + 0xFF00, length($insert), $insert);
 	}
 
 	return $curmode;

@@ -1,3 +1,6 @@
+1.3.1 (6 Jul 2004)
+	* Fixed: When removing (unpatching) strategy replacements from a patched firmware, the removal would not always be successful.  The bug causing this has been fixed.
+
 1.3.0 (5 Jul 2004)
 	* Added: Ability to do write strategy replacements. (unlike swaps, replacements do not carry the ill side effects to the "host" code)
 	* Improved: The media code report format has been improved for better readability.

@@ -148,7 +148,7 @@ sub DefStrat_Click
 		}
 	}
 
-	Win32::GUI::MessageBox($hWndMain, sprintf("%d strategy replacements have been applied.", $count), "Status", MB_OK | MB_ICONINFORMATION);
+	Win32::GUI::MessageBox($hWndMain, sprintf("%d strategy replacement(s) applied.", $count), "Status", MB_OK | MB_ICONINFORMATION);
 
 	return 1;
 }
