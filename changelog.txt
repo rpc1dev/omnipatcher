@@ -1,3 +1,6 @@
+1.3.12 (27 Sep 2004)
+	* Other: Updated one of the libraries used to build the executable.
+
 1.3.11 (23 Sep 2004)
 	* Fixed: Problems with speedhacking beyond 12x with firmwares BS02 and newer.
 	* Fixed: Problems with speedhacking beyond 8x with firmwares BS0D and newer.

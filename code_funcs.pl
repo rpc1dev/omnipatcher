@@ -10,7 +10,7 @@ sub load_file # ( )
 	my($fwr_pat) = '\x7D(.)\x90.{21,23}' x $fwr_len;
 
 	$file_data{'fwrev'} = '';
-	$file_data{'fwfamily'} = '';
+	$file_data{'fwfamily'} = 'Unknown';
 
 	if ($file_data{'core'} =~ /$fwr_pat/s)
 	{
@@ -96,6 +96,8 @@ sub load_file # ( )
 		}
 	}
 
+	$file_data{'fwrev'} = 'Unknown' if ($file_data{'fwrev'} eq '');
+
 	if ($file_data{'gen'} == 0)
 	{
 		$file_data{'pbankpos'} = 0x00000;
@@ -126,13 +128,11 @@ sub load_file # ( )
 		$file_data{'timestamp'} = $3;
 
 		$file_data{'drivevid'} =~ s/\s+$//;
-		$file_data{'drivevid'} =~ s/^\s+//;
-
 		$file_data{'drivepid'} =~ s/\s+$//;
-		$file_data{'drivepid'} =~ s/^\s+//;
-
 		$file_data{'timestamp'} =~ s/\s+$//;
+
 		$file_data{'timestamp'} =~ s/^\s+//;
+		$file_data{'timestamp'} = 'Unknown' if ($file_data{'timestamp'} eq '');
 	}
 
 	getmctype();
@@ -293,7 +293,7 @@ sub load_file # ( )
 	SetEnable($ObjSpdRep);
 	SetEnable($ObjCmds[1]);
 
-	$ObjCmdGroup->Text(($file_data{'fwrev'} eq '') ? $file_data{'shortname'} : "$file_data{'fwrev'} ($file_data{'shortname'})");
+	$ObjCmdGroup->Text(($file_data{'fwrev'} eq 'Unknown') ? $file_data{'shortname'} : "$file_data{'fwrev'} ($file_data{'shortname'})");
 }
 
 sub save_file # ( file_name )
@@ -380,7 +380,7 @@ sub save_file # ( file_name )
 				}
 				elsif ($file_data{'exedata'}->[2] == 4)
 				{
-					substr($outdata, $file_data{'offset'} + 0x1000, length($s_bin), (xfx_crypt_mode4($s_bin, substr($outdata, $file_data{'key_offset'}, 0x400), $file_data{'name'}, $file_data{'exkey'}))[0]);
+					substr($outdata, $file_data{'offset'} + 0x1000, length($s_bin), (xfx_crypt_mode4($s_bin, substr($outdata, $file_data{'key_offset'}, 0x400), $file_data{'name'}, $file_data{'andkey'}, $file_data{'exkey'}))[0]);
 				}
 				else
 				{
@@ -506,10 +506,10 @@ sub save_report # ( file_name )
 	$report  = "OmniPatcher Media Code Report\n";
 	$report .= "=============================\n\n";
 	$report .= "         File name: $file_data{'shortname'}\n";
-	$report .= "        Drive type: " . (($file_data{'fwfamily'} ne "") ? "$file_data{'fwfamily'}\n" : "Unknown\n");
+	$report .= "        Drive type: $file_data{'fwfamily'}\n";
 	$report .= "     Vendor string: $file_data{'drivevid'}\n";
 	$report .= "    Product string: $file_data{'drivepid'}\n";
-	$report .= " Firmware revision: " . (($file_data{'fwrev'} ne "") ? "$file_data{'fwrev'}\n" : "Unknown\n");
+	$report .= " Firmware revision: $file_data{'fwrev'}\n";
 	$report .= "Firmware timestamp: $file_data{'timestamp'}\n\n\n";
 
 	foreach $type (@types)

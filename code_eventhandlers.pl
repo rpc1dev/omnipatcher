@@ -268,7 +268,8 @@ sub Cmds0_Click
 		$new_file{'work'} = $xfx->[0][0][1];
 		$new_file{'offset'} = $xfx->[0][0][2];
 		$new_file{'key_offset'} = $xfx->[0][0][3];
-		$new_file{'exkey'} = $xfx->[0][0][4];
+		$new_file{'andkey'} = $xfx->[0][0][4];
+		$new_file{'exkey'} = $xfx->[0][0][5];
 		$new_file{'exedata'} = $xfx->[1];
 
 		return error("Unable to process this .EXE file!\nPlease make sure that the file is valid.\n\nIf this firmware flasher is scrambled/compressed, you\nshould consider downloading an unscrambled version\nof the flasher from one of these two websites:\n-  http://dhc014.rpc1.org/indexOEM.htm\n-  http://codeguys.rpc1.org/firmwares.html", 1) if (length($new_file{'work'}) != 0x100000);
