@@ -56,6 +56,8 @@ sub Speeds1_Click { return proc_speed(); }
 sub Speeds2_Click { return proc_speed(); }
 sub Speeds3_Click { return proc_speed(); }
 sub Speeds4_Click { return proc_speed(); }
+sub Speeds5_Click { return proc_speed(); }
+sub Speeds6_Click { return proc_speed(); }
 
 sub SpdRep_Click
 {

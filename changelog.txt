@@ -1,3 +1,6 @@
+1.0.3 (11 Jun 2004)
+	* Fixed: Bug with hacking writing speeds on *13S firmwares.
+
 1.0.2 (11 Jun 2004)
 	* Fixed: OmniPatcher can now correctly handle the new *13S firmwares.
 

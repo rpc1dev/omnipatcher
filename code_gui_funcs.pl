@@ -77,7 +77,7 @@ sub load_file # ( )
 	SetEnable($ObjSpdRep);
 	SetEnable($ObjCmds[1]);
 
-	$ObjCmdGroup->Text("$file_data{'shortname'} loaded");
+	$ObjCmdGroup->Text($file_data{'shortname'});
 }
 
 sub save_file # ( file_name )
