@@ -81,7 +81,7 @@ $hWndMain = 0;
 ################################################################################
 # BEGIN: Section: initialize tool settings
 {
-	@MEDIA_SPEEDS = ( 1, 2, 4, 6, 8 );
+	@MEDIA_SPEEDS = ( 1, 2, 4, 6, 8, 12, 16 );
 
 	@PATCH_NAMES =
 	(
@@ -100,9 +100,6 @@ $hWndMain = 0;
 	);
 
 	$MGROUP_NAME = "DVD Writing-Speed Limits";
-
-	$RW_LIMIT = 4;
-	$R9_LIMIT = 2;
 
 } # END: Section: initialize tool settings
 

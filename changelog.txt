@@ -1,3 +1,6 @@
+1.0.2 (11 Jun 2004)
+	* Fixed: OmniPatcher can now correctly handle the new *13S firmwares.
+
 1.0.1 (10 Jun 2004)
 	* Added: Ability to save a report of the media codes to a text file.
 	* Fixed: Color problems with the Windows XP "Luna" theme.

@@ -23,8 +23,9 @@ sub List_Click
 
 		foreach $i (0 .. $#ObjSpeeds)
 		{
-			if ( ($MEDIA_SPEEDS[$i] > $RW_LIMIT && $type =~ /^.RW/) ||
-			     ($MEDIA_SPEEDS[$i] > $R9_LIMIT && $type =~ /^.R9/) ||
+			if ( ($MEDIA_SPEEDS[$i] > $file_data{'r_limit'}) ||
+			     ($MEDIA_SPEEDS[$i] > $file_data{'r9_limit'} && $type =~ /^.R9/) ||
+			     ($MEDIA_SPEEDS[$i] > $file_data{'rw_limit'} && $type =~ /^.RW/) ||
 			     ($MEDIA_SPEEDS[$i] == 1 && $type =~ /^\+/) )
 			{
 				SetDisable($ObjSpeeds[$i]);

@@ -1,4 +1,4 @@
-$PLUS_PATTERN = '(?:\x00{12}|\xFF{12}|(?:\w{2}.{6}[\w\x00]{3}.)|(?:\w{3}.{9})|(?:\x00{8}\w.{3}))[\x00-\x1F]';
+$PLUS_PATTERN = '(?:\x00{12}|\xFF{12}|(?:\w{2}.{6}[\w\x00]{3}.)|(?:\w{3}.{9})|(?:\x00{8}\w.{3}))[\x00-\x7F]';
 $DASHR_PATTERN = '\x00{13}|(?:\w[\w \-\.,\xAD\x00]{11}.)';
 $DASHRW_PATTERN = '\x00{13}|(?:\w[\w \-\.,\xAD\x00\!\/\[\]]{11}.)';
 
@@ -43,7 +43,8 @@ sub nullunbuf # ( str )
 
 sub getcodes # ( )
 {
-	my($data) = substr($file_data{'work'}->[0], 0xC0000, 0x20000);
+	my($start, $len) = ($file_data{'gen'} < 3) ? (0xC0000, 0x20000) : (0x90000, 0x40000);
+	my($data) = substr($file_data{'work'}->[0], $start, $len);
 
 	my($x, $y, $p, $i);
 	my(@codes, @speeds, @ret);
@@ -75,7 +76,7 @@ sub getcodes # ( )
 				$rid = ord(substr($id, 11, 1));
 				$spd = ord(substr($id, 12, 1));
 
-				push @codes, [ "+R/W", [ $mid, $tid, $rid, $spd ], sprintf("%-8s/%-3s/%02X", $mid, $tid, $rid)  ];
+				push @codes, [ "+R/W", [ $mid, $tid, $rid, $spd ], sprintf("%-8s/%-3s/%02X", $mid, $tid, $rid) ];
 
 				$found_break = $break_pos if ($mid eq "" || $mid =~ /^[\xFF]/);
 				$found_break_ff = $break_pos if ($mid =~ /^[\xFF]/);
@@ -122,7 +123,7 @@ sub getcodes # ( )
 				$rid = ord(substr($id, 11, 1));
 				$spd = ord(substr($id, 12, 1));
 
-				push @codes, [ "+R9", [ $mid, $tid, $rid, $spd ], sprintf("%-8s/%-3s/%02X", $mid, $tid, $rid)  ];
+				push @codes, [ "+R9", [ $mid, $tid, $rid, $spd ], sprintf("%-8s/%-3s/%02X", $mid, $tid, $rid) ];
 			}
 			else
 			{
@@ -206,7 +207,8 @@ sub getcodes # ( )
 
 sub setcodes # ( )
 {
-	my($data) = substr($file_data{'work'}->[0], 0xC0000, 0x20000);
+	my($start, $len) = ($file_data{'gen'} < 3) ? (0xC0000, 0x20000) : (0x90000, 0x40000);
+	my($data) = substr($file_data{'work'}->[0], $start, $len);
 
 	my($x, $y, $p, $i);
 	my($patch, $mid, $tid);
@@ -315,7 +317,7 @@ sub setcodes # ( )
 		}
 	}
 
-	substr($file_data{'work'}->[0], 0xC0000, 0x20000, $data);
+	substr($file_data{'work'}->[0], $start, $len, $data);
 }
 
 1;

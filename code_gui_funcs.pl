@@ -2,12 +2,40 @@ sub load_file # ( )
 {
 	my($code, $i);
 
+	my($header) = substr($file_data{'work'}->[0], 0xF0000, 0x200);
+
+	if ($header =~ /SOHW-8.2S|DW-.18A/)
+	{
+		$file_data{'gen'} = 2;
+	}
+	elsif ($header =~ /DW-.(\d{2})A/)
+	{
+		$file_data{'gen'} = (($1 >= 20) ? 3 : 2);
+	}
+	else
+	{
+		$file_data{'gen'} = 1;
+	}
+
 	$file_data{'codes'} = [ getcodes() ];
 	$file_data{'speeds'} = [ map { $_->[1][-1] } @{$file_data{'codes'}} ];
 	$file_data{'ncodes'} = scalar(@{$file_data{'codes'}});
 
 	$ObjList->Clear();
 	List_Click();
+
+	if ($file_data{'gen'} < 3)
+	{
+		$file_data{'r_limit'} = 8;
+		$file_data{'r9_limit'} = 2;
+		$file_data{'rw_limit'} = 4;
+	}
+	else
+	{
+		$file_data{'r_limit'} = 16;
+		$file_data{'r9_limit'} = 4;
+		$file_data{'rw_limit'} = 8;
+	}
 
 	foreach $code (@{$file_data{'codes'}})
 	{
@@ -19,11 +47,18 @@ sub load_file # ( )
 
 	$file_data{'patch_status'} = [ ];
 
-	$file_data{'patch_status'}->[0] = patch_rs(1);
-	$file_data{'patch_status'}->[1] = patch_abs(1, -1);
-	$file_data{'patch_status'}->[2] = patch_fb(1, -1);
-	$file_data{'patch_status'}->[3] = patch_sf(1, -1);
-	$file_data{'patch_status'}->[4] = patch_eeprom(1, -1);
+	if ($file_data{'gen'} < 3)
+	{
+		$file_data{'patch_status'}->[0] = patch_rs(1);
+		$file_data{'patch_status'}->[1] = patch_abs(1, -1);
+		$file_data{'patch_status'}->[2] = patch_fb(1, -1);
+		$file_data{'patch_status'}->[3] = patch_sf(1, -1);
+		$file_data{'patch_status'}->[4] = patch_eeprom(1, -1);
+	}
+	else
+	{
+		$file_data{'patch_status'} = [ -1, -1, -1, -1, -1 ];
+	}
 
 	foreach $i (0 .. $#ObjPatches)
 	{
