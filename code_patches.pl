@@ -1,4 +1,4 @@
-$OP_ALLOW_ADVANCED_AUTOBS = 1;
+$OP_ALLOW_ADVANCED_AUTOBS = 0;
 
 sub patch_rs # ( testmode )
 {

@@ -1,17 +1,9 @@
 ##
 # XFlash-X Common Library
-# 1.2.3 (23 Nov 2004)
-# 2.4.1 (20 April 2005)
-#	Other: Allowed XF version 2.2.x to use same checks as 2.1.x
-#	Other: All options including HOW_MANY_BIN has been replaced with PARA_OPT in 2.2.2
-#	        Allowed for one rom at this stage by detecting a number larger than 4
-#	        Don't know how to figure out which bits are the ROM count
-# 2.4.2 (6 May 2005)
-#	Other: Had to add a new scram mode for XF v 2.2.x. Every firmware release since XF v2.2.0
-#               has used a key of 0x00. When the Sony BYX4 was released with XF v2.2.0 the
-#               the detected key was 0x90 but the required key was still 0x00. The new scram mode
-#               use the exkey parameter of xfx_crypt_mode4 to force a 0x00 key.
+# 1.3.1 (30 May 2005)
+#
 
+use Digest::MD5 qw(md5_hex);
 
 require "lib_xflashx_config.pl";
 
@@ -147,6 +139,7 @@ sub xfx_crypt_mode4 # ( str, key, fwrev, andkey, exkey )
 	unless (defined($exkey))
 	{
 		my(@excount) = (0) x 0x100;
+		my($extotal, $exkey_ru);
 
 		foreach $count (0 .. length($key) - 1)
 		{
@@ -159,10 +152,20 @@ sub xfx_crypt_mode4 # ( str, key, fwrev, andkey, exkey )
 			if (($count + 1) % 7 == 1 || ($count + 1) % 7 == 3)
 			{
 				$excount[$changebyte ^ $fwkey]++;
+
+				if ( $changepos > 0 && $changepos < length($str) - 1 &&
+				     substr($str, $changepos - 1, 1) eq "\x00" && substr($str, $changepos - 1, 1) eq "\x00" )
+				{
+					$excount[$changebyte ^ $fwkey] += 2;
+				}
+
+				$extotal++;
 			}
 		}
 
-		$exkey = (sort { $excount[$b] <=> $excount[$a] } (0x00 .. 0xFF))[0];
+		($exkey, $exkey_ru, undef) = sort { $excount[$b] <=> $excount[$a] } (0x00 .. 0xFF);
+
+		xfx_debug(sprintf("Heuristic S/N: 0x%02X:%02d%% / 0x%02X:%02d%%\n", $exkey, 100 * $excount[$exkey] / $extotal, $exkey_ru, 100 * $excount[$exkey_ru] / $extotal));
 	}
 
 	foreach $count (0 .. length($key) - 1)
@@ -201,7 +204,7 @@ sub xflashx # ( f_in )
 	my($start, $flag_fail, $scrammode, $skip_pre, $skip_len, $s_bin, $bin_fw);
 	my($andkey, $exkey);
 
-	xfx_status "Loading and analyzing...\n\n";
+	xfx_status("Loading and analyzing...\n\n");
 
 	###
 	# Override the unscrambling setup if the helper is found... override this
@@ -215,7 +218,7 @@ sub xflashx # ( f_in )
 	###
 	# Determine Mode
 	#
-	xfx_debug "Performing initial analysis... ";
+	xfx_debug("Performing initial analysis... ");
 
 	$loaded = 0;
 
@@ -237,12 +240,12 @@ sub xflashx # ( f_in )
 
 	if ($mode == 2 && $XFX_UNSCRAMBLE == 0)
 	{
-		xfx_debug "\n";
-		xfx_status "This flasher is scrambled/compressed and cannot be processed.\n";
+		xfx_debug("\n");
+		xfx_status("This flasher is scrambled/compressed and cannot be processed.\n");
 		return [ [ ], [ ] ];
 	}
 
-	xfx_debug "done, entering mode $mode\n\n";
+	xfx_debug("done, entering mode $mode\n\n");
 
 	###
 	# UPX
@@ -254,7 +257,7 @@ sub xflashx # ( f_in )
 		$f_upx = $f_in;
 		$f_upx =~ s/\.exe$/$XFX_TEMP_SUFFIX.exe/i;
 
-		xfx_debug "Creating temp file '$f_upx'...\n\n";
+		xfx_debug("Creating temp file '$f_upx'...\n\n");
 
 		unless ($loaded)
 		{
@@ -275,7 +278,7 @@ sub xflashx # ( f_in )
 		print file $data;
 		close file;
 
-		xfx_debug "Preparing '$f_upx'...\n\n";
+		xfx_debug("Preparing '$f_upx'...\n\n");
 
 		my($xfx_cmd) = qq($XFX_HELPER -d -q "$f_upx");
 
@@ -294,7 +297,7 @@ sub xflashx # ( f_in )
 	###
 	# Read input
 	#
-	xfx_debug "Reading input file '$f_in'...\n\n";
+	xfx_debug("Reading input file '$f_in'...\n\n");
 
 	unless ($loaded)
 	{
@@ -306,42 +309,44 @@ sub xflashx # ( f_in )
 
 	unlink $f_upx if ($mode == 2 && !$XFX_KEEP_TEMP);
 
-	xfx_debug "Determining XFlash version...\n";
+	xfx_debug("Determining XFlash version...\n");
 
 	if ($data =~ /(?:(?:rr.\x00v)|(?:Ver ))(\d\.\d{1,2}\.\d{1,2})\x00{2}/s)
 	{
 		$xfversion = $1;
 		$xfvernum = sprintf("%d%02d%02d", split(/\./, $xfversion));
 
-		xfx_debug "Version detected: XFlash v$xfversion...\n";
+		xfx_debug("Version detected: XFlash v$xfversion...\n");
 
 		if ($mode != 2 && $xfvernum >= 20005)
 		{
 			$mode = 2;
-			xfx_debug "Mode correction initiated, entering mode $mode...\n";
+			xfx_debug("Mode correction initiated, entering mode $mode...\n");
+
+			$XFX_UNSCRAMBLE = 1 if ($data =~ /\[CG\-XF_BUILDER\]/s);
 
 			if ($mode == 2 && $XFX_UNSCRAMBLE == 0)
 			{
-				xfx_status "This flasher is scrambled/compressed and cannot be processed.\n";
+				xfx_status("This flasher is scrambled/compressed and cannot be processed.\n");
 				return [ [ ], [ ] ];
 			}
 		}
 		elsif ($mode == 2 && $xfvernum < 20005)
 		{
 			$mode = 1;
-			xfx_debug "Mode correction initiated, entering mode $mode...\n";
+			xfx_debug("Mode correction initiated, entering mode $mode...\n");
 		}
 	}
 	else
 	{
-		xfx_debug "Unknown XFlash version...\n";
+		xfx_debug("Unknown XFlash version...\n");
 	}
 
-	xfx_debug "Searching for the firmware descriptor table...\n";
+	xfx_debug("Searching for the firmware descriptor table...\n");
 
 	if ($data =~ /$XFX_PATTERN/sg)
 	{
-		xfx_debug "Firmware descriptor table found... parsing...\n\n";
+		xfx_debug("Firmware descriptor table found... parsing...\n\n");
 
 		$offset = pos($data);
 
@@ -358,28 +363,26 @@ sub xflashx # ( f_in )
 		# Now that it's stored, it's safe to use regexp calls to do some
 		# cleanup and some output.
 		#
-		$nbins = xfx_nulltrim($nbins) + 0;
-		# work around for new PARA_OPT until I know more about how it works 
-		$nbins = 1 if ($nbins > 4);
+		$nbins = ($xfvernum < 20200) ? xfx_nulltrim($nbins) + 0 : 4;
 
 		foreach $i (0 .. 3)
 		{
-			$bins[$i][0] = xfx_nulltrim($bins[$i][0]);
+			$bins[$i][0] = xfx_nulltrim(substr($bins[$i][0], 0, 4));
 			$bins[$i][1] += 0;
 			$bins[$i][2] += 0;
 
-			xfx_debug sprintf("[FW-%d] Name: %s, Offset: 0x%X, Size: 0x%06X\n", $i + 1, @{$bins[$i]});
+			xfx_debug(sprintf("[FW-%d] Name: %s, Offset: 0x%X, Size: 0x%06X\n", $i + 1, @{$bins[$i]}));
 		}
 
-		xfx_debug sprintf("\nInitial offset: 0x%X\n", $offset);
-		xfx_debug "Number of firmwares: $nbins\n\n";
+		xfx_debug(sprintf("\nInitial offset: 0x%X\n", $offset));
+		xfx_debug("Number of firmwares: $nbins\n\n");
 
 		foreach $i (0 .. $nbins - 1)
 		{
 			next if ($bins[$i][2] == 0);
 
 			$start = $bins[$i][1] + $offset;
-			xfx_debug sprintf("Attempting to extract '%s': 0x%06X bytes with offset 0x%X...\n\n", $bins[$i][0], $bins[$i][2], $bins[$i][1]);
+			xfx_debug(sprintf("Attempting to extract '%s': 0x%06X bytes with offset 0x%X...\n", $bins[$i][0], $bins[$i][2], $bins[$i][1]));
 
 			$flag_fail = 0;
 
@@ -387,13 +390,13 @@ sub xflashx # ( f_in )
 			{
 				$scrammode = 0;
 
-				if ($xfversion eq "2.0.5")
+				if ($xfvernum == 20005)
 				{
 					$scrammode = 1;
 					$skip_pre = 0x000000;
 					$skip_len = 0x000000;
 				}
-				elsif ($xfversion =~ /2\.(?:1|2)\.\d/)
+				elsif ($xfvernum >= 20100)
 				{
 					if ($data =~ /\x30\x02\xEB\x2B.{12}\x80\x34\x02\xFF.{25}\x30\x10/s)
 					{
@@ -401,47 +404,49 @@ sub xflashx # ( f_in )
 					}
 					elsif ($data =~ /(?:\x0F\xB6\x04\x08|(?:\x33\xC0)\x8A\x04\x0A)\x25(.)\x00\x00\x80(?:\x79\x05)\x48(?:\x83\xC8.)\x40/s)
 					{
+						$scrammode = 4;
 						$andkey = ord($1);
-						$scrammode = ($xfversion =~ /2\.2\.\d/) ? 5 : 4;
 					}
 					elsif ($data =~ /\xFF{256}/s)
 					{
+						$scrammode = 2;
 						$skip_pre = 0x000400;
 						$skip_len = 0x001000;
-						$scrammode = 2;
 					}
 					else
 					{
-						xfx_debug "Error: Cannot determine scrambling method.\n";
+						xfx_debug("Error: Cannot determine scrambling method.\n");
 					}
 				}
+
 				$flag_fail = 1 if ($scrammode == 0);
 
-				xfx_debug "Using unscrambler for XFlash v$xfversion, scramble mode $scrammode...\n" unless ($flag_fail);
-				xfx_debug "Failed to detect scramble mode\n" if ($flag_fail);
-
-				if ($scrammode == 3)
+				if ($flag_fail)
 				{
-					$bin_fw = xfx_crypt_mode3(substr($data, $start + 0x1000, $bins[$i][2]), substr($data, $offset + 0x400 * $i, 0x400), $bins[$i][0]);
-				}
-				elsif ($scrammode == 4)
-				{
-					($bin_fw, $exkey) = xfx_crypt_mode4(substr($data, $start + 0x1000, $bins[$i][2]), substr($data, $offset + 0x400 * $i, 0x400), $bins[$i][0], $andkey);
-					xfx_debug sprintf("Keys used: A(0x%02X), E(0x%02X)\n", $andkey, $exkey);
-				}
-				elsif ($scrammode == 5)
-				{
-					($bin_fw, $exkey) = xfx_crypt_mode4(substr($data, $start + 0x1000, $bins[$i][2]), substr($data, $offset + 0x400 * $i, 0x400), $bins[$i][0], $andkey, 0x00);
-					xfx_debug sprintf("Keys used: A(0x%02X), E(0x%02X)\n", $andkey, $exkey);
+					xfx_debug("Unable to determine scrambling method...\n");
 				}
 				else
 				{
-					$s_bin  = xfx_notstr(substr($data, $start, $skip_pre));
-					$s_bin .= substr($data, $start + $skip_pre + $skip_len, $bins[$i][2] - $skip_pre);
-					$bin_fw = $s_bin;
+					xfx_debug("Using unscrambler for XFlash v$xfversion, method $scrammode...\n");
 
-					substr($bin_fw, 0x0, 0x8000, reverse(substr($s_bin, length($s_bin) - 0x8000, 0x8000)));
-					substr($bin_fw, length($s_bin) - 0x8000, 0x8000, reverse(substr($s_bin, 0x0, 0x8000)));
+					if ($scrammode == 3)
+					{
+						$bin_fw = xfx_crypt_mode3(substr($data, $start + 0x1000, $bins[$i][2]), substr($data, $offset + 0x400 * $i, 0x400), $bins[$i][0]);
+					}
+					elsif ($scrammode == 4)
+					{
+						($bin_fw, $exkey) = xfx_crypt_mode4(substr($data, $start + 0x1000, $bins[$i][2]), substr($data, $offset + 0x400 * $i, 0x400), $bins[$i][0], $andkey);
+						xfx_debug(sprintf("Keys used: A(0x%02X), E(0x%02X)\n", $andkey, $exkey));
+					}
+					else
+					{
+						$s_bin  = xfx_notstr(substr($data, $start, $skip_pre));
+						$s_bin .= substr($data, $start + $skip_pre + $skip_len, $bins[$i][2] - $skip_pre);
+						$bin_fw = $s_bin;
+
+						substr($bin_fw, 0x0, 0x8000, reverse(substr($s_bin, length($s_bin) - 0x8000, 0x8000)));
+						substr($bin_fw, length($s_bin) - 0x8000, 0x8000, reverse(substr($s_bin, 0x0, 0x8000)));
+					}
 				}
 			}
 			else
@@ -470,21 +475,22 @@ sub xflashx # ( f_in )
 				}
 			}
 
-			unless ($flag_fail)
+			if ($flag_fail)
 			{
-				push @ret, [ $bins[$i][0], $bin_fw, $start, $offset + 0x400 * $i, $andkey, $exkey ];
-				xfx_status "'$bins[$i][0]' has been extracted...\n\n";
+				push @ret, [ $bins[$i][0], '', 0, 0, 0, 0 ];
+				xfx_status("Error extracting '$bins[$i][0]'...\n\n");
 			}
 			else
 			{
-				push @ret, [ $bins[$i][0], '', 0, 0, 0, 0 ];
-				xfx_status "Error extracting '$bins[$i][0]'...\n\n";
+				push @ret, [ $bins[$i][0], $bin_fw, $start, $offset + 0x400 * $i, $andkey, $exkey ];
+				xfx_status("'$bins[$i][0]' has been extracted...\n");
+				xfx_status("MD5: " . md5_hex($bin_fw) . "\n\n");
 			}
 		}
 	}
 	else
 	{
-		xfx_debug "BIN descriptor table could not be found...\n\n";
+		xfx_debug("BIN descriptor table could not be found...\n\n");
 	}
 
 	if ($XFX_RET_EXTENDED)

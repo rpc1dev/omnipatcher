@@ -1,10 +1,15 @@
+1.4.3 (30 May 2005)
+	* Other: Updated the compilation process.  OmniPatcher should look a lot better now on computers using the Windows XP Luna theme.
+	* Other: Updated some of the supporting code.
+	* Removed: OmniPatcher will no longer FlashFix a flasher.
+
 1.4.2 (1 May 2005)
-	* Improved: There is now a lot more information in the firmware information dialog
-	* Changed: New formatting in the media report
-	* Changed: 1673S -R DL media is now displayed in the media report with no speeds allocated
-	
+	* Improved: There is now a lot more information displayed in the firmware information dialog.
+	* Changed: New formatting in the media report.
+	* Changed: 1673S -R9 media is now displayed in the media report with no speeds allocated.
+
 1.4.1 (20 Apr 2005)
-	* Added: Support for firmwares that have -R9 media
+	* Added: Support for firmwares that have -R9 media.
 	
 1.4.0 (12 Apr 2005)
 	* Added: 16x reading speed patch for 3S drives.

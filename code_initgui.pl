@@ -237,11 +237,11 @@ $hWndMain = 0;
 
 ################################################################################
 # BEGIN: Section: initialize icons
-#{
-#	$OPIconLg = new    Win32::GUI::Icon("#1");
-#	$OPIconSm = new Win32::GUI::Icon("#2");
-#
-#} # END: Section: initialize icons
+{
+	$OPIconLg = new    Win32::GUI::Icon($ICO_ID);
+	$OPIconSm = new_sm Win32::GUI::Icon($ICO_ID);
+
+} # END: Section: initialize icons
 
 
 ################################################################################
@@ -303,8 +303,8 @@ $hWndMain = 0;
 
 	$hWndMain = Win32::GUI::FindWindow('', $unique_title);
 	$ObjMain->Change(-text => $PROGRAM_TITLE);
-#	$ObjMain->ChangeIcon($OPIconLg);
-#	$ObjMain->ChangeSmallIcon($OPIconSm);
+	$ObjMain->ChangeIcon($OPIconLg);
+	$ObjMain->ChangeSmallIcon($OPIconSm);
 
 } # END: Section: create window
 

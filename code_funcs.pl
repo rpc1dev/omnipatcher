@@ -395,10 +395,10 @@ sub save_file # ( file_name )
 		{
 			$outdata = $file_data{'exedata'}->[0];
 
-			my($ffpatch) = chr(0x90) x 6;
-			my($ffarea) = substr($outdata, 0, 0x10000);
-			$ffarea =~ s/\x0F\x85\xDA\x01\x00\x00|\x0F\x85\xF5\x00\x00\x00/$ffpatch/;
-			substr($outdata, 0, 0x10000, $ffarea);
+#			my($ffpatch) = chr(0x90) x 6;
+#			my($ffarea) = substr($outdata, 0, 0x10000);
+#			$ffarea =~ s/\x0F\x85\xDA\x01\x00\x00|\x0F\x85\xF5\x00\x00\x00/$ffpatch/;
+#			substr($outdata, 0, 0x10000, $ffarea);
 
 			if ($file_data{'exedata'}->[1] == 2)
 			{
@@ -435,7 +435,7 @@ sub save_file # ( file_name )
 			print file $outdata;
 			close file;
 
-			if ($recompress && xfx_check_helper())
+			if (0 && $recompress && xfx_check_helper())
 			{
 				my($null4) = chr(0x00) x 4;
 				my($strip);
