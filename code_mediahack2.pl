@@ -12,6 +12,7 @@ $DASHR3_SAMPLE = quotemeta("RITEKG05\x00");
 
 sub addr2bankstr # ( address )
 {
+	use integer;
 	my($address) = @_;
 	$address %= 0x10000;
 	return chr($address / 0x100) . chr($address % 0x100);
@@ -19,6 +20,7 @@ sub addr2bankstr # ( address )
 
 sub int2uni # ( val )
 {
+	use integer;
 	return chr($_[0] / 0x100) . chr($_[0] % 0x100);
 }
 
@@ -160,6 +162,8 @@ sub setcodes2 # ( )
 
 	foreach $dash_type ("R", "RW")
 	{
+		use integer;
+
 		if ($dash_type eq "R")
 		{
 			@dash_patches = @{$file_data{'dashr_patches'}};
@@ -171,7 +175,7 @@ sub setcodes2 # ( )
 
 		foreach $patch (@dash_patches)
 		{
-			$table_idx = ($dash_type eq "R") ? int($patch->[0] / 0x40) : -1;
+			$table_idx = ($dash_type eq "R") ? $patch->[0] / 0x40 : -1;
 			substr($dash_data[$table_idx], $patch->[0] % 0x40, 1, chr($patch->[1]));
 		}
 	}

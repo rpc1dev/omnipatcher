@@ -322,7 +322,9 @@ sub patch_eeprom # ( testmode, mode )
 	my($onc) = join('', map { chr } ( 0xFF, 0xEE, 0x6F, 0x60, 0x00, 0xD3, 0x22 ));
 	my($offpat, $on1pat, $on2pat, $oncpat) = map { quotemeta } ($off, $on1, $on2, $onc);
 
-	my($work) = substr($file_data{'work'}, 0x90000, 0x10000);
+	my($epbank) = ($file_data{'gen'} == 0) ? 0xC0000 : 0x90000;
+
+	my($work) = substr($file_data{'work'}, $epbank, 0x10000);
 
 	return -1 if ($work =~ /($oncpat)/s);
 
@@ -335,7 +337,11 @@ sub patch_eeprom # ( testmode, mode )
 		if (!$testmode)
 		{
 			substr($work, $addr - $len, $len, ($mode) ? $on1 : $off);
-			substr($file_data{'work'}, 0x90000, 0x10000, $work);
+			substr($file_data{'work'}, $epbank, 0x10000, $work);
+
+			##
+			# Code for multibank patching for VS05+ protections schemes.
+			#
 
 			my($check_addr) = rindex($work, chr(0x12), $addr);
 
@@ -394,9 +400,63 @@ sub patch_eeprom # ( testmode, mode )
 						substr($file_data{'work'}, $check_jump + $check_temp * 0x10000, 4, $check_1);
 					}
 
-					substr($file_data{'work'}, 0x9FFF0, 8, $check_2);
+					substr($file_data{'work'}, $epbank + 0xFFF0, 8, $check_2);
 				}
 			}
+
+			##
+			# Code for 51S@832S crossflashing
+			#
+
+			if ( $file_data{'fwfamily'} eq 'SOHW-802S/812S' ||
+			     $file_data{'fwfamily'} eq 'SOHW-822S/832S' )
+			{
+				my($jmp) = ($mode) ? chr(0x00) : chr(0x03);
+
+				if ($file_data{'work'} =~ s/(\x30.\x09\x90)(..)(\xE0\x60)[\x00\x03](\xD3\x80\x01)/$1$2$3$jmp$4/s)
+				{
+					my($addr_hwset) = $2;
+
+					$work = substr($file_data{'work'}, 0xF0000, 0x10000);
+
+					if ($work =~ /\x90(..)\xA3\xE0\xFF\x30\xE0\x0C\x90..\x74\x01\xF0\x90(..)\xE0\x04\xF0.{32}(.{32})\x22/sg)
+					{
+						my($addr_src) = $1;
+						my($addr_dest) = $2;
+						my($addr_end) = pos($work);
+						my($patch_area) = $3;
+
+						my($spd_patch_a) = join('', map { chr }
+						(
+							0x90, 0x00, 0x00, 0xE0, 0x60, 0x03, 0x02, 0xFF,
+							0xB0, 0xEF, 0x54, 0xE7, 0xFF, 0x90, 0x00, 0x00,
+							0xA3, 0xF0, 0x90, 0x00, 0x00
+						));
+
+						substr($spd_patch_a, 0x01, 2, $addr_hwset);
+						substr($spd_patch_a, 0x0E, 2, $addr_src);
+						substr($spd_patch_a, 0x13, 2, $addr_dest);
+
+						$spd_patch_a .= chr(0x00) x (0x20 - length($spd_patch_a));
+
+						if ($mode && $patch_area ne $spd_patch_a)
+						{
+							substr($work, $addr_end - 0x21, 0x20, $spd_patch_a);
+							substr($work, 0xFFB0, 0x23, $patch_area . chr(0x02) . addr2bankstr($addr_end - 0x01));
+							substr($file_data{'work'}, 0xF0000, 0x10000, $work);
+						}
+						elsif (!$mode && $patch_area eq $spd_patch_a)
+						{
+							substr($work, $addr_end - 0x21, 0x20, substr($work, 0xFFB0, 0x20));
+							substr($work, 0xFFB0, 0x23, chr(0x00) x 0x23);
+							substr($file_data{'work'}, 0xF0000, 0x10000, $work);
+						}
+
+					} # End: If found speed patching
+
+				} # End: If first patch point is found
+
+			} # End: If valid drive type
 		}
 
 		return ($orig eq $on1 || $orig eq $on2) ? 1 : 0;

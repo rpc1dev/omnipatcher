@@ -226,6 +226,15 @@ $hWndMain = 0;
 
 
 ################################################################################
+# BEGIN: Section: initialize icons
+{
+	$OPIconLg = new    Win32::GUI::Icon("#1");
+	$OPIconSm = new_sm Win32::GUI::Icon("#1");
+
+} # END: Section: initialize icons
+
+
+################################################################################
 # BEGIN: Section: initialize primary GUI dimensions
 {
 	$ObjTemp = new GUI::Window( -name => "Temp", -size => [ 64, 64 ], -style => WS_CAPTION | WS_SYSMENU ) or abort("Initialization Error.");
@@ -284,6 +293,8 @@ $hWndMain = 0;
 
 	$hWndMain = Win32::GUI::FindWindow('', $unique_title);
 	$ObjMain->Change(-text => $PROGRAM_TITLE);
+	$ObjMain->ChangeIcon($OPIconLg);
+	$ObjMain->ChangeSmallIcon($OPIconSm);
 
 } # END: Section: create window
 
@@ -470,6 +481,9 @@ $hWndMain = 0;
 		-remexstyle	=> WS_EX_CONTEXTHELP,
 
 	) or abort("Initialization Error.");
+
+	$ObjStMain->ChangeIcon($OPIconLg);
+	$ObjStMain->ChangeSmallIcon($OPIconSm);
 
 	$ObjStGroup = new Win32::GUI::Groupbox
 	(

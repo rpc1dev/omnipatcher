@@ -1,1 +1,0 @@
-$BUILD_STAMP = 'Sun Oct  3 02:57:03 2004 GMT';

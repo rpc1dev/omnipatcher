@@ -22,35 +22,59 @@ sub load_file # ( )
 		$file_data{'fwrev'} =~ s/\s+$//;
 	}
 
+	my(%fwparams) =
+	(
+		# fw_letter => [ gen, genex, fwfamily, ebankpos, pbankpos, dbankpos ]
+
+		'L' => [ 0, 0x110, 'SDW-421S',       0x00000, 0xA0000, 0xD0000 ],
+		'M' => [ 0, 0x110, 'SDW-431S',       0xC0000, 0xA0000, 0xD0000 ],
+		'R' => [ 0, 0x120, 'SOSW-832S',      0xC0000, 0xA0000, 0xD0000 ],
+		'N' => [ 0, 0x120, 'SOSW-842S',      0xC0000, 0xA0000, 0xD0000 ],
+		'P' => [ 0, 0x120, 'SOSW-852S',      0xC0000, 0xA0000, 0xD0000 ],
+		'Q' => [ 0, 0x120, 'SOSW-862S',      0xC0000, 0xA0000, 0xD0000 ],
+		'E' => [ 1, 0x010, 'LDW-401S',       0x00000, 0xC0000, 0xD0000 ],
+		'F' => [ 1, 0x010, 'LDW-411S',       0x00000, 0xC0000, 0xD0000 ],
+		'H' => [ 1, 0x010, 'LDW-811S',       0x90000, 0xC0000, 0xD0000 ],
+		'G' => [ 2, 0x011, 'LDW-451S/851S',  0x90000, 0xC0000, 0xD0000 ],
+		'U' => [ 2, 0x020, 'SOHW-802S/812S', 0x90000, 0xC0000, 0xD0000 ],
+		'V' => [ 2, 0x020, 'SOHW-822S/832S', 0x90000, 0xC0000, 0xD0000 ],
+		'T' => [ 3, 0x030, 'SOHW-1213S',     0x90000, 0xC0000, 0x90000 ],
+		'I' => [ 3, 0x031, 'SOHW-833S',      0x90000, 0xC0000, 0x90000 ],
+		'A' => [ 3, 0x031, 'SOHW-1613S',     0x90000, 0xC0000, 0x90000 ],
+		'B' => [ 3, 0x031, 'SOHW-1633S',     0x90000, 0xC0000, 0x90000 ],
+		'C' => [ 3, 0x032, 'SOHW-1653S',     0x90000, 0xE0000, 0x90000 ],
+		'J' => [ 4, 0x033, 'SOHW-1673S',     0x80000, 0xE0000, 0x90000 ],
+	);
+
 	if (substr($file_data{'fwrev'}, 0, 1) eq 'M')
 	{
 		$file_data{'fwfamily'} = 'SDW-431S';
 		$file_data{'gen'} = 0;
-		error("OmniPatcher does not support slimline drives.");
+		error("OmniPatcher does not support media hacking for slimline drives.");
 	}
 	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'R')
 	{
 		$file_data{'fwfamily'} = 'SOSW-832S';
 		$file_data{'gen'} = 0;
-		error("OmniPatcher does not support slimline drives.");
+		error("OmniPatcher does not support media hacking for slimline drives.");
 	}
 	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'N')
 	{
 		$file_data{'fwfamily'} = 'SOSW-842S';
 		$file_data{'gen'} = 0;
-		error("OmniPatcher does not support slimline drives.");
+		error("OmniPatcher does not support media hacking for slimline drives.");
 	}
 	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'P')
 	{
 		$file_data{'fwfamily'} = 'SOSW-852S';
 		$file_data{'gen'} = 0;
-		error("OmniPatcher does not support slimline drives.");
+		error("OmniPatcher does not support media hacking for slimline drives.");
 	}
 	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'Q')
 	{
 		$file_data{'fwfamily'} = 'SOSW-862S';
 		$file_data{'gen'} = 0;
-		error("OmniPatcher does not support slimline drives.");
+		error("OmniPatcher does not support media hacking for slimline drives.");
 	}
 	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'E')
 	{
@@ -182,14 +206,14 @@ sub load_file # ( )
 	$file_data{'codes'} = [ getcodes() ];
 	$file_data{'ncodes'} = scalar(@{$file_data{'codes'}});
 
-	if ($file_data{'mctype'} == 2 && $file_data{'fwfamily'} =~ /^SOHW-1[26]([13])3S$/)
+	if ($file_data{'mctype'} == 2 && $file_data{'fwfamily'} =~ /^SOHW-1[26]([1357])3S$/)
 	{
 		my($codetbl_expected) = ($1 eq '1') ? 8 : 9;
 		my($codetbl_actual) = scalar(@{$file_data{'mcpdata'}}) + scalar(@{$file_data{'mcddata'}});
 
 		if ($codetbl_actual < $codetbl_expected)
 		{
-			error(sprintf("OmniPatcher expected to find %d media tables in this firmware,\nhowever, only %d tables were recognized.\n\nThere will likely be some media codes in this firmware that\nare present but that are not being reported by OmniPatcher.", $codetbl_expected, $codetbl_actual));
+			error(sprintf("OmniPatcher expected to find %d media tables in this firmware,\nhowever, only %d tables were recognized.\n\nThere will likely be some media codes in this firmware that\nare present but are not being reported by OmniPatcher.", $codetbl_expected, $codetbl_actual));
 		}
 	}
 	elsif ($file_data{'gen'} >= 3 && $file_data{'ncodes'} < 120)
@@ -310,7 +334,7 @@ sub load_file # ( )
 
 		SetText($ObjPatches[0], $PATCH_0_BASE . " to 8x")
 	}
-	elsif ($file_data{'gen'} == 3)
+	elsif ($file_data{'gen'} == 3 || $file_data{'gen'} == 4)
 	{
 		$file_data{'patch_status'}->[0] = patch_rs2(1);
 		$file_data{'patch_status'}->[1] = patch_abs(1, -1);
@@ -320,6 +344,8 @@ sub load_file # ( )
 	}
 	else
 	{
+		$file_data{'patch_status'}->[5] = patch_eeprom(1, -1);
+
 		SetText($ObjPatches[0], $PATCH_0_BASE)
 	}
 
@@ -393,12 +419,12 @@ sub save_file # ( file_name )
 	save_strats();
 
 	patch_rs(0)												if ($dopatch[0] && $file_data{'gen'} < 3);
-	patch_rs2(0)											if ($dopatch[0] && $file_data{'gen'} == 3);
+	patch_rs2(0)											if ($dopatch[0] && ($file_data{'gen'} == 3 || $file_data{'gen'} == 4));
 	patch_abs(0, $ObjPatches[1]->GetCheck())		if ($dopatch[1]);
 	patch_fb(0, $ObjPatches[2]->GetCheck())		if ($dopatch[2]);
 	patch_sf(0, $ObjPatches[3]->GetCheck())		if ($dopatch[3] || $ObjPatches[3]->IsEnabled());	# Override; always patch if enabled
 	patch_ff(0, $ObjPatches[4]->GetCheck())		if ($dopatch[4] || $ObjPatches[4]->IsEnabled());	# Override; always patch if enabled
-	patch_eeprom(0, $ObjPatches[5]->GetCheck())	if ($dopatch[5]);
+	patch_eeprom(0, $ObjPatches[5]->GetCheck())	if ($dopatch[5] || $ObjPatches[5]->GetCheck());		# Override; always patch if checked
 
 	if (length($file_data{'work'}) == 0x100000)
 	{
