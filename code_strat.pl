@@ -15,7 +15,7 @@ else
 	@DEF_STRATS = ( );
 }
 
-$STRAT_BUF_LEN = 0x10;
+$STRAT_BUF_LEN = 0x02;
 
 sub patch_strat # ( testmode, mode )
 {
