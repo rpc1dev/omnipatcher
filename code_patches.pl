@@ -4,20 +4,33 @@ sub patch_rs # ( testmode )
 {
 	my($testmode) = @_;
 	my($i, $j, $counter, $jmppos);
+	my($spd_pattern, $spd_to);
 
 	my($MIN_SEQ) = 4;
 	my($changes) = 0;
+	my($found) = 0;
 
 	my($work) = substr($file_data{'work'}, 0x20000, 0x10000);
 
+	if ($file_data{'gen'} >= 3)
+	{
+		$spd_pattern = '^\x7F[\x06\x08\x0A\x0C\x0E\x10]\x80$';
+		$spd_to = 0x0C;
+	}
+	else
+	{
+		$spd_pattern = '^\x7F[\x06\x08\x0A\x0C]\x80$';
+		$spd_to = 0x08;
+	}
+
 	for ($i = 0; $i < length($work) - 4; ++$i)
 	{
-		if (substr($work, $i, 3) =~ /^\x7F[\x06\x08\x0A\x0C]\x80$/)
+		if (substr($work, $i, 3) =~ /$spd_pattern/s)
 		{
 			$counter = 1;
 			$jmppos = $i + ord(substr($work, $i + 3, 1));
 
-			for ($j = $i + 4; $j < length($work) - 4 && substr($work, $j, 3) =~ /^\x7F[\x06\x08\x0A\x0C]\x80$/; $j += 4)
+			for ($j = $i + 4; $j < length($work) - 4 && substr($work, $j, 3) =~ /^\x7F[\x06\x08\x0A\x0C]\x80$/s; $j += 4)
 			{
 				if ($j + ord(substr($work, $j + 3, 1)) == $jmppos)
 				{
@@ -33,13 +46,14 @@ sub patch_rs # ( testmode )
 			{
 				for ($j = 0; $j < $counter * 4; $j += 4)
 				{
-					if (ord(substr($work, $i + $j + 1, 1)) < 0x08)
+					if (ord(substr($work, $i + $j + 1, 1)) < $spd_to)
 					{
-						substr($work, $i + $j + 1, 1, chr(0x08));
+						substr($work, $i + $j + 1, 1, chr($spd_to));
 						++$changes;
 					}
 				}
 
+				$found = 1;
 				last;
 			}
 		}
@@ -50,60 +64,7 @@ sub patch_rs # ( testmode )
 		substr($file_data{'work'}, 0x20000, 0x10000, $work);
 	}
 
-	return ($changes) ? 0 : -1;
-}
-
-sub patch_rs2 # ( testmode )
-{
-	my($testmode) = @_;
-	my($i, $j, $counter, $jmppos);
-
-	my($MIN_SEQ) = 4;
-	my($changes) = 0;
-
-	my($work) = substr($file_data{'work'}, 0x20000, 0x10000);
-
-	for ($i = 0; $i < length($work) - 4; ++$i)
-	{
-		if (substr($work, $i, 3) =~ /^\x7F[\x06\x08\x0A\x0C\x0E\x10]\x80$/)
-		{
-			$counter = 1;
-			$jmppos = $i + ord(substr($work, $i + 3, 1));
-
-			for ($j = $i + 4; $j < length($work) - 4 && substr($work, $j, 3) =~ /^\x7F[\x06\x08\x0A\x0C]\x80$/; $j += 4)
-			{
-				if ($j + ord(substr($work, $j + 3, 1)) == $jmppos)
-				{
-					++$counter;
-				}
-				else
-				{
-					last;
-				}
-			}
-
-			if ($counter >= $MIN_SEQ)
-			{
-				for ($j = 0; $j < $counter * 4; $j += 4)
-				{
-					if (ord(substr($work, $i + $j + 1, 1)) < 0x0C)
-					{
-						substr($work, $i + $j + 1, 1, chr(0x0C));
-						++$changes;
-					}
-				}
-
-				last;
-			}
-		}
-	}
-
-	if (!$testmode)
-	{
-		substr($file_data{'work'}, 0x20000, 0x10000, $work);
-	}
-
-	return ($changes) ? 0 : -1;
+	return ($found) ? ($changes == 0) : -1;
 }
 
 sub patch_abs # ( testmode, mode )
@@ -331,6 +292,8 @@ sub patch_fr # ( testmode, mode )
 
 sub patch_eeprom # ( testmode, mode )
 {
+	use integer;
+
 	my($testmode, $mode) = @_;
 
 	my($off) = join('', map { chr } ( 0xFF, 0xEE, 0x6F, 0x60, 0x02, 0xC3, 0x22 ));
@@ -341,6 +304,36 @@ sub patch_eeprom # ( testmode, mode )
 
 	my($work) = substr($file_data{'work'}, $file_data{'ebankpos'}, 0x10000);
 
+	if ($file_data{'fwfamily'} eq 'LDW-411S')
+	{
+		my($offold) = join('', map { chr } ( 0xEF, 0x64, 0xFE, 0x60, 0x02, 0xC3, 0x22, 0xD3, 0x22 ));
+		my($onold)  = join('', map { chr } ( 0xEF, 0x64, 0xFE, 0x60, 0x02, 0xD3, 0x22, 0xD3, 0x22 ));
+		my($offoldpat, $onoldpat) = map { quotemeta } ($offold, $onold);
+
+		if ($work =~ /($offoldpat|$onoldpat)/s)
+		{
+			my ($orig) = $1;
+
+			if (!$testmode)
+			{
+				if ($mode)
+				{
+					$work =~ s/$offoldpat|$onoldpat/$onold/s;
+				}
+				else
+				{
+					$work =~ s/$offoldpat|$onoldpat/$offold/s;
+				}
+
+				substr($file_data{'work'}, $file_data{'ebankpos'}, 0x10000, $work);
+			}
+
+			return ($orig eq $onold) ? 1 : 0;
+		}
+
+		return -1;
+	}
+
 	return -1 if ($work =~ /($oncpat)/s);
 
 	if ($work =~ /($offpat|$on1pat|$on2pat)/sg)
@@ -348,6 +341,8 @@ sub patch_eeprom # ( testmode, mode )
 		my($addr) = pos($work);
 		my($orig) = $1;
 		my($len) = length($orig);
+
+		dbgout(sprintf("patch_eeprom(): Main patch point found at 0x%X\n", $addr + $file_data{'ebankpos'}));
 
 		if (!$testmode)
 		{
@@ -364,11 +359,14 @@ sub patch_eeprom # ( testmode, mode )
 			{
 				$check_addr = substr($work, $check_addr + 1, 2);
 
+				dbgout(sprintf("patch_eeprom(): Checksum function found at 0x%X%02X%02X\n", $file_data{'ebankpos'} / 0x10000, ord(substr($check_addr, 0, 1)), ord(substr($check_addr, 1, 1))));
+
 				my($check_addr_m) = quotemeta("\x90$check_addr\x02");
 				my($check_fail) = 0;
 				my($check_count) = 0;
 				my($check_jump) = 0;
 				my($check_temp) = 0;
+				my($num_of_banks) = length($file_data{'work'}) / 0x10000;
 
 				while ($file_data{'work'} =~ /$check_addr_m|\x90\xFF\xF0\x02/sg)
 				{
@@ -392,7 +390,7 @@ sub patch_eeprom # ( testmode, mode )
 					}
 				}
 
-				$check_fail = 1 if ($check_count != 16);
+				$check_fail = 1 if ($check_count != $num_of_banks);
 				pos($file_data{'work'}) = 0;
 
 				if (!$check_fail)
@@ -410,7 +408,7 @@ sub patch_eeprom # ( testmode, mode )
 						$check_2 = chr(0x00) x 8;
 					}
 
-					foreach $check_temp (0x00 .. 0x0F)
+					foreach $check_temp (0x00 .. $num_of_banks - 1)
 					{
 						substr($file_data{'work'}, $check_jump + $check_temp * 0x10000, 4, $check_1);
 					}

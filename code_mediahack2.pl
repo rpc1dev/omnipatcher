@@ -3,14 +3,14 @@ $PLUSR2_SAMPLE = quotemeta(&nullbuf("YUDEN000T0"));
 $PLUSR3_SAMPLE = quotemeta(&nullbuf("OPTODISCOR"));
 $PLUSR4_SAMPLE = quotemeta(&nullbuf("RITEK\x00\x00\x00R01"));
 $PLUSR9_SAMPLE = quotemeta(&nullbuf("RICOHJPND00"));
-$PLUSRW_SAMPLE = quotemeta(&nullbuf("RICOHJPNW01"));
+$PLUSRW_SAMPLE = quotemeta(&nullbuf("MKM\x00\x00\x00\x00\x00A0"));
 
 $PLUSR1A_SAMPLE = quotemeta("RICOHJPNR0");
 $PLUSR2A_SAMPLE = quotemeta("YUDEN000T0");
 $PLUSR3A_SAMPLE = quotemeta("OPTODISCOR");
 $PLUSR4A_SAMPLE = quotemeta("RITEK\x00\x00\x00R01");
 $PLUSR9A_SAMPLE = quotemeta("RICOHJPND00");
-$PLUSRWA_SAMPLE = quotemeta("RICOHJPNW01");
+$PLUSRWA_SAMPLE = quotemeta("MKM\x00\x00\x00\x00\x00A0");
 
 $DASHR1_SAMPLE = quotemeta("RITEKG03\x00");
 $DASHR2_SAMPLE = quotemeta("RITEKG04\x00");
@@ -64,6 +64,8 @@ sub getcodes2 # ( )
 
 	$file_data{'stratptables'} = [ ];
 	$file_data{'stratdtables'} = [ ];
+	$file_data{'prwtables'} = [ ];
+	$file_data{'drwtables'} = [ ];
 
 	$data = substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000);
 
@@ -87,6 +89,8 @@ sub getcodes2 # ( )
 		elsif ($data =~ /$PLUSRW_SAMPLE|$PLUSRWA_SAMPLE/)
 		{
 			$type = '+RW';
+			$id_offset = scalar(@{$file_data{'prwtables'}});
+			push @{$file_data{'prwtables'}}, $file_data{'mcpdata'}->[$i];
 		}
 		else
 		{
@@ -130,7 +134,8 @@ sub getcodes2 # ( )
 		elsif ($data =~ /$DASHRW_SAMPLE/)
 		{
 			$type = '-RW';
-			$file_data{'drwtableidx'} = $i;
+			$id_offset = scalar(@{$file_data{'drwtables'}});
+			push @{$file_data{'drwtables'}}, $file_data{'mcddata'}->[$i];
 		}
 		else
 		{
@@ -145,7 +150,7 @@ sub getcodes2 # ( )
 			$rid = ord(substr($id, 12, 1));
 			$spd = ord(substr($data, $file_data{'mcddata'}->[$i][1] * $DASH_LEN + $j, 1));
 
-			if (substr($id, 0, 1) ne "\x00")
+			if (substr($id, 0, 1) ne "\x00" && substr($id, 0, 1) ne "\xFF")
 			{
 				push @ret, [ $type, [ $mid, $rid, $spd ], sprintf("%-12s/%02X", $mid, $rid), $id_offset * 0x40 + $j ];
 			}
@@ -159,7 +164,7 @@ sub setcodes2 # ( )
 {
 	my($data, $patch);
 	my($code_old, $code_new);
-	my(@dash_data, $dash_type, @dash_patches, $table_idx);
+	my(@dash_data, $dash_type);
 
 	$data = substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000);
 
@@ -178,34 +183,27 @@ sub setcodes2 # ( )
 
 	substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000, $data);
 
-	foreach $dash_table (@{$file_data{'stratdtables'}}, $file_data{'mcddata'}->[$file_data{'drwtableidx'}])
-	{
-		push @dash_data, substr($file_data{'work'}, $file_data{'dbankpos'} + $dash_table->[0] + $dash_table->[1] * $DASH_LEN, $dash_table->[1]);
-	}
-
-	foreach $dash_type ("R", "RW")
+	foreach $dash_type ( [ 'R', $file_data{'stratdtables'}, $file_data{'dashr_patches'} ],
+	                     [ 'RW', $file_data{'drwtables'}, $file_data{'dashrw_patches'} ] )
 	{
 		use integer;
 
-		if ($dash_type eq "R")
+		@dash_data = ();
+
+		foreach $dash_table (@{$dash_type->[1]})
 		{
-			@dash_patches = @{$file_data{'dashr_patches'}};
-		}
-		else
-		{
-			@dash_patches = @{$file_data{'dashrw_patches'}};
+			push @dash_data, substr($file_data{'work'}, $file_data{'dbankpos'} + $dash_table->[0] + $dash_table->[1] * $dash_table->[3], $dash_table->[1]);
 		}
 
-		foreach $patch (@dash_patches)
+		foreach $patch (@{$dash_type->[2]})
 		{
-			$table_idx = ($dash_type eq "R") ? $patch->[0] / 0x40 : -1;
-			substr($dash_data[$table_idx], $patch->[0] % 0x40, 1, chr($patch->[1]));
+			substr($dash_data[$patch->[0] / 0x40], $patch->[0] % 0x40, 1, chr($patch->[1]));
 		}
-	}
 
-	foreach $dash_table (@{$file_data{'mcddata'}})
-	{
-		substr($file_data{'work'}, $file_data{'dbankpos'} + $dash_table->[0] + $dash_table->[1] * $DASH_LEN, $dash_table->[1], shift(@dash_data));
+		foreach $dash_table (@{$dash_type->[1]})
+		{
+			substr($file_data{'work'}, $file_data{'dbankpos'} + $dash_table->[0] + $dash_table->[1] * $dash_table->[3], $dash_table->[1], shift(@dash_data));
+		}
 	}
 }
 

@@ -5,10 +5,10 @@ $DASHRW_PATTERN = '\x00{13}|(?:\w[\w \-=\.,\xAD\x00\!\/\[\]]{11}.)';
 $PLUS_LEN = 26;
 $DASH_LEN = 13;
 
-$PLUS_SAMPLE = quotemeta(&nullbuf("RICOHJPNR00"));
+$PLUS_SAMPLE = quotemeta(&nullbuf("RICOHJPNR0"));
 $PLUSD_SAMPLE = quotemeta(&nullbuf("RICOHJPND00"));
 $DASHR_SAMPLE = quotemeta("RITEKG03\x00");
-$DASHRW_SAMPLE = quotemeta("RITEK000V11A");
+$DASHRW_SAMPLE = quotemeta("RITEKW0");
 
 $STRAT3_PATTERN = '(?:(?:\x90..|\xA3)\xE0(?:\x90..|\x02\xFF[\x00\x02\x04\x06])|(?:\x90..[\xE8-\xEF]|[\xE8-\xEF]\x02\xFF[\x00\x02\x04\x06]))\xF0';
 
@@ -115,6 +115,7 @@ sub getmctype # ( )
 
 sub getcodes # ( )
 {
+	return getcodes_slim() if ($file_data{'genex'} >= 0x100 && $file_data{'genex'} < 0x200);
 	return getcodes2() if ($file_data{'mctype'} >= 2);
 
 	my($data);
@@ -297,6 +298,7 @@ sub getcodes # ( )
 
 sub setcodes # ( )
 {
+	return setcodes_slim() if ($file_data{'genex'} >= 0x100 && $file_data{'genex'} < 0x200);
 	return setcodes2() if ($file_data{'mctype'} >= 2);
 
 	my($data);

@@ -139,6 +139,7 @@ $hWndMain = 0;
 	$PATCH_0_BASE = "Increase DVD±R/R9/RW reading speed";
 
 	@MEDIA_SPEEDS_0 = ( 1, 2, 4, 6, 8, 12, 16, 20, 24 );
+	@MEDIA_SPEEDS_1 = ( 1, 2, 4, 6, 8, 12, 20, 16, 24 );
 	@MEDIA_SPEEDS_2 = ( 1, 2, 4, 6, 8, 20, 12, 16, 24 );
 
 	@MEDIA_SPEEDS = @MEDIA_SPEEDS_0;

@@ -51,14 +51,26 @@ sub load_file # ( )
 		$file_data{'driveid'} = "$file_data{'drivevid'} $file_data{'drivepid'}";
 	}
 
+	if (mtk_rebank_check(\$file_data{'work'}))
+	{
+		$file_data{'rebank'} = 1;
+		$file_data{'work'} = mtk_rebank(\$file_data{'work'}, 1, 1);
+		dbgout("Rebanking required.\n");
+	}
+	else
+	{
+		$file_data{'rebank'} = 0;
+		dbgout("No rebanking required.\n");
+	}
+
 	my(%fwparams) =
 	(
 		# fw_letter => [ gen, genex, fwfamily, ebankpos, pbankpos, dbankpos, [ pr, prw, pr9, dr, drw, dr9 ] ]
 
 		'E' => [ 1, 0x011, 'LDW-401S',       0x00000, 0xC0000, 0xD0000, [  4, 4, 0,  0, 0, 0 ] ],
-		'F' => [ 1, 0x011, 'LDW-411S',       0x00000, 0xC0000, 0xD0000, [  4, 4, 0,  4, 2, 0 ] ],
-		'H' => [ 1, 0x011, 'LDW-811S',       0x90000, 0xC0000, 0xD0000, [  8, 4, 0,  4, 2, 0 ] ],
-		'G' => [ 2, 0x012, 'LDW-451S/851S',  0x90000, 0xC0000, 0xD0000, [  8, 4, 0,  4, 2, 0 ] ],
+		'F' => [ 1, 0x011, 'LDW-411S',       0x90000, 0xC0000, 0xD0000, [  4, 4, 0,  4, 4, 0 ] ],
+		'H' => [ 1, 0x011, 'LDW-811S',       0x90000, 0xC0000, 0xD0000, [  8, 4, 0,  4, 4, 0 ] ],
+		'G' => [ 2, 0x012, 'LDW-451S/851S',  0x90000, 0xC0000, 0xD0000, [  8, 4, 0,  4, 4, 0 ] ],
 		'U' => [ 2, 0x021, 'SOHW-802S/812S', 0x90000, 0xC0000, 0xD0000, [  8, 4, 0,  8, 4, 0 ] ],
 		'V' => [ 2, 0x021, 'SOHW-822S/832S', 0x90000, 0xC0000, 0xD0000, [  8, 4, 2,  8, 4, 0 ] ],
 		'T' => [ 3, 0x031, 'SOHW-1213S',     0x90000, 0xE0000, 0x90000, [ 12, 4, 0,  8, 4, 0 ] ],
@@ -66,10 +78,10 @@ sub load_file # ( )
 		'A' => [ 3, 0x032, 'SOHW-1613S',     0x90000, 0xE0000, 0x90000, [ 16, 4, 0,  8, 4, 0 ] ],
 		'B' => [ 3, 0x032, 'SOHW-1633S',     0x90000, 0xE0000, 0x90000, [ 16, 4, 4,  8, 4, 0 ] ],
 		'C' => [ 3, 0x033, 'SOHW-1653S',     0x90000, 0xE0000, 0x90000, [ 16, 4, 4, 12, 4, 0 ] ],
-		'J' => [ 4, 0x034, 'SOHW-1673S',     0x00000, 0x00000, 0x00000, [  0, 0, 0,  0, 0, 0 ] ],
+		'J' => [ 4, 0x034, 'SOHW-1673S',     0xA0000, 0xA0000,0x100000, [ 16, 8, 4, 16, 6, 0 ] ],
 
-		'L' => [ 0, 0x111, 'SDW-421S',       0x00000, 0xA0000, 0xD0000, [  4, 2, 0,  0, 0, 0 ] ],
-		'M' => [ 0, 0x111, 'SDW-431S',       0xC0000, 0xA0000, 0xD0000, [  4, 2, 0,  2, 2, 0 ] ],
+		'L' => [ 0, 0x111, 'SDW-421S',       0x00000, 0xA0000, 0xD0000, [  4, 4, 0,  0, 0, 0 ] ],
+		'M' => [ 0, 0x111, 'SDW-431S',       0xC0000, 0xA0000, 0xD0000, [  4, 4, 0,  4, 2, 0 ] ],
 		'R' => [ 0, 0x121, 'SOSW-832S',      0xC0000, 0xA0000, 0xD0000, [  8, 4, 0,  8, 4, 0 ] ],
 		'N' => [ 0, 0x121, 'SOSW-842S',      0xC0000, 0xA0000, 0xD0000, [  8, 4, 0,  0, 0, 0 ] ],
 		'P' => [ 0, 0x121, 'SOSW-852S',      0xC0000, 0xA0000, 0xD0000, [  8, 4, 2,  8, 4, 0 ] ],
@@ -114,14 +126,13 @@ sub load_file # ( )
 
 	} # End: Initialize %file_data parameters
 
-	if ($file_data{'genex'} >= 0x100 && $file_data{'genex'} < 0x200)
-	{
-		$file_data{'pbankpos'} = $file_data{'dbankpos'} = 0x00000;
-		error('OmniPatcher does not support media hacking for slimline drives.');
-	}
-	elsif ($file_data{'genex'} >= 0x030 && $file_data{'genex'} < 0x040)
+	if ($file_data{'genex'} >= 0x030 && $file_data{'genex'} < 0x034)
 	{
 		$file_data{'pbankpos'} = 0xC0000 if (substr($file_data{'work'}, 0xC0000, 0x10000) =~ /$PLUS_SAMPLE/);
+	}
+	elsif ($file_data{'genex'} >= 0x034 && $file_data{'genex'} < 0x100)
+	{
+		Win32::GUI::MessageBox($hWndMain, "Support for this drive type in this version of OmniPatcher is experimental.", "Notice", MB_OK | MB_ICONINFORMATION);
 	}
 
 	getmctype();
@@ -135,7 +146,8 @@ sub load_file # ( )
 	{
 		my($codetbl_actual) = scalar(@{$file_data{'mcpdata'}}) + scalar(@{$file_data{'mcddata'}});
 		my($codetbl_expected) = ($1 eq '1') ? 8 : 9;
-		++$codetbl_expected if ($file_data{'mctype'} == 4);
+		$codetbl_expected += 1 if ($file_data{'mctype'} == 4 && ($file_data{'genex'} >= 0x033 && $file_data{'genex'} < 0x100));
+		$codetbl_expected += 2 if ($file_data{'genex'} >= 0x034 && $file_data{'genex'} < 0x100);
 
 		if ($codetbl_actual < $codetbl_expected)
 		{
@@ -144,7 +156,7 @@ sub load_file # ( )
 
 		dbgout(sprintf("%d/%d tables found\n", $codetbl_actual, $codetbl_expected));
 	}
-	elsif ($file_data{'ncodes'} < 50 && ($file_data{'genex'} > 0x000 && $file_data{'genex'} < 0x100))
+	elsif ($file_data{'ncodes'} < 50 && ($file_data{'genex'} > 0x000))
 	{
 		$file_data{'codes'} = [ ];
 		$file_data{'ncodes'} = 0;
@@ -173,6 +185,10 @@ sub load_file # ( )
 	{
 		@MEDIA_SPEEDS = @MEDIA_SPEEDS_2;
 		SetTop($ObjSpeeds[6], $ObjSpeeds[5]->Top());
+	}
+	elsif ($file_data{'speed_type'} == 1)
+	{
+		@MEDIA_SPEEDS = @MEDIA_SPEEDS_1;
 	}
 	else
 	{
@@ -221,9 +237,9 @@ sub load_file # ( )
 
 		SetText($ObjPatches[0], $PATCH_0_BASE . " to 8x")
 	}
-	elsif ($file_data{'gen'} == 3)
+	elsif ($file_data{'gen'} == 3 || $file_data{'gen'} == 4)
 	{
-		$file_data{'patch_status'}->[0] = patch_rs2(1);
+		$file_data{'patch_status'}->[0] = patch_rs(1);
 		$file_data{'patch_status'}->[1] = patch_abs(1, -1);
 		$file_data{'patch_status'}->[5] = patch_eeprom(1, -1);
 
@@ -249,6 +265,8 @@ sub load_file # ( )
 			SetEnable($ObjPatches[$i]);
 		}
 	}
+
+	SetDisable($ObjPatches[0]) if ($ObjPatches[0]->GetCheck());
 
 	SetEnable($ObjSpdRep);
 	SetEnable($ObjCmds[1]);
@@ -305,13 +323,14 @@ sub save_file # ( file_name )
 	setcodes();
 	save_strats();
 
-	patch_rs(0)												if ($dopatch[0] && $file_data{'gen'} < 3);
-	patch_rs2(0)											if ($dopatch[0] && $file_data{'gen'} == 3);
+	patch_rs(0)												if ($dopatch[0]);
 	patch_abs(0, $ObjPatches[1]->GetCheck())		if ($dopatch[1]);
 	patch_fb(0, $ObjPatches[2]->GetCheck())		if ($dopatch[2]);
 	patch_sf(0, $ObjPatches[3]->GetCheck())		if ($dopatch[3] || $ObjPatches[3]->IsEnabled());	# Override; always patch if enabled
 	patch_ff(0, $ObjPatches[4]->GetCheck())		if ($dopatch[4] || $ObjPatches[4]->IsEnabled());	# Override; always patch if enabled
 	patch_eeprom(0, $ObjPatches[5]->GetCheck())	if ($dopatch[5] || $ObjPatches[5]->GetCheck());		# Override; always patch if checked
+
+	$file_data{'work'} = mtk_rebank(\$file_data{'work'}, 0) if ($file_data{'rebank'});
 
 	if (length($file_data{'work'}) == 0x100000)
 	{
@@ -437,7 +456,7 @@ sub save_report # ( file_name )
 
 		if ($file_data{'codes'}->[$i][3] != $file_data{'strats'}->[$i])
 		{
-			$strat = " -> $file_data{'codes'}[translate_index([ $file_data{'codes'}->[$i][0], $file_data{'strats'}->[$i] ])][2]";
+			$strat = " -> $file_data{'codes'}->[translate_index([ $file_data{'codes'}->[$i][0], $file_data{'strats'}->[$i] ])][2]";
 		}
 		else
 		{
@@ -548,7 +567,7 @@ sub proc_speed
 
 		if ($file_data{'speed_type'} == 1)
 		{
-			SetCheck($ObjSpeeds[7], $ObjSpeeds[6]->GetCheck());
+			SetCheck($ObjSpeeds[6], $ObjSpeeds[7]->GetCheck()) if (substr($file_data{'codes'}->[$idx][0], 0, 1) eq '+');
 		}
 		elsif ($file_data{'speed_type'} == 2)
 		{

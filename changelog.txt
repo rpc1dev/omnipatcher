@@ -1,3 +1,17 @@
+1.3.16b (19 Nov 2004)
+	* Fixed: OmniPatcher no longer incorrectly warns about not finding enough tables when loading the BY02 firmware.
+
+1.3.16a (14 Nov 2004)
+	* Improved: The reading speed patch checkbox is now checked and disabled (vs. unchecked and disabled) if the patch cannot be applied because all of the speeds are already at the maximum.
+	* Fixed: The 4x -RW checkbox is no longer hidden for 1S drives.
+	* Other: Adjusted the compilation process to produce a slightly smaller executable.
+	* Other: Updated documentation to specify that some of the patches (the ones that always appear disabled with 3S firmwares) are intended for only the 1S and 2S drives.
+
+1.3.16 (11 Nov 2004)
+	* Added: Basic media support for the slimtype drives.
+	* Added: Experimental support for the 1673S.
+	* Added: Crossflashing support for 401S@411S.  This feature would most likely never see much use, but since ala42 was kind enough to supply the patch information, it might as well be added. :-)
+
 1.3.15 (8 Nov 2004)
 	* Added: Media support for the 1653S.  OmniPatcher now fully supports the 1653S.
 	* Fixed: Issues with certain 1633S firmwares (such as BS06 and B4S6) have been fixed.

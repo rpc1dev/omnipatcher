@@ -1,6 +1,6 @@
 ##
 # XFlash-X Common Library
-# 1.2.1 (2 Oct 2004)
+# 1.2.2 (10 Nov 2004)
 #
 
 require "lib_xflashx_config.pl";
@@ -428,11 +428,24 @@ sub xflashx # ( f_in )
 				$bin_fw = substr($data, $start, $bins[$i][2]);
 			}
 
-			if ($XFX_VERIFYFW)
+			if ($XFX_VERIFYFW && $flag_fail == 0)
 			{
+				my($verify_good) = 1;
+
 				for ($bank = 0; $bank < length($bin_fw); $bank += 0x10000)
 				{
-					$flag_fail = 1 if (substr($bin_fw, $bank, 1) ne "\x02");
+					$verify_good = 0 if (substr($bin_fw, $bank, 1) ne "\x02");
+				}
+
+				unless ($verify_good)
+				{
+					$verify_good = 1;
+
+					$verify_good = 0 if (substr($bin_fw, 0x0000, 1) ne "\x02");
+					$verify_good = 0 if (substr($bin_fw, 0x4000, 1) ne "\x02");
+					$verify_good = 0 if (substr($bin_fw, 0xFFF8, 8) ne "LITEONIT");
+
+					$flag_fail = 1 unless ($verify_good);
 				}
 			}
 
