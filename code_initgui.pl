@@ -331,7 +331,7 @@ $hWndMain = 0;
 		$ObjMain,
 
 		-name			=> "DefStrat",
-		-text			=> 'Apply recommended DVD media &tweaks',
+		-text			=> 'Apply recommended DVD media t&weaks',
 		-font			=> $FontTahoma,
 		-pos			=> addpairs($MARGINS_GROUP, [ 0, $MARGIN + $DIM_LIST[1] ], getpos($ObjMediaGroup)),
 		-size			=> \@DIM_DEFSTRAT,

@@ -25,9 +25,17 @@ sub load_file # ( )
 	}
 
 	$file_data{'codes'} = [ getcodes() ];
+	$file_data{'ncodes'} = scalar(@{$file_data{'codes'}});
+
+	if ($file_data{'gen'} == 3 && $file_data{'ncodes'} < 120)
+	{
+		$file_data{'codes'} = [ ];
+		$file_data{'ncodes'} = 0;
+		error("Unable to read the media code table!\n\nYou may need to upgrade to a newer\nversion of OmniPatcher.");
+	}
+
 	$file_data{'speeds'} = [ map { $_->[1][-1] } @{$file_data{'codes'}} ];
 	$file_data{'strats'} = [ map { $_->[3] } @{$file_data{'codes'}} ];
-	$file_data{'ncodes'} = scalar(@{$file_data{'codes'}});
 
 	if ($file_data{'gen'} < 3)
 	{
@@ -255,7 +263,7 @@ sub save_report # ( file_name )
 		$typelists{$type} = [ ];
 	}
 
-	foreach $i (0 .. $#{$file_data{'codes'}})
+	foreach $i (0 .. $file_data{'ncodes'} - 1)
 	{
 		$index = ($OP_REPORT_MODE > 0) ? sprintf("0x%02X: ", $file_data{'codes'}->[$i][3]) : "";
 
@@ -334,14 +342,30 @@ sub proc_speed
 	{
 		unless ($StratSpeedWarned || $file_data{'codes'}->[$idx][3] == $file_data{'strats'}->[$idx])
 		{
-			$StratSpeedWarned = 1;
-			Win32::GUI::MessageBox($hWndMain, "Please note that media codes with a '!' in front of them are media\ncodes that are currently using another media code's write strategy\nand speed code.  Because they are no longer using their own speed\ncode, changing their burning speed will have no effect.  If you\nwould like to change the burning speed of this media code, you will\nhave to adjust the burning speed of its host media code.\n\nPlease refer to the documentation for more information.\n\nYou will not see this warning message again until the next time this\nprogram is run.", "Notice", MB_OK | MB_ICONWARNING);
+			my($used) = 0;
+
+			foreach $i (0 .. $file_data{'ncodes'} - 1)
+			{
+				$used = 1 if ($file_data{'codes'}->[$idx][0] eq $file_data{'codes'}->[$i][0] && $file_data{'codes'}->[$idx][3] == $file_data{'strats'}->[$i]);
+			}
+
+			unless ($used)
+			{
+				$StratSpeedWarned = 1;
+				Win32::GUI::MessageBox($hWndMain, "Please note that media codes with a '!' in front of them are media\ncodes that are currently using another media code's write strategy\nand speed code.  Because they are no longer using their own speed\ncode, changing their burning speed will have no effect.  If you\nwould like to change the burning speed of this media code, you will\nhave to adjust the burning speed of its host media code.\n\nPlease refer to the documentation for more information.\n\nYou will not see this message again until the next time this program\nis run.", "Notice", MB_OK | MB_ICONWARNING);
+			}
 		}
 
 		unless ($PlusRWWarned || $file_data{'codes'}->[$idx][0] ne "+RW")
 		{
 			$PlusRWWarned = 1;
-			Win32::GUI::MessageBox($hWndMain, "Adjusting +RW speeds is not recommended!\n\nPlease refer to the documentation for more information.\n\nYou will not see this warning message again until the next time this\nprogram is run.", "Notice", MB_OK | MB_ICONWARNING);
+			Win32::GUI::MessageBox($hWndMain, "Adjusting +RW speeds is not recommended!\n\nPlease refer to the documentation for more information.\n\nYou will not see this warning message again until the next time this\nprogram is run.", "Warning!", MB_OK | MB_ICONWARNING);
+		}
+
+		unless ($PlusR9Warned || $file_data{'codes'}->[$idx][0] ne "+R9")
+		{
+			$PlusR9Warned = 1;
+			Win32::GUI::MessageBox($hWndMain, "Adjusting +R9 speeds is not recommended!\n\nYou will not see this warning message again until the next time this\nprogram is run.", "Warning!", MB_OK | MB_ICONWARNING);
 		}
 
 		$file_data{'speeds'}->[$idx] = 0;

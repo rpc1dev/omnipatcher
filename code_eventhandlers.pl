@@ -138,6 +138,12 @@ sub DefStrat_Click
 {
 	my($entry, $gen, $src, $dst, $st_count, $sp_count);
 
+	if ($DEF_STRAT_REV eq "" || $#DEF_STRATS < 0)
+	{
+		error(qq(The "$DEFSTRATCONF" file is missing or corrupt.));
+		return 1;
+	}
+
 	foreach $entry (@DEF_STRATS)
 	{
 		foreach $gen (@{$entry->[3]})

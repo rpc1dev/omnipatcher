@@ -1,6 +1,6 @@
 ##
 # XFlash-X Common Library
-# 1.1.4 (28 June 2004)
+# 1.1.5 (9 July 2004)
 #
 
 require "lib_xflashx_config.pl";
@@ -204,7 +204,7 @@ sub xflashx # ( f_in )
 	{
 		open file, $f_in;
 		binmode file;
-		read(file, $data, -s $f_in);
+		read(file, $data, -s file);
 		close file;
 
 		$loaded = 1;
@@ -241,7 +241,7 @@ sub xflashx # ( f_in )
 		{
 			open file, $f_in;
 			binmode file;
-			read(file, $data, -s $f_in);
+			read(file, $data, -s file);
 			close file;
 		}
 
@@ -281,7 +281,7 @@ sub xflashx # ( f_in )
 	{
 		open file, $f_in;
 		binmode file;
-		read(file, $data, -s $f_in);
+		read(file, $data, -s file);
 		close file;
 	}
 
@@ -364,6 +364,8 @@ sub xflashx # ( f_in )
 
 			if ($mode == 2)
 			{
+				$scrammode = 0;
+
 				if ($xfversion eq "2.0.5")
 				{
 					$scrammode = 1;
@@ -372,28 +374,25 @@ sub xflashx # ( f_in )
 				}
 				elsif ($xfversion eq "2.1.0")
 				{
-					if ($data =~ /\xFF{256}/)
+					if ($data =~ /\x30\x02\xEB\x2B.{12}\x80\x34\x02\xFF.{25}\x30\x10/)
 					{
-						$scrammode = 2;
-						$skip_pre = 0x000400;
-						$skip_len = 0x001000;
+						$scrammode = 3;
 					}
 					elsif ($data =~ /\x25\x7F\x00\x00\x80\x79\x05/)
 					{
 						$scrammode = 4;
 					}
-					else
+					elsif ($data =~ /\xFF{256}/)
 					{
-						$scrammode = 3;
+						$scrammode = 2;
+						$skip_pre = 0x000400;
+						$skip_len = 0x001000;
 					}
 				}
-				else
-				{
-					$scrammode = 0;
-					$flag_fail = 1;
-				}
 
-				xfx_debug "Using unscrambler for XFlash v$xfversion, mode $scrammode...\n" unless($flag_fail);
+				$flag_fail = 1 if ($scrammode == 0);
+
+				xfx_debug "Using unscrambler for XFlash v$xfversion, mode $scrammode...\n" unless ($flag_fail);
 
 				if ($scrammode == 3)
 				{
