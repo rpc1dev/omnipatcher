@@ -123,8 +123,8 @@ $hWndMain = 0;
 		"Enable auto-bitsetting",
 		"Earlier shift (faster burn) for 8x +R",
 		"Utilize \"force-shifting\" for 6x/8x burns",
-		"Utilize \"force-fallback\" for high-speed +R",
-		"Fix blinking orange light / Enable cross-flashing",
+		"Utilize \"force-recalibration\" for 8x +R",
+		"Fix the \"dead drive\" blink / Enable cross-flashing",
 	);
 
 	@CMD_NAMES =
@@ -351,6 +351,7 @@ $hWndMain = 0;
 		-align		=> center,
 		-pos			=> addpairs([ 0, $MARGIN + $DIM_DEFSTRAT[1] ], getpos($ObjDefStrat)),
 		-size			=> \@DIM_MEDIALABEL,
+		-disabled	=> 1,
 
 	) or abort("Initialization Error.");
 

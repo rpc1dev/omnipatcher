@@ -54,23 +54,28 @@ sub patch_rs # ( testmode )
 sub patch_abs # ( testmode, mode )
 {
 	my($testmode, $mode) = @_;
+	my(@off, @on, @offpat, @onpat);
 
-	my($off) = join('', map { chr } ( 0x54, 0xEF, 0xF0, 0xE0, 0x54, 0xF7, 0xF0, 0xE4 ));
-	my($on)  = join('', map { chr } ( 0x54, 0xE7, 0xF0, 0x00, 0x00, 0x00, 0x74, 0x01 ));
-	my($offpat, $onpat) = map { quotemeta } ($off, $on);
+	$off[0] = join('', map { chr } ( 0xEF, 0xF0, 0xE0, 0x54, 0xF7, 0xF0 ));
+	$off[1] = join('', map { chr } ( 0xE4 ));
+	$on[0]  = join('', map { chr } ( 0xE7, 0xF0, 0x00, 0x00, 0x00 ));
+	$on[1]  = join('', map { chr } ( 0x74, 0x01 ));
+	($offpat[0], $offpat[1], $onpat[0], $onpat[1]) = map { quotemeta } ( @off, @on );
 
-	if ($file_data{'work'} =~ /($offpat|$onpat)/g)
+	if ($file_data{'work'} =~ /\x90..\xE0\x54($offpat[0]|$onpat[0])(.{0,24}?)($offpat[1]|$onpat[1])\x90..\xF0\x22/g)
 	{
 		my($addr) = pos($file_data{'work'});
-		my($orig) = $1;
-		my($len) = length($orig);
+		pos($file_data{'work'}) = 0;
+
+		return -1 if (length($1) + length($3) != 7);
 
 		if (!$testmode)
 		{
-			substr($file_data{'work'}, $addr - $len, $len, ($mode) ? $on : $off);
+			my($patch) = ($mode) ? "$on[0]$2$on[1]" : "$off[0]$2$off[1]";
+			substr($file_data{'work'}, $addr - 5 - length($patch), length($patch), $patch);
 		}
 
-		return ($orig eq $on) ? 1 : 0;
+		return ($1 eq $on[0]) ? 1 : 0;
 	}
 
 	return -1;
@@ -158,6 +163,7 @@ sub patch_sf # ( testmode, mode )
 			substr($file_data{'work'}, 0x60000, 0x10000, $bank6);
 			substr($file_data{'work'}, 0x70000, 0x10000, $bank7);
 			substr($file_data{'work'}, 0xD0000, 0x10000, $bankD);
+			helper_patch_recalibrate(0, $mode);
 		}
 
 		return ($curkey eq $onkey) ? 1 : 0;
@@ -166,7 +172,7 @@ sub patch_sf # ( testmode, mode )
 	return -1;
 }
 
-sub patch_ff # ( testmode, mode )
+sub patch_fr # ( testmode, mode )
 {
 	my($testmode, $mode) = @_;
 
@@ -178,26 +184,32 @@ sub patch_ff # ( testmode, mode )
 	my($curkey) = "";
 	my($addr);
 
-	my($bankC) = substr($file_data{'work'}, 0xC0000, 0x10000);
+	my($plusbank) = substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000);
 
-	my($temp) = $bankC;
+	my($temp) = $plusbank;
 
 	while ($temp =~ /\x90..\xE0\xFF(\x64[$ricohbyte\xFF]|\xE4\x00)[\x60\x70]/g)
 	{
 		$addr = pos($temp);
 		$curkey .= substr($1, 0, 1);
 
-		substr($bankC, $addr - 3, 2, ($mode) ? "\xE4\x00" : "\x64$ricohbyte");
+		substr($plusbank, $addr - 3, 2, ($mode) ? "\xE4\x00" : "\x64$ricohbyte");
 	}
 
 	if ($curkey eq $onkey || $curkey eq $offkey)
 	{
 		if (!$testmode)
 		{
-			substr($file_data{'work'}, 0xC0000, 0x10000, $bankC);
+			substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000, $plusbank);
+			helper_patch_recalibrate(0, 1) if ($mode);
+			return 2;
 		}
-
-		return ($curkey eq $onkey) ? 1 : 0;
+		else
+		{
+			my($recalib) = helper_patch_recalibrate(1, -1);
+			return -1 if ($recalib < 0);
+			return ($curkey eq $onkey && $recalib == 1) ? 1 : 0;
+		}
 	}
 
 	return -1;
@@ -263,6 +275,7 @@ sub patch_eeprom # ( testmode, mode )
 				}
 
 				$check_fail = 1 if ($check_count != 16);
+				pos($file_data{'work'}) = 0;
 
 				if (!$check_fail)
 				{
@@ -290,6 +303,29 @@ sub patch_eeprom # ( testmode, mode )
 		}
 
 		return ($orig eq $on1 || $orig eq $on2) ? 1 : 0;
+	}
+
+	return -1;
+}
+
+sub helper_patch_recalibrate # ( testmode, mode )
+{
+	my($testmode, $mode) = @_;
+
+	my($data) = substr($file_data{'work'}, 0x70000, 0x10000);
+
+	if ($data =~ /\x90..\xE0\xC3\x94([\x22\x24])(\x50\x03\x02...{0,16}?\x13\x13\x54\x3F)/g)
+	{
+		my($addr) = pos($data);
+		$addr -= (length($1) + length($2));
+
+		if (!$testmode)
+		{
+			substr($data, $addr, 1, ($mode) ? chr(0x24) : chr(0x22));
+			substr($file_data{'work'}, 0x70000, 0x10000, $data);
+		}
+
+		return ($1 eq chr(0x24)) ? 1 : 0;
 	}
 
 	return -1;

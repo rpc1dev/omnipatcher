@@ -1,6 +1,6 @@
 ##
 # Speedhacker Common Library
-# 1.2.1 (10 July 2004)
+# 1.2.2 (17 July 2004)
 #
 
 $PLUS_PATTERN = '(?:\x00{12}|\xFF{12}|(?:\w{2}.{6}[\w\x00]{3}.)|(?:[A-Z]\w{2}.{9})|(?:\x00{8}\w.{3}))[\x00-\x7F]';
@@ -52,19 +52,17 @@ sub nullunbuf # ( str )
 
 sub getcodes # ( )
 {
-	my($start, $len) = ($file_data{'gen'} < 3) ? (0xC0000, 0x20000) : (0x90000, 0x40000);
-	my($data) = substr($file_data{'work'}, $start, $len);
-
+	my($data);
 	my($x, $y, $p, $i);
 	my(@codes, @speeds, @ret);
+	my($plus_r_cnt, $plus_rw_cnt, $plus_cnt);
 	my($id, $mid, $tid, $rid, %used);
 	my($dash_type, $dash_pattern, $dash_len, $dash_sample);
 
-	my($plus_bank) = substr($file_data{'work'}, 0xC0000, 0x10000);
-	my($plus_r_cnt, $plus_rw_cnt, $plus_cnt);
+	$data = substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000);
 
-	if ( $plus_bank =~ /\xE5\x24\x90..\xB4\x94\x05\x74(.)\xF0\x80\x03\x74(.)\xF0/ ||
-	     $plus_bank =~ /\xE5\x24\x64\x94\x60\x05\xE5\x24\xB4\x97\x08\x90..\x74(.)\xF0\x80\x06\x90..\x74(.)\xF0/ )
+	if ( $data =~ /\xE5\x24\x90..\xB4\x94\x05\x74(.)\xF0\x80\x03\x74(.)\xF0/ ||
+	     $data =~ /\xE5\x24\x64\x94\x60\x05\xE5\x24\xB4\x97\x08\x90..\x74(.)\xF0\x80\x06\x90..\x74(.)\xF0/ )
 	{
 		$plus_r_cnt = ord($1);
 		$plus_rw_cnt = ord($2);
@@ -182,6 +180,8 @@ sub getcodes # ( )
 
 	} # End: +R9
 
+	$data = substr($file_data{'work'}, $file_data{'dbankpos'}, 0x10000);
+
 	foreach $dash_type ("R", "RW")
 	{
 		if ($dash_type eq "R")
@@ -246,15 +246,15 @@ sub getcodes # ( )
 
 sub setcodes # ( )
 {
-	my($start, $len) = ($file_data{'gen'} < 3) ? (0xC0000, 0x20000) : (0x90000, 0x40000);
-	my($data) = substr($file_data{'work'}, $start, $len);
-
+	my($data);
 	my($x, $y, $p, $i);
 	my($patch, $mid, $tid);
 	my(@codes, @speeds, $new_data);
 	my($dash_type, $dash_pattern, $dash_sample, @dash_patches);
 	my($code_id, $code_old, $code_new);
 	my($code_id_m, $code_old_m, $code_new_m);
+
+	$data = substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000);
 
 	# Resolve the Ricoh R00 bug
 
@@ -278,6 +278,9 @@ sub setcodes # ( )
 
 		$data =~ s/$code_old_m/$code_new/g;
 	}
+
+	substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000, $data);
+	$data = substr($file_data{'work'}, $file_data{'dbankpos'}, 0x10000);
 
 	foreach $dash_type ("R", "RW")
 	{
@@ -334,7 +337,7 @@ sub setcodes # ( )
 		}
 	}
 
-	substr($file_data{'work'}, $start, $len, $data);
+	substr($file_data{'work'}, $file_data{'dbankpos'}, 0x10000, $data);
 }
 
 1;

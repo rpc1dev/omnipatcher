@@ -15,6 +15,8 @@ else
 	@DEF_STRATS = ( );
 }
 
+$STRAT_BUF_LEN = 0x10;
+
 sub patch_strat # ( testmode, mode )
 {
 	my($testmode, $mode) = @_;
@@ -31,16 +33,21 @@ sub patch_strat # ( testmode, mode )
 
 	my(@pat_points, $pat_point, $pat_dptr);
 
-	my($pbpos) = ($file_data{'gen'} < 3) ? 0xC0000 : 0xC0000;
-	my($dbpos) = ($file_data{'gen'} < 3) ? 0xD0000 : 0x90000;
+	my($pbank) = substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000);
+	my($dbank) = substr($file_data{'work'}, $file_data{'dbankpos'}, 0x10000);
 
-	my($pbank) = substr($file_data{'work'}, $pbpos, 0x10000);
-	my($dbank) = substr($file_data{'work'}, $dbpos, 0x10000);
+	# First, let's make sure that we even have the space...
+
+	if ( (substr($pbank, 0xFF00 - $STRAT_BUF_LEN, $STRAT_BUF_LEN) ne chr(0x00) x $STRAT_BUF_LEN) ||
+	     (substr($dbank, 0xFF00 - $STRAT_BUF_LEN, $STRAT_BUF_LEN) ne chr(0x00) x $STRAT_BUF_LEN) )
+	{
+		return -1;
+	}
 
 	while ($pbank =~ /$pat_pattern/g)
 	{
 		$pat_point = pos($pbank);
-		$pat_point += $pbpos - 4;
+		$pat_point += $file_data{'pbankpos'} - 4;
 		$pat_dptr = substr($file_data{'work'}, $pat_point + 1, 2);
 		push @pat_points, [ $pat_point, $pat_dptr ];
 	}
@@ -48,7 +55,7 @@ sub patch_strat # ( testmode, mode )
 	while ($dbank =~ /$pat_pattern/g)
 	{
 		$pat_point = pos($dbank);
-		$pat_point += $dbpos - 4;
+		$pat_point += $file_data{'dbankpos'} - 4;
 		$pat_dptr = substr($file_data{'work'}, $pat_point + 1, 2);
 		push @pat_points, [ $pat_point, $pat_dptr ];
 	}
@@ -64,8 +71,8 @@ sub patch_strat # ( testmode, mode )
 	return -1 unless ($#pat_points == 3 && $pat_points[0][1] eq $pat_points[1][1] && $pat_points[0][1] eq $pat_points[2][1] && $pat_points[0][1] eq $pat_points[3][1]);
 	return $curmode if ($testmode);
 
-	substr($file_data{'work'}, $pbpos + 0xFF00, 0x100, chr(0x00) x 0x100);
-	substr($file_data{'work'}, $dbpos + 0xFF00, 0x100, chr(0x00) x 0x100);
+	substr($file_data{'work'}, $file_data{'pbankpos'} + 0xFF00, 0x100, chr(0x00) x 0x100);
+	substr($file_data{'work'}, $file_data{'dbankpos'} + 0xFF00, 0x100, chr(0x00) x 0x100);
 
 	if ($mode == 0)
 	{
@@ -84,10 +91,10 @@ sub patch_strat # ( testmode, mode )
 		substr($insert, 0x23, 2, $pat_dptr);
 
 		substr($insert, 0x08, 1, chr(0x94));
-		substr($file_data{'work'}, $pbpos + 0xFF00, length($insert), $insert);
+		substr($file_data{'work'}, $file_data{'pbankpos'} + 0xFF00, length($insert), $insert);
 
 		substr($insert, 0x08, 1, chr(0x90));
-		substr($file_data{'work'}, $dbpos + 0xFF00, length($insert), $insert);
+		substr($file_data{'work'}, $file_data{'dbankpos'} + 0xFF00, length($insert), $insert);
 	}
 
 	return $curmode;
@@ -95,15 +102,12 @@ sub patch_strat # ( testmode, mode )
 
 sub load_strats # ( )
 {
-	my($pbpos) = ($file_data{'gen'} < 3) ? 0xC0000 : 0xC0000;
-	my($dbpos) = ($file_data{'gen'} < 3) ? 0xD0000 : 0x90000;
-
 	my($type, $pos, $curpos, $idx);
 
 	foreach $type ("+R", "-R")
 	{
-		$pos = $pbpos if ($type eq "+R");
-		$pos = $dbpos if ($type eq "-R");
+		$pos = $file_data{'pbankpos'} if ($type eq "+R");
+		$pos = $file_data{'dbankpos'} if ($type eq "-R");
 
 		for ($curpos = $pos + 0xFF30; ord(substr($file_data{'work'}, $curpos, 1)) != 0; $curpos += 2)
 		{
@@ -115,9 +119,6 @@ sub load_strats # ( )
 
 sub save_strats # ( )
 {
-	my($pbpos) = ($file_data{'gen'} < 3) ? 0xC0000 : 0xC0000;
-	my($dbpos) = ($file_data{'gen'} < 3) ? 0xD0000 : 0x90000;
-
 	my($i, $pcodes, $dcodes, $entry);
 
 	for ($i = 0; $i < $file_data{'ncodes'}; ++$i)
@@ -143,8 +144,8 @@ sub save_strats # ( )
 	else
 	{
 		patch_strat(0, 1);
-		substr($file_data{'work'}, $pbpos + 0xFF30, length($pcodes), $pcodes);
-		substr($file_data{'work'}, $dbpos + 0xFF30, length($dcodes), $dcodes);
+		substr($file_data{'work'}, $file_data{'pbankpos'} + 0xFF30, length($pcodes), $pcodes);
+		substr($file_data{'work'}, $file_data{'dbankpos'} + 0xFF30, length($dcodes), $dcodes);
 	}
 }
 

@@ -24,6 +24,22 @@ sub load_file # ( )
 		error("Unable to classify firmware.");
 	}
 
+	if ($file_data{'gen'} == 0)
+	{
+		$file_data{'pbankpos'} = 0x00000;
+		$file_data{'dbankpos'} = 0x00000;
+	}
+	elsif ($file_data{'gen'} < 3)
+	{
+		$file_data{'pbankpos'} = 0xC0000;
+		$file_data{'dbankpos'} = 0xD0000;
+	}
+	else
+	{
+		$file_data{'pbankpos'} = 0xC0000;
+		$file_data{'dbankpos'} = 0x90000;
+	}
+
 	$file_data{'codes'} = [ getcodes() ];
 	$file_data{'ncodes'} = scalar(@{$file_data{'codes'}});
 
@@ -52,6 +68,7 @@ sub load_file # ( )
 
 	$file_data{'strat_status'} = patch_strat(1, -1);
 	($file_data{'strat_status'} < 0) ? SetDisable($ObjDefStrat) : SetEnable($ObjDefStrat);
+	($file_data{'strat_status'} < 0) ? SetDisable($ObjMediaLabel) : SetEnable($ObjMediaLabel);
 	load_strats() if ($file_data{'strat_status'} == 1);
 
 	$ObjList->Clear();
@@ -82,7 +99,12 @@ sub load_file # ( )
 		$file_data{'patch_status'}->[1] = patch_abs(1, -1);
 		$file_data{'patch_status'}->[2] = patch_fb(1, -1);
 		$file_data{'patch_status'}->[3] = patch_sf(1, -1);
-		$file_data{'patch_status'}->[4] = patch_ff(1, -1);
+		$file_data{'patch_status'}->[4] = patch_fr(1, -1);
+		$file_data{'patch_status'}->[5] = patch_eeprom(1, -1);
+	}
+	elsif ($file_data{'gen'} == 3)
+	{
+		$file_data{'patch_status'}->[1] = patch_abs(1, -1);
 		$file_data{'patch_status'}->[5] = patch_eeprom(1, -1);
 	}
 
@@ -154,8 +176,8 @@ sub save_file # ( file_name )
 	patch_rs(0)												if ($dopatch[0]);
 	patch_abs(0, $ObjPatches[1]->GetCheck())		if ($dopatch[1]);
 	patch_fb(0, $ObjPatches[2]->GetCheck())		if ($dopatch[2]);
-	patch_sf(0, $ObjPatches[3]->GetCheck())		if ($dopatch[3]);
-	patch_ff(0, $ObjPatches[4]->GetCheck())		if ($dopatch[4]);
+	patch_sf(0, $ObjPatches[3]->GetCheck())		if ($dopatch[3] || $ObjPatches[3]->IsEnabled());	# Override; always patch if enabled
+	patch_fr(0, $ObjPatches[4]->GetCheck())		if ($dopatch[4] || $ObjPatches[4]->IsEnabled());	# Override; always patch if enabled
 	patch_eeprom(0, $ObjPatches[5]->GetCheck())	if ($dopatch[5]);
 
 	if (length($file_data{'work'}) == 0x100000)
