@@ -2,7 +2,7 @@ sub load_file # ( )
 {
 	my($code, $i);
 
-	my($header) = substr($file_data{'work'}->[0], 0xF0000, 0x200);
+	my($header) = substr($file_data{'work'}, 0xF0000, 0x200);
 
 	if ($header =~ /SOHW-8.2S|DW-.18A/)
 	{
@@ -83,7 +83,7 @@ sub load_file # ( )
 sub save_file # ( file_name )
 {
 	my($file_name) = @_;
-	my($i, $type, @dopatch, @temp);
+	my($i, $type, @dopatch);
 
 	$file_data{'plus_patches'} = $file_data{'dashr_patches'} = $file_data{'dashrw_patches'} = [ ];
 
@@ -120,7 +120,7 @@ sub save_file # ( file_name )
 		}
 	}
 
-	@temp = @{$file_data{'work'}};
+	my($temp) = $file_data{'work'};
 
 	setcodes();
 
@@ -130,15 +130,70 @@ sub save_file # ( file_name )
 	patch_sf(0, $ObjPatches[3]->GetCheck())		if ($dopatch[3]);
 	patch_eeprom(0, $ObjPatches[4]->GetCheck())	if ($dopatch[4]);
 
-	if (length($file_data{'work'}->[0]) == 0x100000)
+	if (length($file_data{'work'}) == 0x100000)
 	{
-		substr($file_data{'raw'}, $file_data{'work'}->[1], length($file_data{'work'}->[0]), $file_data{'work'}->[0]);
+		my($outdata);
+		my($recompress) = 0;
+
+		if ($file_data{'ext'} eq "bin" || $file_name =~ /\.bin$/i)
+		{
+			$outdata = $file_data{'work'};
+		}
+		else
+		{
+			$outdata = $file_data{'exedata'}->[0];
+
+			my($ffpatch) = chr(0x90) x 6;
+			my($ffarea) = substr($outdata, 0, 0x10000);
+			$ffarea =~ s/\x0F\x85\xDA\x01\x00\x00|\x0F\x85\xF5\x00\x00\x00/$ffpatch/;
+			substr($outdata, 0, 0x10000, $ffarea);
+
+			if ($file_data{'exedata'}->[1] == 2)
+			{
+				my($s_bin) = $file_data{'work'};
+
+				substr($s_bin, 0x0, 0x8000, reverse(substr($file_data{'work'}, length($file_data{'work'}) - 0x8000, 0x8000)));
+				substr($s_bin, length($file_data{'work'}) - 0x8000, 0x8000, reverse(substr($file_data{'work'}, 0x0, 0x8000)));
+
+				substr($outdata, $file_data{'offset'}, $file_data{'exedata'}->[2], xfx_notstr(substr($s_bin, 0, $file_data{'exedata'}->[2])));
+				substr($outdata, $file_data{'offset'} + $file_data{'exedata'}->[2] + $file_data{'exedata'}->[3], length($s_bin) - $file_data{'exedata'}->[2], substr($s_bin, $file_data{'exedata'}->[2], length($s_bin) - $file_data{'exedata'}->[2]));
+
+				$recompress = 1;
+			}
+			else
+			{
+				print length($outdata), "\n";
+				print "$file_data{'offset'}\n";
+				substr($outdata, $file_data{'offset'}, length($file_data{'work'}), $file_data{'work'});
+			}
+		}
 
 		if (open file, ">$file_name")
 		{
 			binmode file;
-			print file $file_data{'raw'};
+			print file $outdata;
 			close file;
+
+			if ($recompress && xfx_check_helper())
+			{
+				qx($XFX_HELPER -1 -q "$file_name");
+
+				open file, $file_name;
+				binmode file;
+				my($strip) = join("", <file>);
+				close file;
+
+				my($null4) = chr(0x00) x 4;
+
+				$strip =~ s/UPX0/$null4/;
+				$strip =~ s/UPX1/$null4/;
+				$strip =~ s/1\.24\x00UPX/$null4$null4/;
+
+				open file, ">$file_name";
+				binmode file;
+				print file $strip;
+				close file;
+			}
 
 			Win32::GUI::MessageBox($hWndMain, "The patched file was successfully created.", "Done!", MB_OK | MB_ICONINFORMATION);
 		}
@@ -152,7 +207,7 @@ sub save_file # ( file_name )
 		error("Unexpected error encountered during patching.\nFile not saved.", 0);
 	}
 
-	$file_data{'work'} = [ @temp ];
+	$file_data{'work'} = $temp;
 }
 
 sub save_report # ( file_name )

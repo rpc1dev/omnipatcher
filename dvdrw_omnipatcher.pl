@@ -1,7 +1,7 @@
 require 'timestamp.pl';
 
 $PROGRAM_TITLE = 'OmniPatcher for LiteOn DVD-Writers';
-$PROGRAM_VERSION = '1.0.3';
+$PROGRAM_VERSION = '1.1.0';
 
 use Win32::GUI;
 

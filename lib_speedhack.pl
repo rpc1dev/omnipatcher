@@ -44,7 +44,7 @@ sub nullunbuf # ( str )
 sub getcodes # ( )
 {
 	my($start, $len) = ($file_data{'gen'} < 3) ? (0xC0000, 0x20000) : (0x90000, 0x40000);
-	my($data) = substr($file_data{'work'}->[0], $start, $len);
+	my($data) = substr($file_data{'work'}, $start, $len);
 
 	my($x, $y, $p, $i);
 	my(@codes, @speeds, @ret);
@@ -208,7 +208,7 @@ sub getcodes # ( )
 sub setcodes # ( )
 {
 	my($start, $len) = ($file_data{'gen'} < 3) ? (0xC0000, 0x20000) : (0x90000, 0x40000);
-	my($data) = substr($file_data{'work'}->[0], $start, $len);
+	my($data) = substr($file_data{'work'}, $start, $len);
 
 	my($x, $y, $p, $i);
 	my($patch, $mid, $tid);
@@ -317,7 +317,7 @@ sub setcodes # ( )
 		}
 	}
 
-	substr($file_data{'work'}->[0], $start, $len, $data);
+	substr($file_data{'work'}, $start, $len, $data);
 }
 
 1;

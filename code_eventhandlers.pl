@@ -125,25 +125,25 @@ sub Cmds0_Click
 		return error("Invalid file type.", 1)
 	}
 
-	open file, $new_file{'longname'};
-	binmode file;
-	$new_file{'raw'} = join('', <file>);
-	close file;
-
 	if ($new_file{'ext'} eq "bin")
 	{
-		$new_file{'work'} = [ $new_file{'raw'}, 0 ];
-		return error("Invalid .BIN file size!\nAborting load process.", 1) if (length($new_file{'work'}->[0]) != 0x100000);
+		open file, $new_file{'longname'};
+		binmode file;
+		$new_file{'work'} = join('', <file>);
+		close file;
+
+		return error("Invalid .BIN file size!\nAborting load process.", 1) if (length($new_file{'work'}) != 0x100000);
+		return error("This firmware appears to be corrupted.\nAborting load process.", 1) if (substr($new_file{'work'}, 0, 1) ne "\x02");
 	}
 	else
 	{
-		$new_file{'work'} = xflashx($new_file{'raw'});
-		return error("Unable to process this .EXE file!\nPlease make sure that the file is valid.\n\nYou might also consider using XFlash-X to\nextract a .BIN file to work with instead.", 1) if (length($new_file{'work'}->[0]) != 0x100000);
-	}
+		my($xfx) = xflashx($new_file{'longname'});
 
-	if (substr($new_file{'work'}->[0], 0, 1) ne "\x02")
-	{
-		return error("This firmware appears to be corrupted.\nAborting load process.", 1);
+		$new_file{'work'} = $xfx->[0][0][1];
+		$new_file{'offset'} = $xfx->[0][0][2];
+		$new_file{'exedata'} = $xfx->[1];
+
+		return error("Unable to process this .EXE file!\nPlease make sure that the file is valid.\n\nYou might also consider using XFlash-X to\nextract a .BIN file to work with instead.", 1) if (length($new_file{'work'}) != 0x100000);
 	}
 
 	%file_data = %new_file;
@@ -165,12 +165,12 @@ sub Cmds1_Click
 
 	if ($file_data{'ext'} eq "bin")
 	{
-		$ofn{'-filter'} = [ "Firmwares (*.bin)", "*.bin" ];
+		$ofn{'-filter'} = [ "Raw Firmwares (*.bin)", "*.bin" ];
 		$ofn{'-defaultextention'} = "bin";
 	}
 	else
 	{
-		$ofn{'-filter'} = [ "Firmwares (*.exe)", "*.exe" ];
+		$ofn{'-filter'} = [ "Executable Firmwares (*.exe)", "*.exe", "Raw Firmwares (*.bin)", "*.bin" ];
 		$ofn{'-defaultextention'} = "exe";
 	}
 
