@@ -13,12 +13,14 @@ $DASHRW_SAMPLE = quotemeta("RITEKW0");
 $STRAT3_PATTERN = '(?:(?:\x90..|\xA3)\xE0(?:\x90..|\x02\xFF[\x00\x02\x04\x06])|(?:\x90..[\xE8-\xEF]|[\xE8-\xEF]\x02\xFF[\x00\x02\x04\x06]))\xF0';
 $STRAT3A_PATTERN = '(?:(?:\x90..|\xA3)\xE0[\xF8-\xFF]?(?:\x90..|\x02\xFF[\x00\x02\x04\x06])|(?:\x90..[\xE8-\xEF]|[\xE8-\xEF]\x02\xFF[\x00\x02\x04\x06]))\xF0';
 
+#..............................................................................
 sub nullpad # ( str, len )
 {
 	my($str, $len) = @_;
 	return $str . "\x00" x ($len - length($str));
 }
 
+#..............................................................................
 sub nulltrim # ( str )
 {
 	my($str) = @_;
@@ -26,12 +28,14 @@ sub nulltrim # ( str )
 	return $str;
 }
 
+#..............................................................................
 sub nullbuf # ( str )
 {
 	my($str) = @_;
 	return "\x00" . join("\x00", split(//, $str));
 }
 
+#..............................................................................
 sub nullunbuf # ( str )
 {
 	my($str) = @_;
@@ -47,6 +51,7 @@ sub nullunbuf # ( str )
 	return $ret;
 }
 
+#..............................................................................
 sub getmctype # ( )
 {
 	my($pdata, $ddata);
@@ -56,13 +61,13 @@ sub getmctype # ( )
 
 	if ( $pdata =~ /\xE5\x24\x90..\xB4\x94\x05\x74(.)\xF0\x80\x03\x74(.)\xF0/s ||
 	     $pdata =~ /\xE5\x24\x64\x94\x60\x05\xE5\x24\xB4\x97\x08\x90..\x74(.)\xF0\x80\x06\x90..\x74(.)\xF0/s )
-	{
+	{ # 1S & 2S firmware
 		$file_data{'mctype'} = 1;
 		$file_data{'mcpdata'} = [ ord($1), ord($2), ord($1) + ord($2) ];
 		$file_data{'mcddata'} = [ ];
 	}
 	else
-	{
+	{ # 3S firmware
 		$file_data{'mctype'} = 2;
 		$file_data{'mcpdata'} = [ ];
 		$file_data{'mcddata'} = [ ];
@@ -77,13 +82,16 @@ sub getmctype # ( )
 
 			dbgout(sprintf("+ bank: 0x%05X\n- bank: 0x%05X\n", $file_data{'pbankpos'}, $file_data{'dbankpos'}));
 		}
-
-		while ($pdata =~ /\x75\xF0(\x1A|\x0D|\x1C|\x0E|\x1E|\x0F)\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83.{12,43}?(?:\x64\x0B\x70|\xB4\x0B)(?:\x03\x02(.)(.).{0,8}?|.($STRAT3A_PATTERN.{36,66}?(?:(?:\xEF|\x90..\xE0)\x64.\x60.)*.{0,17}?))(\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)\x0C.{2,8}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64))(.)/sg)
+		
+		while ($pdata =~ /(?:\x75\xF0|\xC4\x54)(.)(?:\xA4\x24|\x24)(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83.{12,43}?(?:\x64\x0B\x70|\xB4\x0B)(?:\x03\x02(.)(.).{0,8}?|.($STRAT3A_PATTERN.{36,110}?(?:(?:\xEF|\x90..\xE0)\x64.\x60.)*.{0,17}?))(\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)\x0C.{2,8}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64))(.)/sg)
 		{
 			push(@{$file_data{'mcpdata'}}, [ ord($3) * 0x100 + ord($2), ord($8), (length($6)) ? scalar(pos($pdata)) - length($6) - length($7) - length($8) : ord($4) * 0x100 + ord($5), ord($1), length($6) != 0 ]);
 
-			my($x, $y, $z) = map { quotemeta } ($1, $2, $3);
+			$file_data{'mcpdata'}->[-1][3] = 0x10 if (ord($1) == 0xf0);
 
+			# lenght, lsb, msb
+			my($x, $y, $z) = map { quotemeta } ($1, $2, $3);
+			
 			if ($file_data{'mcpdata'}->[-1][4] && ($pdata2 =~ /\x75\xF0$x\xA4\x24$y\xF5\x82(?:\xE5\xF0|\xE4)\x34$z\xF5\x83.{12,43}?(?:\x64\x0A\x70|\xB4\x0A)./sg))
 			{
 				$file_data{'mcpdata'}->[-1][4] = $file_data{'mcpdata'}->[-1][2];
@@ -95,7 +103,7 @@ sub getmctype # ( )
 			dbgout(sprintf("+ table: fw_loc=$pbs%04X, start=$pbs%04X, n=%02d, ws_pt=$pbs%04X, len=%02d, ws_ex=$pbs%04X\n", pos($pdata), @{$file_data{'mcpdata'}->[-1]}));
 		}
 
-		while ($ddata =~ /\x75\xF0(\x0D|\x0F)\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83(?:.{256,272}?|.{154,170}?)(?:\x64\x0E\x70|\xB4\x0E)(?:\x03\x02(.)(.)|.($STRAT3A_PATTERN.{21,107}?(?:(?:\xEF|\x90..\xE0)\x64.\x60.)*.{0,6}))(\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)\x0F.{2,8}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64))(.)/sg)
+		while ($ddata =~ /\x75\xF0(.)\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83(?:.{256,272}?|.{154,170}?)(?:\x64\x0E\x70|\x64\x0E\x60.\x02.|\xB4\x0E)(?:\x03\x02(.)(.)|.($STRAT3A_PATTERN.{10,207}?(?:(?:\xEF|\x90..\xE0)(?:\x64.\x60.|\x90..\x02..))*.{0,6}))(\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)\x0F.{2,8}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64))(.)/sg)
 		{
 			push(@{$file_data{'mcddata'}}, [ ord($3) * 0x100 + ord($2), ord($8), (length($6)) ? scalar(pos($ddata)) - length($6) - length($7) - length($8) : ord($4) * 0x100 + ord($5), ord($1), length($6) != 0 ]);
 
@@ -118,9 +126,12 @@ sub getmctype # ( )
 	}
 }
 
+#..............................................................................
 sub getcodes # ( )
 {
+	# if slim drive 852S use getcodes_slim
 	return getcodes_slim() if ($file_data{'genex'} >= 0x100 && $file_data{'genex'} < 0x200);
+	# if 3S drive use getcodes2
 	return getcodes2() if ($file_data{'mctype'} >= 2);
 
 	my($data);
@@ -301,6 +312,7 @@ sub getcodes # ( )
 	return sort { ($a->[0] cmp $b->[0]) ? $a->[0] cmp $b->[0] : uc($a->[2]) cmp uc($b->[2]) } @ret;
 }
 
+#..............................................................................
 sub setcodes # ( )
 {
 	return setcodes_slim() if ($file_data{'genex'} >= 0x100 && $file_data{'genex'} < 0x200);

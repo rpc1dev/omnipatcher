@@ -20,6 +20,7 @@ $DASHR3_SAMPLE = quotemeta("TYG0");
 
 $DASHRW2_SAMPLE = 'TDK\d{3}saku';
 
+#..............................................................................
 sub addr2bankstr # ( address )
 {
 	use integer;
@@ -28,12 +29,14 @@ sub addr2bankstr # ( address )
 	return chr($address / 0x100) . chr($address % 0x100);
 }
 
+#..............................................................................
 sub int2uni # ( val )
 {
 	use integer;
 	return chr($_[0] / 0x100) . chr($_[0] % 0x100);
 }
 
+#..............................................................................
 sub pcode2str # ( [ mid, tid, rid, spd ], unicode )
 {
 	my($data, $unicode) = @_;
@@ -42,6 +45,7 @@ sub pcode2str # ( [ mid, tid, rid, spd ], unicode )
 	return ($unicode) ? nullbuf($ret) . int2uni($data->[3]) : $ret . chr($data->[3]);
 }
 
+#..............................................................................
 sub str2pcode # ( str, unicode )
 {
 	my($str, $unicode) = @_;
@@ -58,7 +62,9 @@ sub str2pcode # ( str, unicode )
 	return($mid, $tid, $rid, $spd);
 }
 
+#..............................................................................
 sub getcodes2 # ( )
+# 3S drives
 {
 	my($data);
 	my($i, $j);
@@ -74,6 +80,7 @@ sub getcodes2 # ( )
 
 	$data = substr($file_data{'work'}, $file_data{'pbankpos'}, 0x10000);
 
+	# Search banks for media code matches
 	for ($i = 0; $i < scalar(@{$file_data{'mcpdata'}}); ++$i)
 	{
 		$data = substr($file_data{'work'}, $file_data{'pbankpos'} + $file_data{'mcpdata'}->[$i][0], $file_data{'mcpdata'}->[$i][1] * $file_data{'mcpdata'}->[$i][3]);
@@ -101,6 +108,7 @@ sub getcodes2 # ( )
 		{
 			$type = '+R/W';
 		}
+
 
 		for ($j = 0; $j < $file_data{'mcpdata'}->[$i][1]; ++$j)
 		{
@@ -171,6 +179,7 @@ sub getcodes2 # ( )
 	return sort { ($a->[0] cmp $b->[0]) ? $a->[0] cmp $b->[0] : uc($a->[2]) cmp uc($b->[2]) } @ret;
 }
 
+#..............................................................................
 sub setcodes2 # ( )
 {
 	my($data, $patch);
@@ -218,6 +227,7 @@ sub setcodes2 # ( )
 	}
 }
 
+#..............................................................................
 sub patch_strat2 # ( testmode, mode )
 {
 	return -1 if (scalar @{$file_data{'stratptables'}} != 3 || scalar @{$file_data{'stratdtables'}} != 3);
@@ -366,6 +376,7 @@ sub patch_strat2 # ( testmode, mode )
 	return $curmode;
 }
 
+#..............................................................................
 sub patch_strat3 # ( testmode, mode )
 {
 	return -1 if (scalar @{$file_data{'stratptables'}} < 3 || scalar @{$file_data{'stratdtables'}} < 3);

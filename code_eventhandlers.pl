@@ -198,23 +198,37 @@ sub DefStrat_Click
 	return 1;
 }
 
-sub Patches2_Click
+sub Patches0_Click
 {
-	if ($ObjPatches[2]->GetCheck() && $ObjPatches[3]->IsEnabled())
-	{
-		my($temp) = $PATCH_NAMES[3];
-		$temp =~ s/"/'/g;
-		Win32::GUI::MessageBox($hWndMain, "If you choose to apply the \"$PATCH_NAMES[2]\"\npatch, it is highly recommended that you also apply the\n\"$temp\" patch.", "Notice", MB_OK | MB_ICONINFORMATION);
+	SetCheck($ObjPatches[$PIDX_RS16], 0)	if ($ObjPatches[$PIDX_RS12]->GetCheck());
 
-		SetCheck($ObjPatches[3], 1);
+	return 1;
+}
+
+sub Patches1_Click
+{
+	SetCheck($ObjPatches[$PIDX_RS12], 0)	if ($ObjPatches[$PIDX_RS16]->GetCheck());
+
+	return 1;
+}
+
+sub Patches3_Click
+{
+	if ($ObjPatches[$PIDX_ES]->GetCheck() && $ObjPatches[$PIDX_FS]->IsEnabled() && !$ObjPatches[$PIDX_FS]->GetCheck())
+	{
+		my($temp) = $PATCH_NAMES[$PIDX_FS];
+		$temp =~ s/"/'/g;
+		Win32::GUI::MessageBox($hWndMain, "If you choose to apply the \"$PATCH_NAMES[$PIDX_ES]\"\npatch, it is highly recommended that you also apply the\n\"$temp\" patch.", "Notice", MB_OK | MB_ICONINFORMATION);
+
+		SetCheck($ObjPatches[$PIDX_FS], 1);
 	}
 
 	return 1;
 }
 
-sub Patches4_Click
+sub Patches5_Click
 {
-	if ($ObjPatches[4]->GetCheck() && !$FRCWarned)
+	if ($ObjPatches[$PIDX_FF]->GetCheck() && !$FRCWarned)
 	{
 		$FRCWarned = 1;
 		Win32::GUI::MessageBox($hWndMain, "It is recommended that you apply this patch only if your burns exhibit\na \"mountain\" error effect at the very end of a disc.\n\nPlease refer to the documentation for more information.\n\nYou will not see this message again until the next time this program\nis run.", "Notice", MB_OK | MB_ICONINFORMATION);
@@ -318,10 +332,13 @@ sub Cmds1_Click
 sub Cmds2_Click
 {
 	my($report);
-
+	my($plus_r_cnt, $plus_rw_cnt, $plus_cnt) = @{$file_data{'mcpdata'}};
+	
 	$report  = "Drive name string:  $file_data{'driveid'}\n";
 	$report .= "Firmware revision:  $file_data{'fwrev'}\n";
-	$report .= "Firmware timestamp:  $file_data{'timestamp'}";
+	$report .= "Firmware timestamp:  $file_data{'timestamp'}\n\n";
+
+	$report .= "Total media codes:  $file_data{'ncodes'}\n";
 
 	Win32::GUI::MessageBox($hWndMain, $report, "Firmware Information", MB_OK | MB_ICONINFORMATION);
 	return 1;

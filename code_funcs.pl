@@ -20,6 +20,7 @@ sub dbgout # ( debugging_output )
 # General functions
 #
 
+#..............................................................................
 sub load_file # ( )
 {
 	my($i, $label);
@@ -142,15 +143,20 @@ sub load_file # ( )
 	}
 	elsif ($file_data{'genex'} >= 0x034 && $file_data{'genex'} < 0x100)
 	{
-		Win32::GUI::MessageBox($hWndMain, "Support for this drive type in this version of OmniPatcher is experimental.", "Notice", MB_OK | MB_ICONINFORMATION);
+#		Win32::GUI::MessageBox($hWndMain, "Support for this drive type in this version of OmniPatcher is experimental.", "Notice", MB_OK | MB_ICONINFORMATION);
 	}
 
+	# sets mcpdata (tables) -> module = speedhack
 	getmctype();
 
 	$file_data{'codes'} = [ getcodes() ];
 	$file_data{'ncodes'} = scalar(@{$file_data{'codes'}});
 
 	dbgout("MC Type: $file_data{'mctype'}\n");
+	if ($file_data{'mctype'} == 4)
+	{
+#		Win32::GUI::MessageBox($hWndMain, "This version of OmniPatcher is experimental for 3S firmware strategy switching.", "Notice", MB_OK | MB_ICONINFORMATION);
+	}
 
 	if ($file_data{'mctype'} >= 2 && $file_data{'fwfamily'} =~ /^SOHW-1[26]([1357])3S$/)
 	{
@@ -234,32 +240,41 @@ sub load_file # ( )
 	SetEnable($ObjList);
 	$ObjMediaGroup->Text("$MGROUP_NAME ($file_data{'ncodes'} codes)");
 
-	$file_data{'patch_status'} = [ -1, -1, -1, -1, -1, -1 ];
+	$file_data{'patch_status'} = [ -1, -1, -1, -1, -1, -1, -1 ];
 
 	if ($file_data{'gen'} > 0 && $file_data{'gen'} < 3)
 	{
-		$file_data{'patch_status'}->[0] = patch_rs(1);
-		$file_data{'patch_status'}->[1] = patch_abs(1, -1);
-		$file_data{'patch_status'}->[2] = patch_fb(1, -1);
-		$file_data{'patch_status'}->[3] = patch_sf(1, -1);
-		$file_data{'patch_status'}->[4] = patch_ff(1, -1);
-		$file_data{'patch_status'}->[5] = patch_eeprom(1, -1);
+		$file_data{'patch_status'}->[$PIDX_RS12] = patch_rs(1);
+#		$file_data{'patch_status'}->[$PIDX_RS16] = -1;
+		$file_data{'patch_status'}->[$PIDX_AB] = patch_abs(1, -1);
+		$file_data{'patch_status'}->[$PIDX_ES] = patch_fb(1, -1);
+		$file_data{'patch_status'}->[$PIDX_FS] = patch_sf(1, -1);
+		$file_data{'patch_status'}->[$PIDX_FF] = patch_ff(1, -1);
+		$file_data{'patch_status'}->[$PIDX_CF] = patch_eeprom(1, -1);
 
-		SetText($ObjPatches[0], $PATCH_0_BASE . " to 8x")
+		SetText($ObjPatches[$PIDX_RS12], $PATCH_0_BASE . " to 8x")
 	}
 	elsif ($file_data{'gen'} == 3 || $file_data{'gen'} == 4)
 	{
-		$file_data{'patch_status'}->[0] = patch_rs(1);
-		$file_data{'patch_status'}->[1] = patch_abs(1, -1);
-		$file_data{'patch_status'}->[5] = patch_eeprom(1, -1);
+		dbgout(sprintf("DEBUG REPORT: %d, %d\n", $PIDX_RS12, $PIDX_RS16));
+		SetCheck($ObjPatches[$PIDX_RS16], 0);
+		if (($file_data{'patch_status'}->[$PIDX_RS12] = patch_rs(1)) < 0) 
+		{
+			SetCheck($ObjPatches[$PIDX_RS16], 1);
+			$file_data{'patch_status'}->[$PIDX_RS16] = patch_rs(1);
+		} else {
+			$file_data{'patch_status'}->[$PIDX_RS16] = 0;
+		}
+		$file_data{'patch_status'}->[$PIDX_AB] = patch_abs(1, -1);
+		$file_data{'patch_status'}->[$PIDX_CF] = patch_eeprom(1, -1);
 
-		SetText($ObjPatches[0], $PATCH_0_BASE . " to 12x")
+		SetText($ObjPatches[$PIDX_RS12], $PATCH_0_BASE . " to 12x")
 	}
 	else
 	{
-		$file_data{'patch_status'}->[5] = patch_eeprom(1, -1);
+		$file_data{'patch_status'}->[$PIDX_CF] = patch_eeprom(1, -1);
 
-		SetText($ObjPatches[0], $PATCH_0_BASE)
+		SetText($ObjPatches[$PIDX_RS12], $PATCH_0_BASE)
 	}
 
 	foreach $i (0 .. $#ObjPatches)
@@ -276,12 +291,16 @@ sub load_file # ( )
 		}
 	}
 
-	SetDisable($ObjPatches[0]) if ($ObjPatches[0]->GetCheck());
-
-	if ($file_data{'patch_status'}->[5] == -2)
+	if ($ObjPatches[$PIDX_RS12]->GetCheck() || $ObjPatches[$PIDX_RS16]->GetCheck())
 	{
-		$file_data{'patch_status'}->[5] = -1;
-		SetCheck($ObjPatches[5], 1);
+		SetDisable($ObjPatches[$PIDX_RS12]);
+		SetDisable($ObjPatches[$PIDX_RS16]);
+	}
+
+	if ($file_data{'patch_status'}->[$PIDX_CF] == -2)
+	{
+		$file_data{'patch_status'}->[$PIDX_FF] = -1;
+		SetCheck($ObjPatches[$PIDX_CF], 1);
 	}
 
 	SetEnable($ObjSpdRep);
@@ -291,6 +310,7 @@ sub load_file # ( )
 	$ObjCmdGroup->Text(($file_data{'fwrev'} eq 'Unknown') ? $file_data{'shortname'} : "$file_data{'fwrev'} ($file_data{'shortname'})");
 }
 
+#..............................................................................
 sub save_file # ( file_name )
 {
 	my($file_name) = @_;
@@ -339,12 +359,12 @@ sub save_file # ( file_name )
 	setcodes();
 	save_strats();
 
-	patch_rs(0)												if ($dopatch[0]);
-	patch_abs(0, $ObjPatches[1]->GetCheck())		if ($dopatch[1]);
-	patch_fb(0, $ObjPatches[2]->GetCheck())		if ($dopatch[2]);
-	patch_sf(0, $ObjPatches[3]->GetCheck())		if ($dopatch[3] || $ObjPatches[3]->IsEnabled());	# Override; always patch if enabled
-	patch_ff(0, $ObjPatches[4]->GetCheck())		if ($dopatch[4] || $ObjPatches[4]->IsEnabled());	# Override; always patch if enabled
-	patch_eeprom(0, $ObjPatches[5]->GetCheck())	if ($dopatch[5] || $ObjPatches[5]->GetCheck());		# Override; always patch if checked
+	patch_rs(0)												if ($dopatch[$PIDX_RS12] || $dopatch[$PIDX_RS16]);
+	patch_abs(0, $ObjPatches[$PIDX_AB]->GetCheck())		if ($dopatch[$PIDX_AB]);
+	patch_fb(0, $ObjPatches[$PIDX_ES]->GetCheck())		if ($dopatch[$PIDX_ES]);
+	patch_sf(0, $ObjPatches[$PIDX_FS]->GetCheck())		if ($dopatch[$PIDX_FS] || $ObjPatches[$PIDX_FS]->IsEnabled());	# Override; always patch if enabled
+	patch_ff(0, $ObjPatches[$PIDX_FF]->GetCheck())		if ($dopatch[$PIDX_FF] || $ObjPatches[$PIDX_FF]->IsEnabled());			# Override; always patch if enabled
+	patch_eeprom(0, $ObjPatches[$PIDX_CF]->GetCheck())	if ($dopatch[$PIDX_CF] || $ObjPatches[$PIDX_CF]->GetCheck());				# Override; always patch if checked
 
 	$file_data{'work'} = mtk_rebank(\$file_data{'work'}, 0) if ($file_data{'rebank'});
 
@@ -438,6 +458,7 @@ sub save_file # ( file_name )
 	$file_data{'work'} = $temp;
 }
 
+#..............................................................................
 sub save_report # ( file_name )
 {
 	my($file_name) = @_;
@@ -546,6 +567,7 @@ sub save_report # ( file_name )
 	}
 }
 
+#..............................................................................
 sub proc_speed
 {
 	my($idx) = $ObjList->SelectedItem();

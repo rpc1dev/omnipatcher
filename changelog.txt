@@ -1,3 +1,12 @@
+1.4.0 (12 Apr 2005)
+	* Added: 16x reading speed patch for 3S drives.
+	* Other: Removed experimental message.
+
+1.3.20b (10 Apr 2005)
+	* Other: Removed 1673S experimental warning (no problems were reported).
+	* Other: Updated the Win32 GUI and EXE builder.
+	* Fixed: 1653S firmwares now display all media.
+
 1.3.18c (16 Jan 2005)
 	* Fixed: Problem with loading the 6S07 firmware (slimtype).
 

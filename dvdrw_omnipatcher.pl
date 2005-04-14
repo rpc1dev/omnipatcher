@@ -1,4 +1,5 @@
 require 'appinfo.pl';
+require 'timestamp.pl';
 
 use Win32::GUI;
 

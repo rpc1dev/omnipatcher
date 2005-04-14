@@ -9,13 +9,23 @@ sub patch_rs # ( testmode )
 	my($MIN_SEQ) = 4;
 	my($changes) = 0;
 	my($found) = 0;
-
+	my($p_spd) = 0;
+	my($p_spd) = 0;
+	
 	my($work) = substr($file_data{'work'}, 0x20000, 0x10000);
 
 	if ($file_data{'gen'} >= 3)
 	{
-		$spd_pattern = '^\x7F[\x06\x08\x0A\x0C\x0E\x10]\x80$';
-		$spd_to = 0x0C;
+		if ($ObjPatches[1]->GetCheck())
+		{
+			$spd_pattern = '^\x7F[\x06\x08\x0A\x0C\x0E\x10]\x80$';
+			$spd_to = 0x10;
+		}
+		else
+		{
+			$spd_pattern = '^\x7F[\x06\x08\x0A\x0C\x0E]\x80$';
+			$spd_to = 0x0C;
+		}
 	}
 	else
 	{
@@ -30,7 +40,7 @@ sub patch_rs # ( testmode )
 			$counter = 1;
 			$jmppos = $i + ord(substr($work, $i + 3, 1));
 
-			for ($j = $i + 4; $j < length($work) - 4 && substr($work, $j, 3) =~ /^\x7F[\x06\x08\x0A\x0C]\x80$/s; $j += 4)
+			for ($j = $i + 4; $j < length($work) - 4 && substr($work, $j, 3) =~ /$spd_pattern/s; $j += 4)
 			{
 				if ($j + ord(substr($work, $j + 3, 1)) == $jmppos)
 				{
@@ -64,7 +74,7 @@ sub patch_rs # ( testmode )
 		substr($file_data{'work'}, 0x20000, 0x10000, $work);
 	}
 
-	return ($found) ? ($changes == 0) : -1;
+	return ($found) ? $changes == 0 : -1;
 }
 
 sub patch_abs # ( testmode, mode )

@@ -144,9 +144,18 @@ $hWndMain = 0;
 
 	@MEDIA_SPEEDS = @MEDIA_SPEEDS_0;
 
+	$PIDX_RS12 = 0;
+	$PIDX_RS16 = 1;
+	$PIDX_AB = 2;
+	$PIDX_ES = 3;
+	$PIDX_FS = 4;
+	$PIDX_FF = 5;
+	$PIDX_CF = 6;
+
 	@PATCH_NAMES =
 	(
-		$PATCH_0_BASE,
+		$PATCH_0_BASE . " to 12x",
+		$PATCH_0_BASE . " to 16x",
 		"Enable auto-bitsetting",
 		"Earlier shift (faster burn) for 8x +R",
 		"Utilize \"force-shifting\" for 6x/8x burns",
@@ -228,11 +237,11 @@ $hWndMain = 0;
 
 ################################################################################
 # BEGIN: Section: initialize icons
-{
-	$OPIconLg = new    Win32::GUI::Icon($ICO_ID);
-	$OPIconSm = new_sm Win32::GUI::Icon($ICO_ID);
-
-} # END: Section: initialize icons
+#{
+#	$OPIconLg = new    Win32::GUI::Icon("#1");
+#	$OPIconSm = new Win32::GUI::Icon("#2");
+#
+#} # END: Section: initialize icons
 
 
 ################################################################################
@@ -294,8 +303,8 @@ $hWndMain = 0;
 
 	$hWndMain = Win32::GUI::FindWindow('', $unique_title);
 	$ObjMain->Change(-text => $PROGRAM_TITLE);
-	$ObjMain->ChangeIcon($OPIconLg);
-	$ObjMain->ChangeSmallIcon($OPIconSm);
+#	$ObjMain->ChangeIcon($OPIconLg);
+#	$ObjMain->ChangeSmallIcon($OPIconSm);
 
 } # END: Section: create window
 
@@ -483,8 +492,8 @@ $hWndMain = 0;
 
 	) or abort("Initialization Error.");
 
-	$ObjStMain->ChangeIcon($OPIconLg);
-	$ObjStMain->ChangeSmallIcon($OPIconSm);
+#	$ObjStMain->ChangeIcon($OPIconLg);
+#	$ObjStMain->ChangeSmallIcon($OPIconSm);
 
 	$ObjStGroup = new Win32::GUI::Groupbox
 	(
