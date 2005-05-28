@@ -1,7 +1,17 @@
 ##
 # XFlash-X Common Library
 # 1.2.3 (23 Nov 2004)
-#
+# 2.4.1 (20 April 2005)
+#	Other: Allowed XF version 2.2.x to use same checks as 2.1.x
+#	Other: All options including HOW_MANY_BIN has been replaced with PARA_OPT in 2.2.2
+#	        Allowed for one rom at this stage by detecting a number larger than 4
+#	        Don't know how to figure out which bits are the ROM count
+# 2.4.2 (6 May 2005)
+#	Other: Had to add a new scram mode for XF v 2.2.x. Every firmware release since XF v2.2.0
+#               has used a key of 0x00. When the Sony BYX4 was released with XF v2.2.0 the
+#               the detected key was 0x90 but the required key was still 0x00. The new scram mode
+#               use the exkey parameter of xfx_crypt_mode4 to force a 0x00 key.
+
 
 require "lib_xflashx_config.pl";
 
@@ -30,7 +40,7 @@ sub xfx_initpattern # ( )
 {
 	my($count_pattern, $start_pattern, $size_pattern, $name_pattern, $i);
 
-	$count_pattern = 'HOW_MANY_BIN=(\d+\x00+).*?';
+	$count_pattern = '(?:HOW_MANY_BIN|PARA_OPT)=(\d+\x00+).*?';
 
 	foreach $i (1 .. 4)
 	{
@@ -349,6 +359,8 @@ sub xflashx # ( f_in )
 		# cleanup and some output.
 		#
 		$nbins = xfx_nulltrim($nbins) + 0;
+		# work around for new PARA_OPT until I know more about how it works 
+		$nbins = 1 if ($nbins > 4);
 
 		foreach $i (0 .. 3)
 		{
@@ -367,7 +379,7 @@ sub xflashx # ( f_in )
 			next if ($bins[$i][2] == 0);
 
 			$start = $bins[$i][1] + $offset;
-			xfx_debug sprintf("Attempting to extract '%s': 0x%06X bytes with offset 0x%X...\n", $bins[$i][0], $bins[$i][2], $bins[$i][1]);
+			xfx_debug sprintf("Attempting to extract '%s': 0x%06X bytes with offset 0x%X...\n\n", $bins[$i][0], $bins[$i][2], $bins[$i][1]);
 
 			$flag_fail = 0;
 
@@ -381,7 +393,7 @@ sub xflashx # ( f_in )
 					$skip_pre = 0x000000;
 					$skip_len = 0x000000;
 				}
-				elsif ($xfversion =~ /2\.1\.\d/)
+				elsif ($xfversion =~ /2\.(?:1|2)\.\d/)
 				{
 					if ($data =~ /\x30\x02\xEB\x2B.{12}\x80\x34\x02\xFF.{25}\x30\x10/s)
 					{
@@ -389,24 +401,24 @@ sub xflashx # ( f_in )
 					}
 					elsif ($data =~ /(?:\x0F\xB6\x04\x08|(?:\x33\xC0)\x8A\x04\x0A)\x25(.)\x00\x00\x80(?:\x79\x05)\x48(?:\x83\xC8.)\x40/s)
 					{
-						$scrammode = 4;
 						$andkey = ord($1);
+						$scrammode = ($xfversion =~ /2\.2\.\d/) ? 5 : 4;
 					}
 					elsif ($data =~ /\xFF{256}/s)
 					{
-						$scrammode = 2;
 						$skip_pre = 0x000400;
 						$skip_len = 0x001000;
+						$scrammode = 2;
 					}
 					else
 					{
 						xfx_debug "Error: Cannot determine scrambling method.\n";
 					}
 				}
-
 				$flag_fail = 1 if ($scrammode == 0);
 
-				xfx_debug "Using unscrambler for XFlash v$xfversion, mode $scrammode...\n" unless ($flag_fail);
+				xfx_debug "Using unscrambler for XFlash v$xfversion, scramble mode $scrammode...\n" unless ($flag_fail);
+				xfx_debug "Failed to detect scramble mode\n" if ($flag_fail);
 
 				if ($scrammode == 3)
 				{
@@ -415,6 +427,11 @@ sub xflashx # ( f_in )
 				elsif ($scrammode == 4)
 				{
 					($bin_fw, $exkey) = xfx_crypt_mode4(substr($data, $start + 0x1000, $bins[$i][2]), substr($data, $offset + 0x400 * $i, 0x400), $bins[$i][0], $andkey);
+					xfx_debug sprintf("Keys used: A(0x%02X), E(0x%02X)\n", $andkey, $exkey);
+				}
+				elsif ($scrammode == 5)
+				{
+					($bin_fw, $exkey) = xfx_crypt_mode4(substr($data, $start + 0x1000, $bins[$i][2]), substr($data, $offset + 0x400 * $i, 0x400), $bins[$i][0], $andkey, 0x00);
 					xfx_debug sprintf("Keys used: A(0x%02X), E(0x%02X)\n", $andkey, $exkey);
 				}
 				else

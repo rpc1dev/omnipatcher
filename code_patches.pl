@@ -1,4 +1,4 @@
-$OP_ALLOW_ADVANCED_AUTOBS = 0;
+$OP_ALLOW_ADVANCED_AUTOBS = 1;
 
 sub patch_rs # ( testmode )
 {
@@ -41,6 +41,7 @@ sub patch_rs # ( testmode )
 			$jmppos = $i + ord(substr($work, $i + 3, 1));
 
 			for ($j = $i + 4; $j < length($work) - 4 && substr($work, $j, 3) =~ /$spd_pattern/s; $j += 4)
+#			for ($j = $i + 4; $j < length($work) - 4 && substr($work, $j, 3) =~ /^\x7F[\x06\x08\x0A\x0C]\x80$/s; $j += 4)
 			{
 				if ($j + ord(substr($work, $j + 3, 1)) == $jmppos)
 				{
@@ -54,6 +55,7 @@ sub patch_rs # ( testmode )
 
 			if ($counter >= $MIN_SEQ)
 			{
+				dbgout(sprintf("patch_rs(): Main patch point found at 0x%X\n", $i + 0x20000));
 				for ($j = 0; $j < $counter * 4; $j += 4)
 				{
 					if (ord(substr($work, $i + $j + 1, 1)) < $spd_to)
@@ -97,9 +99,10 @@ sub patch_abs # ( testmode, mode )
 
 		return -1 if (length($1) + length($3) != 7);
 
+		my($patch) = ($mode) ? "$on[0]$2$on[1]" : "$off[0]$2$off[1]";
+		dbgout(sprintf("patch_abs(): Main patch point found at 0x%X\n", $addr - 5 - length($patch)));
 		if (!$testmode)
 		{
-			my($patch) = ($mode) ? "$on[0]$2$on[1]" : "$off[0]$2$off[1]";
 			substr($file_data{'work'}, $addr - 5 - length($patch), length($patch), $patch);
 		}
 
@@ -110,9 +113,10 @@ sub patch_abs # ( testmode, mode )
 		my($addr) = pos($file_data{'work'});
 		pos $file_data{'work'} = 0;
 
+		my($patch) = ($mode) ? "$on[2]$2" : "$off[2]$2";
+		dbgout(sprintf("patch_abs_adv(): Main patch point found at 0x%X\n", $addr - length($patch)));
 		if (!$testmode)
 		{
-			my($patch) = ($mode) ? "$on[2]$2" : "$off[2]$2";
 			substr($file_data{'work'}, $addr - length($patch), length($patch), $patch);
 		}
 

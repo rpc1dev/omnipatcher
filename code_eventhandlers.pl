@@ -333,13 +333,78 @@ sub Cmds2_Click
 {
 	my($report);
 	my($plus_r_cnt, $plus_rw_cnt, $plus_cnt) = @{$file_data{'mcpdata'}};
+	my($type, $entry, $i, $j);
+	my($index, $strat, @speeds, $curspd, $spdrep);
+
+	my(@types) = ( '+R/W', '+R', '+R9', '+RW', '-R', '-R9', '-RW' );
+
+	my(%typelimits) =
+	(
+		'+R/W' => $file_data{'pr_limit'},
+		'+R'   => $file_data{'pr_limit'},
+		'+R9'  => $file_data{'pr9_limit'},
+		'+RW'  => $file_data{'prw_limit'},
+		'-R/W' => $file_data{'dr_limit'},
+		'-R',  => $file_data{'dr_limit'},
+		'-R9'  => $file_data{'dr9_limit'},
+		'-RW'  => $file_data{'drw_limit'},
+	);
+
+	my(%typelists);
+
+	foreach $type (@types)
+	{
+		$typelists{$type} = [ ];
+	}
+
+	# Needs to be cleaned up (might use speed in firmware to show highest burn speed)
+	foreach $i (0 .. $file_data{'ncodes'} - 1)
+	{
+		$index = ($OP_REPORT_MODE > 0) ? sprintf("0x%02X: ", $file_data{'codes'}->[$i][3]) : "";
+
+		@speeds = ( );
+
+		foreach $j (0 .. $#MEDIA_SPEEDS)
+		{
+			next if ($MEDIA_SPEEDS[$j] == 1 && substr($file_data{'codes'}->[$i][0], 0, 2) eq "+R");
+			next if ($MEDIA_SPEEDS[$j] > $typelimits{$file_data{'codes'}->[$i][0]});
+
+			$curspd = ($MEDIA_SPEEDS[$j] == 2 && substr($file_data{'codes'}->[$i][0], 0, 2) eq "+R") ? "2.4x" : "$MEDIA_SPEEDS[$j]x";
+			$curspd .= ',' unless ($MEDIA_SPEEDS[$j] == $typelimits{$file_data{'codes'}->[$i][0]});
+			$curspd =~ s/./ /g unless ($file_data{'speeds'}->[$i] & (2 ** $j));
+
+			push @speeds, $curspd;
+		}
+
+		$spdrep = "[ " . join(" ", @speeds) . " ]";
+		$spdrep =~ s/,(\s+\])$/ $1/;
+
+		push(@{$typelists{$file_data{'codes'}->[$i][0]}}, "$index$file_data{'codes'}->[$i][2]  $spdrep$strat");
+	}
+
+	$report  = "Drive type:\t    $file_data{'fwfamily'}\n";
+	$report .= "Drive name string:\t    $file_data{'driveid'}    \n";
+	$report .= "Firmware revision:\t    $file_data{'fwrev'}\n";
+	$report .= "Firmware timestamp:   $file_data{'timestamp'}\n\n";
+
+	$report .= "Save bitsetting:\t    " . ($file_data{'patch_status'}->[$PIDX_AB] < 0 ? "Yes" : "No") . "\n\n";
+
+	$report .= "Max burn +R:\t    " . ($file_data{'pr_limit'} eq 2 ? "2.4" : "$file_data{'pr_limit'}") . "x\n" if ($file_data{'pr_limit'});
+	$report .= "Max burn +R9:\t    " . ($file_data{'pr9_limit'} eq 2 ? "2.4" : "$file_data{'pr9_limit'}") . "x\n" if ($file_data{'pr9_limit'});
+	$report .= "Max burn +RW:\t    " . ($file_data{'prw_limit'} eq 2 ? "2.4" : "$file_data{'prw_limit'}") . "x\n" if ($file_data{'prw_limit'});
+	$report .= "Max burn -R:\t    $file_data{'dr_limit'}x\n" if ($file_data{'dr_limit'});
+	$report .= "Max burn -R9:\t    $file_data{'dr9_limit'}x\n" if ($file_data{'dr9_limit'});
+	$report .= "Max burn -RW:\t    $file_data{'drw_limit'}x\n" if ($file_data{'drw_limit'});
+
+	$report .= "\n";
+
+	$report .= "Total media codes:\t    $file_data{'ncodes'}\n\n";
+
+	foreach $type (@types)
+	{
+		$report .= "Media Codes $type:\t    " . scalar(@{$typelists{$type}}) . "\n" if (scalar(@{$typelists{$type}}));
+	}
 	
-	$report  = "Drive name string:  $file_data{'driveid'}\n";
-	$report .= "Firmware revision:  $file_data{'fwrev'}\n";
-	$report .= "Firmware timestamp:  $file_data{'timestamp'}\n\n";
-
-	$report .= "Total media codes:  $file_data{'ncodes'}\n";
-
 	Win32::GUI::MessageBox($hWndMain, $report, "Firmware Information", MB_OK | MB_ICONINFORMATION);
 	return 1;
 }

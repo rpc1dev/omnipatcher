@@ -83,7 +83,12 @@ sub getmctype # ( )
 			dbgout(sprintf("+ bank: 0x%05X\n- bank: 0x%05X\n", $file_data{'pbankpos'}, $file_data{'dbankpos'}));
 		}
 		
+		# 75 f0 (1a 0d 1c 0e 1e 0f) a4 24 xx f5 82 (e5 f0 | e4) 34 xx f5 83 from 12-43 look for (64 0b 70 | b4 0B)
+		# (x) = capture value
+		# {min, max} search range from current offset
+		# ?: with out back-references
 		while ($pdata =~ /(?:\x75\xF0|\xC4\x54)(.)(?:\xA4\x24|\x24)(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83.{12,43}?(?:\x64\x0B\x70|\xB4\x0B)(?:\x03\x02(.)(.).{0,8}?|.($STRAT3A_PATTERN.{36,110}?(?:(?:\xEF|\x90..\xE0)\x64.\x60.)*.{0,17}?))(\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)\x0C.{2,8}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64))(.)/sg)
+#		while ($pdata =~ /\x75\xF0(\x1A|\x0D|\x1C|\x0E|\x1E|\x0F)\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83.{12,43}?(?:\x64\x0B\x70|\xB4\x0B)(?:\x03\x02(.)(.).{0,8}?|.($STRAT3A_PATTERN.{36,66}?(?:(?:\xEF|\x90..\xE0)\x64.\x60.)*.{0,17}?))(\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)\x0C.{2,8}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64))(.)/sg)
 		{
 			push(@{$file_data{'mcpdata'}}, [ ord($3) * 0x100 + ord($2), ord($8), (length($6)) ? scalar(pos($pdata)) - length($6) - length($7) - length($8) : ord($4) * 0x100 + ord($5), ord($1), length($6) != 0 ]);
 
@@ -103,7 +108,9 @@ sub getmctype # ( )
 			dbgout(sprintf("+ table: fw_loc=$pbs%04X, start=$pbs%04X, n=%02d, ws_pt=$pbs%04X, len=%02d, ws_ex=$pbs%04X\n", pos($pdata), @{$file_data{'mcpdata'}->[-1]}));
 		}
 
+		# 75 f0 (xx) a4 24 (ef a4 24) xx f5 82 (e5 f0 | e4) 34 xx f5 83
 		while ($ddata =~ /\x75\xF0(.)\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83(?:.{256,272}?|.{154,170}?)(?:\x64\x0E\x70|\x64\x0E\x60.\x02.|\xB4\x0E)(?:\x03\x02(.)(.)|.($STRAT3A_PATTERN.{10,207}?(?:(?:\xEF|\x90..\xE0)(?:\x64.\x60.|\x90..\x02..))*.{0,6}))(\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)\x0F.{2,8}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64))(.)/sg)
+#		while ($ddata =~ /\x75\xF0(.)\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83(?:.{256,272}?|.{154,170}?)(?:\x64\x0E\x70|\xB4\x0E)(?:\x03\x02(.)(.)|.($STRAT3A_PATTERN.{21,107}?(?:(?:\xEF|\x90..\xE0)\x64.\x60.)*.{0,6}))(\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64)\x0F.{2,8}?\x90..\xE0\x04\xF0\xE0(?:\xC3\x94|\x64))(.)/sg)
 		{
 			push(@{$file_data{'mcddata'}}, [ ord($3) * 0x100 + ord($2), ord($8), (length($6)) ? scalar(pos($ddata)) - length($6) - length($7) - length($8) : ord($4) * 0x100 + ord($5), ord($1), length($6) != 0 ]);
 

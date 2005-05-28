@@ -4,7 +4,8 @@ $OP_REPORT_MODE = 0;
 # Debugging stuff
 #
 
-$OP_PRINT_DEBUG = 0;
+$OP_PRINT_DEBUG = 1;
+#dbgout(sprintf("DEBUG REPORT: %d, %d\n", ?, ?));
 
 sub str2hex # ( str )
 {
@@ -27,8 +28,9 @@ sub load_file # ( )
 
 	$file_data{'core'} = substr($file_data{'work'}, 0x4000);
 
+	# Find the CDB version number
 	my($fwr_len) = 16;
-	my($fwr_pat) = '\x7D(.)\x90.{21,23}' x $fwr_len;
+	my($fwr_pat) = '\x7D(.)\x90.{19,23}' x $fwr_len;
 
 	$file_data{'fwrev'} = '';
 
@@ -40,21 +42,27 @@ sub load_file # ( )
 		}
 
 		$file_data{'fwrev'} =~ s/\s+$//;
-		dbgout("Firmware: $file_data{'fwrev'}\n");
+		dbgout("Firmware: $file_data{'fwrev'} (method 1)\n");
 	}
-
-	$file_data{'fwrev'} = ' ' if ($file_data{'fwrev'} eq '');
 
 	$file_data{'driveid'} = 'Unknown';
 	$file_data{'drivevid'} = 'Unknown';
 	$file_data{'drivepid'} = 'Unknown';
 	$file_data{'timestamp'} = 'Unknown';
 
-	if ($file_data{'core'} =~ /\x07\x01\x03\x00\x78\x00\x78\x00\xE3\x00\x78\x00.{50}(.{8})(.{16}).{4}(.{16})/s)
+	# Find the version strings
+	if ($file_data{'core'} =~ /\x07\x01\x03\x00\x78\x00\x78\x00\xE3\x00\x78\x00.{50}(.{8})(.{16})(.{4})(.{16})/s)
 	{
+		dbgout("Drive ID: $1,$2,$3,$4\n");
 		$file_data{'drivevid'} = $1;
 		$file_data{'drivepid'} = $2;
-		$file_data{'timestamp'} = $3;
+		$file_data{'timestamp'} = $4;
+
+		if ($file_data{'fwrev'} eq '')
+		{
+			$file_data{'fwrev'} = $3;
+			dbgout("Firmware: $file_data{'fwrev'} (method 2)\n");
+		}
 
 		$file_data{'drivevid'} =~ s/\s+$//;
 		$file_data{'drivepid'} =~ s/\s+$//;
@@ -65,6 +73,8 @@ sub load_file # ( )
 
 		$file_data{'driveid'} = "$file_data{'drivevid'} $file_data{'drivepid'}";
 	}
+
+	$file_data{'fwrev'} = ' ' if ($file_data{'fwrev'} eq '');
 
 	if (mtk_rebank_check(\$file_data{'work'}))
 	{
@@ -94,6 +104,7 @@ sub load_file # ( )
 		'B' => [ 3, 0x032, 'SOHW-1633S',     0x90000, 0xE0000, 0x90000, [ 16, 4, 4, 12, 4, 0 ] ],
 		'C' => [ 3, 0x033, 'SOHW-1653S',     0x90000, 0xE0000, 0x90000, [ 16, 4, 4, 12, 4, 0 ] ],
 		'J' => [ 4, 0x034, 'SOHW-1673S',     0xA0000, 0xA0000,0x100000, [ 16, 8, 4, 16, 6, 0 ] ],
+		'K' => [ 4, 0x035, 'SOHW-1693S',     0xA0000, 0xB0000,0x100000, [ 16, 8, 4, 16, 6, 4 ] ],
 
 		'L' => [ 0, 0x111, 'SDW-421S',       0x00000, 0xA0000, 0xD0000, [  4, 4, 0,  0, 0, 0 ] ],
 		'M' => [ 0, 0x111, 'SDW-431S',       0xC0000, 0xA0000, 0xD0000, [  4, 4, 0,  4, 2, 0 ] ],
@@ -106,6 +117,7 @@ sub load_file # ( )
 
 	my($fwparam);
 
+	# Find first letter of version in table
 	if (exists $fwparams{substr($file_data{'fwrev'}, 0, 1)})
 	{
 		$fwparam = $fwparams{substr($file_data{'fwrev'}, 0, 1)};
@@ -143,6 +155,8 @@ sub load_file # ( )
 	}
 	elsif ($file_data{'genex'} >= 0x034 && $file_data{'genex'} < 0x100)
 	{
+		# +R table moved in JS07
+		$file_data{'pbankpos'} = 0xB0000 if ($file_data{'genex'} == 0x034 && (substr($file_data{'work'}, 0xB4000, 0xC000) =~ /$PLUSR1A_SAMPLE/)); 
 #		Win32::GUI::MessageBox($hWndMain, "Support for this drive type in this version of OmniPatcher is experimental.", "Notice", MB_OK | MB_ICONINFORMATION);
 	}
 
@@ -466,7 +480,7 @@ sub save_report # ( file_name )
 	my($type, $entry, $i, $j);
 	my($index, $strat, @speeds, $curspd, $spdrep);
 
-	my(@types) = ( '+R/W', '+R', '+R9', '+RW', '-R', '-RW' );
+	my(@types) = ( '+R/W', '+R', '+R9', '+RW', '-R', '-R9', '-RW' );
 
 	my(%typelimits) =
 	(
@@ -524,16 +538,17 @@ sub save_report # ( file_name )
 	$report .= "=============================\n\n";
 
 	$report .= "OmniPatcher version: $PROGRAM_VERSION\n";
-	$report .= "Firmware file name: $file_data{'shortname'}\n\n\n";
+	$report .= "Firmware file name : $file_data{'shortname'}\n\n\n";
 
 	$report .= "-" x 80 . "\n";
 	$report .= "General Information\n";
 	$report .= "-" x 80 . "\n";
-	$report .= "        Drive type: $file_data{'fwfamily'}\n";
-	$report .= "     Vendor string: $file_data{'drivevid'}\n";
-	$report .= "    Product string: $file_data{'drivepid'}\n";
-	$report .= " Firmware revision: $file_data{'fwrev'}\n";
-	$report .= "Firmware timestamp: $file_data{'timestamp'}\n\n";
+	$report .= "Drive type         : $file_data{'fwfamily'}\n";
+	$report .= "Vendor string      : $file_data{'drivevid'}\n";
+	$report .= "Product string     : $file_data{'drivepid'}\n";
+	$report .= "Firmware revision  : $file_data{'fwrev'}\n";
+	$report .= "Firmware timestamp : $file_data{'timestamp'}\n\n";
+	$report .= "Total media codes  : $file_data{'ncodes'}\n\n";
 
 	foreach $type (@types)
 	{
@@ -601,6 +616,12 @@ sub proc_speed
 		{
 			$PlusR9Warned = 1;
 			Win32::GUI::MessageBox($hWndMain, "Adjusting +R9 speeds is not recommended!\n\nYou will not see this warning message again until the next time this\nprogram is run.", "Warning!", MB_OK | MB_ICONWARNING);
+		}
+
+		unless ($DashR9Warned || $file_data{'codes'}->[$idx][0] ne "-R9")
+		{
+			$DashR9Warned = 1;
+			Win32::GUI::MessageBox($hWndMain, "Adjusting -R9 speeds is not recommended!\n\nYou will not see this warning message again until the next time this\nprogram is run.", "Warning!", MB_OK | MB_ICONWARNING);
 		}
 
 		if ($file_data{'speed_type'} == 1)

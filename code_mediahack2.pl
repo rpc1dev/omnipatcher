@@ -17,6 +17,7 @@ $PLUSRW2A_SAMPLE = quotemeta("RICOHJPNW");
 $DASHR1_SAMPLE = quotemeta("RITEKG0");
 $DASHR2_SAMPLE = quotemeta("FUJIFILM0");
 $DASHR3_SAMPLE = quotemeta("TYG0");
+$DASHR9_SAMPLE = quotemeta("MKM 01RD30");
 
 $DASHRW2_SAMPLE = 'TDK\d{3}saku';
 
@@ -132,6 +133,8 @@ sub getcodes2 # ( )
 			$used{"$codes[$i][0]$codes[$i][2]$codes[$i][1][3]"} = 1;
 		}
 	}
+	
+	@codes = ();
 
 	$data = substr($file_data{'work'}, $file_data{'dbankpos'}, 0x10000);
 
@@ -154,6 +157,10 @@ sub getcodes2 # ( )
 			$id_offset = scalar(@{$file_data{'drwtables'}});
 			push @{$file_data{'drwtables'}}, $file_data{'mcddata'}->[$i];
 		}
+		elsif ($data =~ /$DASHR9_SAMPLE/)
+		{
+			$type = '-R9';
+		}
 		else
 		{
 			$type = '-R/W';
@@ -171,8 +178,19 @@ sub getcodes2 # ( )
 
 			if (substr($id, 0, 1) ne "\x00" && substr($id, 0, 1) ne "\xFF")
 			{
-				push @ret, [ $type, [ $mid, $rid, $spd ], sprintf("%-12s/%02X", $mid, $rid), $id_offset * 0x40 + $j ];
+				push @codes, [ $type, [ $mid, $rid, $spd ], sprintf("%-12s/%02X", $mid, $rid), $id_offset * 0x40 + $j ];
 			}
+		}
+	}
+
+	%used = ();
+
+	for ($i = 0; $i <= $#codes; ++$i)
+	{
+		unless ($used{"$codes[$i][0]$codes[$i][2]$codes[$i][1][3]"} == 1 || ($codes[$i][1][0] eq "" && $codes[$i][1][1] eq "") || substr($codes[$i][1][0], 0, 1) eq "\xFF")
+		{
+			push @ret, $codes[$i];
+			$used{"$codes[$i][0]$codes[$i][2]$codes[$i][1][3]"} = 1;
 		}
 	}
 
@@ -409,6 +427,7 @@ sub patch_strat3 # ( testmode, mode )
 	if ( (substr($pbank, 0xFF00 - $STRAT_BUF_LEN, $STRAT_BUF_LEN) ne chr(0x00) x $STRAT_BUF_LEN) ||
 	     (substr($dbank, 0xFF00 - $STRAT_BUF_LEN, $STRAT_BUF_LEN) ne chr(0x00) x $STRAT_BUF_LEN) )
 	{
+		dbgout("patch_strat3(): Failed due to insufficant space for patch\n");
 		return -1;
 	}
 
@@ -425,6 +444,8 @@ sub patch_strat3 # ( testmode, mode )
 	##
 	# Gather all the patch points...
 	#
+
+	dbgout("patch_strat3(): In progress...\n");
 
 	my($type, $i);
 

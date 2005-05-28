@@ -1,3 +1,3 @@
 $PROGRAM_TITLE = 'OmniPatcher for LiteOn DVD-Writers';
-$PROGRAM_VERSION = '1.4.00';
-$BUILD_STAMP = 'Wed Apr 13 00:07:47 2005 GMT';
+$PROGRAM_VERSION = '1.4.2';
+#$BUILD_STAMP = 'Sun Jan 16 18:00:32 2005 GMT';
