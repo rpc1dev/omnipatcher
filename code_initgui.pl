@@ -229,8 +229,8 @@ $hWndMain = 0;
 ################################################################################
 # BEGIN: Section: initialize icons
 {
-	$OPIconLg = new    Win32::GUI::Icon("#1");
-	$OPIconSm = new_sm Win32::GUI::Icon("#1");
+	$OPIconLg = new    Win32::GUI::Icon($ICO_ID);
+	$OPIconSm = new_sm Win32::GUI::Icon($ICO_ID);
 
 } # END: Section: initialize icons
 

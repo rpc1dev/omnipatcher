@@ -1,10 +1,24 @@
 $OP_REPORT_MODE = 0;
+
+##
+# Debugging stuff
+#
+
 $OP_PRINT_DEBUG = 0;
+
+sub str2hex # ( str )
+{
+	return join(' ', map { sprintf('%02X', ord($_)) } split (//, $_[0]));
+}
 
 sub dbgout # ( debugging_output )
 {
 	print @_ if ($OP_PRINT_DEBUG);
 }
+
+##
+# General functions
+#
 
 sub load_file # ( )
 {
@@ -85,6 +99,7 @@ sub load_file # ( )
 		'R' => [ 0, 0x121, 'SOSW-832S',      0xC0000, 0xA0000, 0xD0000, [  8, 4, 0,  8, 4, 0 ] ],
 		'N' => [ 0, 0x121, 'SOSW-842S',      0xC0000, 0xA0000, 0xD0000, [  8, 4, 0,  0, 0, 0 ] ],
 		'P' => [ 0, 0x121, 'SOSW-852S',      0xC0000, 0xA0000, 0xD0000, [  8, 4, 2,  8, 4, 0 ] ],
+		'6' => [ 0, 0x121, 'SOSW-852S',      0xC0000, 0xA0000, 0xD0000, [  8, 4, 2,  8, 4, 0 ] ],
 		'Q' => [ 0, 0x121, 'SOSW-862S',      0xC0000, 0xA0000, 0xD0000, [  8, 4, 2,  0, 0, 0 ] ],
 	);
 
@@ -262,6 +277,12 @@ sub load_file # ( )
 	}
 
 	SetDisable($ObjPatches[0]) if ($ObjPatches[0]->GetCheck());
+
+	if ($file_data{'patch_status'}->[5] == -2)
+	{
+		$file_data{'patch_status'}->[5] = -1;
+		SetCheck($ObjPatches[5], 1);
+	}
 
 	SetEnable($ObjSpdRep);
 	SetEnable($ObjCmds[1]);

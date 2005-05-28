@@ -334,7 +334,7 @@ sub patch_eeprom # ( testmode, mode )
 		return -1;
 	}
 
-	return -1 if ($work =~ /($oncpat)/s);
+	return -2 if ($work =~ /($oncpat)/s);
 
 	if ($work =~ /($offpat|$on1pat|$on2pat)/sg)
 	{

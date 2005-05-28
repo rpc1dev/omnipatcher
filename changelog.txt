@@ -1,3 +1,16 @@
+1.3.18c (16 Jan 2005)
+	* Fixed: Problem with loading the 6S07 firmware (slimtype).
+
+1.3.18b (29 Dec 2004)
+	* Fixed: Improved media table processing for latest 3S firmwares.
+
+1.3.18a (19 Dec 2004)
+	* Fixed: Improved media table processing for latest 3S firmwares.
+	* Improved: The crossflashing patch checkbox is now checked and disabled (vs. unchecked and disabled) if opening a firmware with a forced crossflash (e.g., CGxx).
+
+1.3.18 (3 Dec 2004)
+	* Fixed: OmniPatcher now supports the new 14/28-byte +R table format used in BYX2.
+
 1.3.17a (27 Nov 2004)
 	* Fixed: Crash when loading TSD1.
 

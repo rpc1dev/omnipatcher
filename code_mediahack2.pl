@@ -1,20 +1,24 @@
 $PLUSR1_SAMPLE = quotemeta(&nullbuf("RICOHJPNR0"));
 $PLUSR2_SAMPLE = quotemeta(&nullbuf("YUDEN000T0"));
 $PLUSR3_SAMPLE = quotemeta(&nullbuf("OPTODISCOR"));
-$PLUSR4_SAMPLE = quotemeta(&nullbuf("RITEK\x00\x00\x00R01"));
+$PLUSR4_SAMPLE = quotemeta(&nullbuf("PRODISC\x00R0"));
 $PLUSR9_SAMPLE = quotemeta(&nullbuf("RICOHJPND00"));
 $PLUSRW_SAMPLE = quotemeta(&nullbuf("MKM\x00\x00\x00\x00\x00A0"));
+$PLUSRW2_SAMPLE = quotemeta(&nullbuf("RICOHJPNW"));
 
 $PLUSR1A_SAMPLE = quotemeta("RICOHJPNR0");
 $PLUSR2A_SAMPLE = quotemeta("YUDEN000T0");
 $PLUSR3A_SAMPLE = quotemeta("OPTODISCOR");
-$PLUSR4A_SAMPLE = quotemeta("RITEK\x00\x00\x00R01");
+$PLUSR4A_SAMPLE = quotemeta("PRODISC\x00R0");
 $PLUSR9A_SAMPLE = quotemeta("RICOHJPND00");
 $PLUSRWA_SAMPLE = quotemeta("MKM\x00\x00\x00\x00\x00A0");
+$PLUSRW2A_SAMPLE = quotemeta("RICOHJPNW");
 
-$DASHR1_SAMPLE = quotemeta("RITEKG03\x00");
-$DASHR2_SAMPLE = quotemeta("RITEKG04\x00");
-$DASHR3_SAMPLE = quotemeta("RITEKG05\x00");
+$DASHR1_SAMPLE = quotemeta("RITEKG0");
+$DASHR2_SAMPLE = quotemeta("FUJIFILM0");
+$DASHR3_SAMPLE = quotemeta("TYG0");
+
+$DASHRW2_SAMPLE = 'TDK\d{3}saku';
 
 sub addr2bankstr # ( address )
 {
@@ -61,6 +65,7 @@ sub getcodes2 # ( )
 	my(@codes, @ret);
 	my($id_offset, $type);
 	my($id, $mid, $tid, $rid, $spd, %used);
+	my($eff_len);
 
 	$file_data{'stratptables'} = [ ];
 	$file_data{'stratdtables'} = [ ];
@@ -86,7 +91,7 @@ sub getcodes2 # ( )
 		{
 			$type = '+R9';
 		}
-		elsif ($data =~ /$PLUSRW_SAMPLE|$PLUSRWA_SAMPLE/)
+		elsif ($data =~ /$PLUSRW_SAMPLE|$PLUSRWA_SAMPLE|$PLUSRW2_SAMPLE|$PLUSRW2A_SAMPLE/)
 		{
 			$type = '+RW';
 			$id_offset = scalar(@{$file_data{'prwtables'}});
@@ -99,7 +104,11 @@ sub getcodes2 # ( )
 
 		for ($j = 0; $j < $file_data{'mcpdata'}->[$i][1]; ++$j)
 		{
-			($mid, $tid, $rid, $spd) = str2pcode(substr($data, $j * $file_data{'mcpdata'}->[$i][3], $file_data{'mcpdata'}->[$i][3]), $file_data{'mcpdata'}->[$i][3] == $PLUS_LEN);
+			$eff_len = ($file_data{'mcpdata'}->[$i][3] > 0x10) ? 0x1A : 0x0D;
+			($mid, $tid, $rid, $spd) = str2pcode(substr($data, $j * $file_data{'mcpdata'}->[$i][3], $eff_len), $eff_len == $PLUS_LEN);
+
+			$mid =~ s/[\x00-\x1F]/ /g;
+			$tid =~ s/[\x00-\x1F]/ /g;
 
 			push @codes, [ $type, [ $mid, $tid, $rid, $spd ], sprintf("%-8s/%-3s/%02X", $mid, $tid, $rid), $id_offset * 0x40 + $j ];
 		}
@@ -120,7 +129,7 @@ sub getcodes2 # ( )
 
 	for ($i = 0; $i < scalar(@{$file_data{'mcddata'}}); ++$i)
 	{
-		$data = substr($file_data{'work'}, $file_data{'dbankpos'} + $file_data{'mcddata'}->[$i][0], $file_data{'mcddata'}->[$i][1] * ($DASH_LEN + 1));
+		$data = substr($file_data{'work'}, $file_data{'dbankpos'} + $file_data{'mcddata'}->[$i][0], $file_data{'mcddata'}->[$i][1] * ($file_data{'mcddata'}->[$i][3] + 1));
 
 		$id_offset = 0;
 
@@ -131,7 +140,7 @@ sub getcodes2 # ( )
 			push @{$file_data{'stratdtables'}}, $file_data{'mcddata'}->[$i];
 			$file_data{'mctype'} = 3 if ($file_data{'mctype'} < 3 && $file_data{'mcddata'}->[$i][4] != 0);
 		}
-		elsif ($data =~ /$DASHRW_SAMPLE/)
+		elsif ($data =~ /$DASHRW_SAMPLE|$DASHRW2_SAMPLE/)
 		{
 			$type = '-RW';
 			$id_offset = scalar(@{$file_data{'drwtables'}});
@@ -144,11 +153,13 @@ sub getcodes2 # ( )
 
 		for ($j = 0; $j < $file_data{'mcddata'}->[$i][1]; ++$j)
 		{
-			$id = substr($data, $j * $DASH_LEN, $DASH_LEN);
+			$id = substr($data, $j * $file_data{'mcddata'}->[$i][3], $file_data{'mcddata'}->[$i][3]);
 
 			$mid = nulltrim(substr($id, 0, 12));
 			$rid = ord(substr($id, 12, 1));
-			$spd = ord(substr($data, $file_data{'mcddata'}->[$i][1] * $DASH_LEN + $j, 1));
+			$spd = ord(substr($data, $file_data{'mcddata'}->[$i][1] * $file_data{'mcddata'}->[$i][3] + $j, 1));
+
+			$mid =~ s/[\x00-\x1F]/ /g;
 
 			if (substr($id, 0, 1) ne "\x00" && substr($id, 0, 1) ne "\xFF")
 			{
@@ -411,6 +422,14 @@ sub patch_strat3 # ( testmode, mode )
 	{
 		for ($i = 0; $i <= $#{$type->[0]}; ++$i)
 		{
+			$pat_area = substr($type->[1], $type->[0][$i][2], 9);
+
+			if (($testmode || $mode) && $pat_area =~ s/^((?:\x90..|\xA3)\xE0)([\xF8-\xFF])(\x90..\xF0)(.*)$/$1$3$2$4/s)
+			{
+				substr($type->[1], $type->[0][$i][2], length($pat_area), $pat_area);
+				substr($file_data{'work'}, $type->[0][$i][2] + $type->[2], length($pat_area), $pat_area) unless ($testmode);
+			}
+
 			$pat_area = substr($type->[1], $type->[0][$i][2], 8);
 
 			if ($pat_area =~ /^($pat_pattern)/sg)
@@ -436,9 +455,9 @@ sub patch_strat3 # ( testmode, mode )
 
 				if ($curmode == 0 && $pat_dptr eq "")
 				{
-					$pat_dptr = substr($file_data{'work'}, $pat_point + 1, 2);
+					$pat_dptr = substr($type->[1], $pat_point + 1 - $type->[2], 2);
 				}
-				elsif ($curmode == 0 && $pat_dptr ne substr($file_data{'work'}, $pat_point + 1, 2))
+				elsif ($curmode == 0 && $pat_dptr ne substr($type->[1], $pat_point + 1 - $type->[2], 2))
 				{
 					return -1;
 				}
@@ -453,6 +472,14 @@ sub patch_strat3 # ( testmode, mode )
 
 				if ($type->[0][$i][4])
 				{
+					$pat_area = substr($type->[1], $type->[0][$i][4], 9);
+
+					if (($testmode || $mode) && $pat_area =~ s/^((?:\x90..|\xA3)\xE0)([\xF8-\xFF])(\x90..\xF0)(.*)$/$1$3$2$4/s)
+					{
+						substr($type->[1], $type->[0][$i][4], length($pat_area), $pat_area);
+						substr($file_data{'work'}, $type->[0][$i][4] + $type->[2], length($pat_area), $pat_area) unless ($testmode);
+					}
+
 					$pat_area = substr($type->[1], $type->[0][$i][4], 8);
 
 					if ($pat_area =~ /^($pat_pattern)/sg)
@@ -476,7 +503,7 @@ sub patch_strat3 # ( testmode, mode )
 
 						$pat_point += ($type->[2] + $type->[0][$i][4]);
 
-						if ($curmode == 0 && $pat_dptr ne substr($file_data{'work'}, $pat_point + 1, 2))
+						if ($curmode == 0 && $pat_dptr ne substr($type->[1], $pat_point + 1 - $type->[2], 2))
 						{
 							return -1;
 						}
