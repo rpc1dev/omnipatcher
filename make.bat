@@ -12,23 +12,19 @@ goto EndOfPerl
 
 	$PL_FILE = 'dvdrw_omnipatcher.pl';
 	$EXE_FILE = 'dvdrw_omnipatcher.exe';
-	$ICO_FILE = 'chip.ico';
+	$ICO_FILE = 'gears.ico';
+	$ICO_ID = '!';
 	$USE_GUI = 1;
 
 	%info =
 	(
+		LegalCopyright   => 'Freeware; Copyright (C) 2004-2005 Code Guys.',
 		CompanyName      => 'http://codeguys.rpc1.org/',
-		FileDescription  => 'OmniPatcher executable',
 	);
 
 	@trim_list =
 	(
-		'Errno',
-		'File::Glob',
-		'XSLoader',
-		'PerlIO',
-		'PerlIO::scalar',
-		'attributes',
+		'MIME::Base64',
 	);
 
 ###
@@ -45,8 +41,10 @@ goto EndOfPerl
 	print file qq(\$PROGRAM_TITLE = '$app_title';\n);
 	print file qq(\$PROGRAM_VERSION = '$app_ver_disp';\n);
 	print file qq(\$BUILD_STAMP = '$stamp GMT';\n);
+	print file qq(\$ICO_ID = '$ICO_ID';\n);
 	close file;
 
+	$info{'FileDescription'} = $app_title;
 	$info{'ProductName'} = $app_title;
 	$info{'FileVersion'} = $app_ver_int;
 	$info{'ProductVersion'} = $app_ver_int;
@@ -70,8 +68,10 @@ goto EndOfPerl
 		"--info " . join(';', map { qq($_="$info{$_}") } sort keys %info),
 		"--nocompress",
 		"--nologo",
+		"--norunlib",
 		"--script $PL_FILE",
 		"--trim " . join(';', @trim_list),
+		"--trim-implicit",
 		"--verbose",
 	);
 

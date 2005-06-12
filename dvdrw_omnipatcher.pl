@@ -1,22 +1,59 @@
-require 'appinfo.pl';
+##
+# OmniPatcher for LiteOn DVD-Writers
+# Main : Main module
+#
+# Modified: 2005/06/12, C64K
+#
 
-use Win32::GUI;
+require "appinfo.pl";
 
-require "lib_extconfig.pl";
-require "lib_xflashx.pl";
-require "lib_rebank.pl";
+require "common_util.pl";
+require "common_xflash.pl";
 
-require "code_patches.pl";
-require "code_speedhack.pl";
-require "code_strat.pl";
-require "code_mediahack2.pl";
-require "code_slimmedia.pl";
-require "code_funcs.pl";
-require "code_eventhandlers.pl";
+require "dvdrw_omnipatcher_config.pl";
+require "dvdrw_omnipatcher_misc.pl";
 
-extconfig_load();
+load_extconfig();
 
-require "code_initgui.pl";
+##
+# Load modules...
+#
+require "fw.pl";
+require "fw_const.pl";
+require "fw_patches.pl";
+require "fw_readspeed.pl";
+require "fw_specs.pl";
 
-$ObjMain->Show();
+require "media.pl";
+require "media_const.pl";
+require "media_dataproc.pl";
+require "media_strat.pl";
+require "media_tweaks.pl";
+
+require "ui.pl";
+require "ui_const.pl";
+require "ui_eventhandlers.pl";
+
+##
+# Initialize the GUI...
+#
+require "ui_init_dimensions.pl";
+require "ui_init_windows.pl";
+
+##
+# Process command line parameters...
+#
+if ($ARGV[0] eq "-savelog")
+{
+	$OP_SAVE_LOG = 1;
+	fw_load($ARGV[1]) if ($ARGV[1] ne "");
+}
+elsif ($ARGV[0] ne "")
+{
+	fw_load($ARGV[0]);
+}
+
+##
+# Enter GUI loop...
+#
 Win32::GUI::Dialog();

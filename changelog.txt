@@ -1,3 +1,27 @@
+2.0.0 (12 Jun 2005)
+	* Note: Version 2 is a major re-write.  The internals have been completely re-worked, and virtually every line of code was rewritten, with the goal of making OmniPatcher more robust and more maintainable.
+	* Added: "Fix bitsetting support" patch (this supersedes both of the now-deprecated bitsetting-fix mini-patchers).
+	* Added: "Fix LED colors" patch.
+	* Added: "Disable media learning" patch (experimental).
+	* Added: Ability to rename media codes.
+	* Added: Ability to rename a drive to one of its equivalent OEM names.
+	* Added: Ability to specify a file for OmniPatcher to load from the command line (which allows Windows to associate .BIN files with OmniPatcher, if so desired).
+	* Added: Ability to load a file by dragging it into the OmniPatcher window.
+	* Added: Command line flag to dump OmniPatcher's event log for troubleshooting.
+	* Improved: Completely new interface.
+	* Improved: New and improved reading speed patch and interface.
+	* Improved: Irrelevant patches are now hidden to avoid confusion.
+	* Improved: Saving a file or a media code report now provides a default save name.
+	* Improved: New strategy reassignment patch routines.  Now, if there is insufficient space in a given bank, strategy reassignment will be disabled for only that bank and not for the entire firmware.  Also fixed a minor bug with some of the 3S patches.
+	* Improved: Both the standard and internal firmware revisions are now reported (OmniPatcher used to report only the internal revision).
+	* Improved: Drive type detection has been refined slightly.
+	* Improved: The format for the media code report has been improved slightly.
+	* Removed: The rec_tweaks.conf file is no longer used.  The list of tweaks is now embedded in the executable.  Since the tweaks file is being updated about as frequently as OmniPatcher, it does not make sense to have it as a separate download.
+	* Fixed: The [ENTER] and [ESC] keys now work correctly in the pick-a-strategy dialog box.
+	* Other: Updated documentation.
+	* Other: Tweaked the program name slightly.
+	* Other: Updated build libraries.
+
 1.4.3 (30 May 2005)
 	* Other: Updated the compilation process.  OmniPatcher should look a lot better now on computers using the Windows XP Luna theme.
 	* Other: Updated some of the supporting code.
