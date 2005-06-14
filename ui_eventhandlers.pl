@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Event handlers
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/13, C64K
 #
 
 ################################################################################
@@ -151,10 +151,7 @@
 {
 	sub MainTabs1List_Click
 	{
-		$FlagIgnoreMediaChange = 1;
 		media_proc_listclick(ui_getselected($MediaTab->{'List'}));
-		$FlagIgnoreMediaChange = 0;
-
 		return 1;
 	}
 
@@ -231,6 +228,68 @@
 
 		media_save_report($ofn{'-ret'});
 
+		return 1;
+	}
+
+	sub MainTabs1ExtCmds_Click
+	{
+		##
+		# Determine if change name/speed changes have been made and set the
+		# status of that command as appropriate.
+		#
+		$MediaTab->{'Menu'}->{'PopupUndoCode'}->Change(-enabled => 0);
+
+		if (ui_getselected($MediaTab->{'List'}) >= 0)
+		{
+			my($code) = $Current{'media_table'}->[ui_getselected($MediaTab->{'List'})];
+
+			if ( ($code->[2]{'MID'}[0] ne $code->[4]{'MID'}) ||
+			     (exists($code->[2]{'TID'}) && $code->[2]{'TID'}[0] ne $code->[4]{'TID'}) ||
+			     ($code->[2]{'RID'}[0] != $code->[4]{'RID'}) ||
+			     ($code->[2]{'SPD'}[0] != $code->[4]{'SPD'}) )
+			{
+				$MediaTab->{'Menu'}->{'PopupUndoCode'}->Change(-enabled => 1);
+			}
+		}
+
+		##
+		# Pop it up
+		#
+		$ObjMain->TrackPopupMenu
+		(
+			$MediaTab->{'Menu'}->{'Popup'},
+			$ObjMain->Left() + $MediaTab->{'ExtCmds'}->Left() + $MediaTab->{'ExtCmds'}->Width() + $UI_NC_WIDTH - ($UI_NC_WIDTH >> 1),
+			$ObjMain->Top() + $MediaTab->{'ExtCmds'}->Top() + $UI_NC_HEIGHT - ($UI_NC_WIDTH >> 1)
+		);
+
+		return 1;
+	}
+
+	sub PopupLoadReport_Click
+	{
+		my(%ofn) =
+		(
+			-owner				=> $hWndMain,
+			-title				=> "Select Media Code Report",
+			-directory			=> "",
+			-file					=> "",
+			-filter				=> [ "Text Documents (*.txt)", "*.txt" ],
+			-defaultextention	=> "txt",
+			-filemustexist		=> 1,
+			-hidereadonly		=> 1,
+			-pathmustexist		=> 1,
+		);
+
+		return 1 unless ($ofn{'-ret'} = Win32::GUI::GetOpenFileName(%ofn));
+
+		media_load_report($ofn{'-ret'});
+
+		return 1;
+	}
+
+	sub PopupUndoCode_Click
+	{
+		media_undo_nschanges(ui_getselected($MediaTab->{'List'}));
 		return 1;
 	}
 }

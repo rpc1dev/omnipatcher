@@ -2,8 +2,16 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Initialization, part 2: Object creation
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/13, C64K
 #
+
+################################################################################
+# Get the Windows version
+{
+	my(undef, $major, $minor) = Win32::GetOSVersion();
+	$UI_OS_VERSION = sprintf("%d.%d", $major, $minor) + 0;
+	op_dbgout("ui_init_windows", "Windows version: $UI_OS_VERSION");
+}
 
 ################################################################################
 # Initialize fonts
@@ -32,6 +40,15 @@
 		-size		=> 8,
 		-bold		=> 0,
 		-italic	=>	1,
+
+	) or ui_abort('Initialization Error.');
+
+	$FontMSSansSerif = Win32::GUI::Font->new
+	(
+		-face		=> "MS Sans Serif",
+		-size		=> 8,
+		-bold		=> 0,
+		-italic	=>	0,
 
 	) or ui_abort('Initialization Error.');
 
@@ -409,9 +426,10 @@
 		-name			=> $namepre . 'InfoBox',
 		-pos			=> ui_addpairs([ 0, $ui_dim_mediadiv[1][1] + $UI_MARGINS_GENERAL ], ui_getpos($group->{'Divider'}[1])),
 		-size			=> $ui_dim_mediainfo,
-		-addstyle	=> WS_VSCROLL | ES_READONLY,
+		-addstyle	=> WS_VSCROLL,
 		-font			=> $FontCourierNewSmall,
 		-multiline	=> 1,
+		-readonly	=> ($UI_OS_VERSION >= 5.1) ? 1 : 0,
 		-remstyle	=> WS_BORDER,
 
 	) or ui_abort('Initialization Error.');
@@ -444,6 +462,32 @@
 		-tabstop		=> 1,
 
 	) or ui_abort('Initialization Error.');
+
+	$group->{'ExtCmds'} = new Win32::GUI::Button
+	(
+		($UI_USE_ROOT) ? $ObjMain : $group->{'Frame'},
+
+		-name			=> $namepre . 'ExtCmds',
+		-text			=> '>>',
+		-pos			=> ui_addpairs([ $UI_MARGINS_GENERAL + $ui_dim_medialabel->[0], 0 ], ui_getpos($group->{'StratLabel'})),
+		-size			=> [ $ui_dim_mediaspd->[0], $ui_dim_medialabel->[1] ],
+		-addstyle	=> 0x8000,
+		-disabled	=> 1,
+		-font			=> $FontMSSansSerif,
+		-tabstop		=> 0,
+
+	) or ui_abort('Initialization Error.');
+
+	$group->{'Menu'} = new Win32::GUI::Menu
+	(
+		"Extended Commands" => "Popup",
+		">Extended Commands:" => "PopupLabel",
+		">-" => "PopupSep",
+		">Apply settings from a report file..." => "PopupLoadReport",
+		">Reset name/speed changes for this code" => "PopupUndoCode",
+	) or ui_abort('Initialization Error.');
+
+	$group->{'Menu'}->{'PopupLabel'}->Change(-enabled => 0);
 }
 
 ################################################################################

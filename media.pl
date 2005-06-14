@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Media : Main module
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/13, C64K
 #
 
 sub media_refresh_listitem # ( idx )
@@ -20,6 +20,8 @@ sub media_proc_listclick # ( idx )
 {
 	my($idx) = @_;
 	my($i);
+
+	$FlagIgnoreMediaChange = 1;
 
 	if ($idx < 0)
 	{
@@ -56,7 +58,7 @@ sub media_proc_listclick # ( idx )
 				ui_setdisable($MediaTab->{'Speeds'}[$i]);
 				ui_setinvisible($MediaTab->{'Speeds'}[$i]);
 			}
-			elsif ($MEDIA_SPEEDS_STD[$i] == 16 && $Current{'media_spd_type'} == 6)
+			elsif ($MEDIA_SPEEDS_STD[$i] == 16 && $Current{'media_spd_type'} == 6 && $code->[2]{'SPD'}[1][1] == 0)
 			{
 				ui_setdisable($MediaTab->{'Speeds'}[$i]);
 				ui_setvisible($MediaTab->{'Speeds'}[$i]);
@@ -94,6 +96,8 @@ sub media_proc_listclick # ( idx )
 			}
 		}
 	}
+
+	$FlagIgnoreMediaChange = 0;
 }
 
 sub media_proc_spdchange # ( )
@@ -183,8 +187,8 @@ sub media_proc_tweaks # ( idx )
 	{
 		next unless ($entry->[3]($Current{'fw_gen'}));
 
-		$src = media_name2rawidx($entry->[0]);
-		$dst = media_name2rawidx($entry->[1]);
+		$src = media_name2idx($entry->[0]);
+		$dst = media_name2idx($entry->[1]);
 
 		if ($src >= 0)
 		{
@@ -209,7 +213,7 @@ sub media_proc_tweaks # ( idx )
 	} # End: for each entry in the tweaks table
 
 	media_proc_listclick($idx);
-	ui_infobox(sprintf("%d write strategy replacement(s) applied.\n%d writing speed adjustment(s) applied.\n\n%s", $st_count, $sp_count, $MEDIA_TWEAKS_REV ), "Status");
+	ui_infobox(sprintf("%d write strategy reassignment(s) applied.\n%d write speed adjustment(s) applied.\n\n%s", $st_count, $sp_count, $MEDIA_TWEAKS_REV), "Status");
 }
 
 sub media_save_report # ( filename )
@@ -289,6 +293,100 @@ sub media_save_report # ( filename )
 	}
 }
 
+sub media_load_report # ( filename )
+{
+	my($filename) = @_;
+
+	my(%name2type) =
+	(
+		'+R'  => $MEDIA_TYPE_DVD_PR,
+		'+RW' => $MEDIA_TYPE_DVD_PRW,
+		'+R9' => $MEDIA_TYPE_DVD_PR9,
+		'-R'  => $MEDIA_TYPE_DVD_DR,
+		'-RW' => $MEDIA_TYPE_DVD_DRW,
+		'-R9' => $MEDIA_TYPE_DVD_DR9,
+	);
+
+	open file, $filename;
+	my(@lines) = <file>;
+	close file;
+
+	my($st_count, $sp_count);
+	my($idx) = ui_getselected($MediaTab->{'List'});
+	my($type) = -1;
+
+	foreach my $line (@lines)
+	{
+		if ($line =~ /^([+-]R[W9]?) Media Codes/s && exists($name2type{$1}))
+		{
+			$type = $name2type{$1};
+			next;
+		}
+
+		if ($type >= 0 && $line =~ /^(?:0x[0-9A-Z]{2}: )?(?#1-code)(.{12}[\/-][0-9A-Z]{2})  \[(?#2-speed)( .* )\](?: -> (?#3-strat)(.{12}[\/-][0-9A-Z]{2}))?/s)
+		{
+			my($src) = media_disp2idx($type, $1);
+			my($dst) = media_disp2idx($type, $3);
+			my($spdtxt) = $2;
+
+			next if ($src < 0);
+
+			my($spdmask) = (2 << $MEDIA_STDSPD2IDX[$Current{'media_limits'}->[$type]]) - 1;
+			my($newspd) = 0;
+
+			$newspd |= (1 << 0) if ($spdtxt =~ / 1x/s);
+			$newspd |= (1 << 1) if ($spdtxt =~ / 2(?:.4)?x/s);
+			$newspd |= (1 << 2) if ($spdtxt =~ / 4x/s);
+			$newspd |= (1 << 3) if ($spdtxt =~ / 6x/s);
+			$newspd |= (1 << 4) if ($spdtxt =~ / 8x/s);
+			$newspd |= (1 << 5) if ($spdtxt =~ / 12x/s);
+			$newspd |= (1 << 6) if ($spdtxt =~ / 16x/s);
+			$newspd &= $spdmask;
+
+			my($code) = $Current{'media_table'}->[$src];
+
+			if ($newspd != ($code->[4]{'SPD'} & $spdmask))
+			{
+				++$sp_count;
+				$code->[4]{'SPD'} = ($code->[4]{'SPD'} & ($spdmask ^ 0xFF)) | $newspd;
+			}
+
+			if ( $dst >= 0 && $Current{'media_strat_status'} >= 0 &&
+			     $Current{'media_strat'}->[$type]{'status'} >= 0 &&
+			     $code->[3] != $Current{'media_table'}->[$dst][1] )
+			{
+				++$st_count;
+				$code->[3] = $Current{'media_table'}->[$dst][1];
+				media_refresh_listitem($src);
+			}
+		}
+	}
+
+	media_proc_listclick($idx);
+	ui_infobox(sprintf("%d write strategy reassignment(s) applied.\n%d write speed adjustment(s) applied.", $st_count, $sp_count), "Status");
+}
+
+sub media_undo_nschanges # ( idx )
+{
+	my($idx) = @_;
+
+	if ($idx >= 0)
+	{
+		my($code) = $Current{'media_table'}->[$idx];
+		$code->[4]{'MID'} = $code->[2]{'MID'}[0];
+		$code->[4]{'TID'} = $code->[2]{'TID'}[0] if (exists($code->[2]{'TID'}));
+		$code->[4]{'RID'} = $code->[2]{'RID'}[0];
+		$code->[4]{'SPD'} = $code->[2]{'SPD'}[0];
+
+		$code->[5] = (media_istype($code->[0], $MEDIA_TYPE_DVD_P)) ?
+			media_cleandisp(sprintf("%-8s-%-3s-%02X", $code->[4]{'MID'}, $code->[4]{'TID'}, $code->[4]{'RID'})) :
+			media_cleandisp(sprintf("%-12s-%02X", $code->[4]{'MID'}, $code->[4]{'RID'}));
+
+		media_refresh_listitem($idx);
+		media_proc_listclick($idx);
+	}
+}
+
 sub media_cleandisp # ( str )
 {
 	my($str) = @_;
@@ -296,7 +394,7 @@ sub media_cleandisp # ( str )
 	return $str;
 }
 
-sub media_name2rawidx # ( name )
+sub media_name2idx # ( name )
 {
 	my($name) = @_;
 	my($code, $i);
@@ -316,6 +414,31 @@ sub media_name2rawidx # ( name )
 	}
 
 	return -1;
+}
+
+sub media_disp2idx # ( type, display_name )
+{
+	my($type, $display_name) = @_;
+	my($found) = -1;
+	my($i);
+
+	if (length($display_name) == 15)
+	{
+		substr($display_name, 8, 1, '-') if (substr($display_name, 8, 1) eq '/');
+		substr($display_name, 12, 1, '-');
+
+		foreach my $code (@{$Current{'media_table'}})
+		{
+			if ($type == $code->[0] && $display_name eq $code->[5])
+			{
+				($found < 0) ? $found = $i : return -1;
+			}
+
+			++$i;
+		}
+	}
+
+	return $found;
 }
 
 sub media_rawidx2idx # ( type, rawidx )

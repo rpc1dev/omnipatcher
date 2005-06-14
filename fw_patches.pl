@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : General patches
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/13, C64K
 #
 
 ##
@@ -635,7 +635,7 @@ sub fw_pat_ff # ( testmode, patchmode )
 		$fw = \$Current{'fw'};
 	}
 
-	my($ricohidx) = media_name2rawidx(["RICOHJPN", "R01", 0x02]);
+	my($ricohidx) = media_name2idx(["RICOHJPN", "R01", 0x02]);
 	my($ricohbyte) = chr($Current{'media_table'}->[$ricohidx][1]) unless ($ricohidx < 0);
 
 	my($offkey) = "\x64\x64";
@@ -687,7 +687,7 @@ sub fw_pat_ff_ricoh # ( testmode, patchmode )
 		$fw = \$Current{'fw'};
 	}
 
-	my($ricohidx) = media_name2rawidx(["RICOHJPN", "R01", 0x02]);
+	my($ricohidx) = media_name2idx(["RICOHJPN", "R01", 0x02]);
 	my($ricohbyte) = chr($Current{'media_table'}->[$ricohidx][1]) unless ($ricohidx < 0);
 
 	my($offkey0) = "$ricohbyte$ricohbyte";

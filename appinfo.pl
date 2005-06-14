@@ -1,4 +1,4 @@
 $PROGRAM_TITLE = 'OmniPatcher for LiteOn/Sony DVD-Writers';
-$PROGRAM_VERSION = '2.0.0';
-$BUILD_STAMP = 'Sun Jun 12 20:57:20 2005 GMT';
+$PROGRAM_VERSION = '2.0.1';
+$BUILD_STAMP = 'Tue Jun 14 05:05:42 2005 GMT';
 $ICO_ID = '!';

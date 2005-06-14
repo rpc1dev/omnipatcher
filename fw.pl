@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : Main module
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/13, C64K
 #
 
 sub fw_rebank # ( &data, &bootcode, mode )
@@ -255,6 +255,7 @@ sub fw_init # ( )
 		ui_add($DriveTab->{'Selector'}, map { $_->[0] } @{$Current{'fw_driveids'}} );
 		ui_select($DriveTab->{'Selector'}, 0);
 		fw_proc_drivesel(0);
+		ui_doevents();
 	}
 
 	##
@@ -273,6 +274,7 @@ sub fw_init # ( )
 		ui_clear($MediaTab->{'List'});
 		ui_add($MediaTab->{'List'}, map { ($_->[1] == $_->[3]) ? " $_->[5] : $MEDIA_TYPE_NAME[$_->[0]]" : "!$_->[5] : $MEDIA_TYPE_NAME[$_->[0]]" } @{$Current{'media_table'}} );
 		media_proc_listclick(-1);
+		ui_doevents();
 
 		my(@media_info);
 
@@ -313,6 +315,8 @@ sub fw_init # ( )
 		ui_setenable($MediaTab->{'List'});
 		ui_setenable($MediaTab->{'Tweak'});
 		ui_setenable($MediaTab->{'Report'});
+		ui_setenable($MediaTab->{'ExtCmds'});
+		ui_doevents();
 	}
 
 	##
@@ -323,6 +327,8 @@ sub fw_init # ( )
 		#
 		foreach my $key (@FW_PATCH_KEYS)
 		{
+			ui_doevents();
+
 			if ($FW_PATCHES{$key}->[3]())
 			{
 				$Current{'fw_patch_status'}->{$key} = $FW_PATCHES{$key}->[1](1, 1);
@@ -366,6 +372,7 @@ sub fw_init # ( )
 				$speed = 4 if ($speed < 4);
 				$speed = $maxspeeds[$i] if ($speed > $maxspeeds[$i]);
 
+				ui_doevents();
 				ui_clear($PatchesTab->{'Drops'}[$i]);
 				ui_add($PatchesTab->{'Drops'}[$i], map { "$FW_RS_IDX2SPD[$i][$_]x" } (0 .. $FW_RS_SPD2IDX[$i][$maxspeeds[$i]]));
 				ui_select($PatchesTab->{'Drops'}[$i], $FW_RS_SPD2IDX[$i][$speed]);
@@ -378,6 +385,7 @@ sub fw_init # ( )
 		{
 			foreach my $i (@FW_RS_IDX)
 			{
+				ui_doevents();
 				ui_clear($PatchesTab->{'Drops'}[$i]);
 				ui_setdisable($PatchesTab->{'DropLabels'}[$i]);
 				ui_setdisable($PatchesTab->{'Drops'}[$i]);

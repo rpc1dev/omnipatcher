@@ -426,8 +426,8 @@ sub media_parse_3s # ( )
 	##
 	# Loop through each format and search for tables...
 	#                  0                  1/2                                                                           3      4
-	foreach $param ( [ $MEDIA_TYPE_DVD_P, (substr($Current{'fw'}, getaddr_full($Current{'media_pbank'}), 0x10000)) x 2, $ppat, getaddr_bank($Current{'media_pbank'}) ],
-	                 [ $MEDIA_TYPE_DVD_D, (substr($Current{'fw'}, getaddr_full($Current{'media_dbank'}), 0x10000)) x 2, $dpat, getaddr_bank($Current{'media_dbank'}) ] )
+	foreach my $param ( [ $MEDIA_TYPE_DVD_P, (substr($Current{'fw'}, getaddr_full($Current{'media_pbank'}), 0x10000)) x 2, $ppat, getaddr_bank($Current{'media_pbank'}) ],
+	                    [ $MEDIA_TYPE_DVD_D, (substr($Current{'fw'}, getaddr_full($Current{'media_dbank'}), 0x10000)) x 2, $dpat, getaddr_bank($Current{'media_dbank'}) ] )
 	{
 		# Some temporary variables for this segment of code
 		#

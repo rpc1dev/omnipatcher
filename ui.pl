@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Main module
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/13, C64K
 #
 
 use Win32::GUI;
@@ -265,6 +265,15 @@ use Win32::GUI;
 	{
 		my($obj, $idx) = @_;
 		$obj->Select($idx);
+	}
+}
+
+################################################################################
+# Miscellaneous
+{
+	sub ui_doevents # ( )
+	{
+		Win32::GUI::DoEvents();
 	}
 
 	sub ui_reflow_patches # ( )

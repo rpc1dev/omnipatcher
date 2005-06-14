@@ -1,3 +1,13 @@
+2.0.1 (13 Jun 2005)
+	* Added: An "Extended Commands" button in the media tab.  This will bring up a menu of additional commands: load media settings from a media report and undoing name/speed changes to a media code.
+	* Improved: Slightly mitigated the GUI refresh lag when loading a new firmware.
+	* Fixed: To work around a quirk with how Windows re-draws text boxes, the media info box is no longer set to read-only on Windows 2000 and earlier.
+	* Fixed: Minor problem with 51S firmwares being misclassified as 1S and not 2S firmwares when applying recommended tweaks.
+	* Fixed: Minor wording correction in the tweaks message box.
+	* Other: Updated documentation.
+	* Fixed: [v2.0.1.1] Improved the determination of current read speeds when loading firmwares that have been previously patched with OmniPatcher 1.x.
+	* Fixed: [v2.0.1.3] Better, less restrictive handling of firmwares that have non-Unicode +R entries that use 9-bit speed encoding.
+
 2.0.0 (12 Jun 2005)
 	* Note: Version 2 is a major re-write.  The internals have been completely re-worked, and virtually every line of code was rewritten, with the goal of making OmniPatcher more robust and more maintainable.
 	* Added: "Fix bitsetting support" patch (this supersedes both of the now-deprecated bitsetting-fix mini-patchers).

@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Media : Constants and initialization
 #
-# Modified: 2005/06/08, C64K
+# Modified: 2005/06/13, C64K
 #
 
 ##
@@ -93,7 +93,7 @@ $MEDIA_SAMPLES_SHORT[$MEDIA_TYPE_DVD_DR] = join( '|', map { quotemeta }
 # flag, so some type 0 firmwares are actually type 1 (the patches should
 # be 100% identical except for the lack of the revision flag in bank 0)
 #
-# Also note that the various addresses used for type 5 patches can vary!
+# Also note that the various addresses used for type 5/6 patches can vary!
 # The addresses are determined dynamically by the patching function.
 #
 # List of status/type flags, the insert address, and the table start address
@@ -104,7 +104,7 @@ $MEDIA_SAMPLES_SHORT[$MEDIA_TYPE_DVD_DR] = join( '|', map { quotemeta }
 # Type 3: [ 0xFF40, 0xFF70 ] Patched using patch_strat_TS0C (Obsolete)
 # Type 4: [ 0xFF00, 0xFF40 ] Patched using patch_strat3 (Obsolete)
 # Type 5: [ 0x0000, 0x0000 ] Patched using media_strat_p1s (Active)
-# Type 6: [ 0xFF00, 0xFF40 ] Patched using media_strat_p3s (Active)
+# Type 6: [ 0x0000, 0x0000 ] Patched using media_strat_p3s (Active)
 #
 $MEDIA_STRAT_REVLOC = 0x0FFEF;
 
@@ -152,6 +152,14 @@ $MEDIA_SPEED_TYPE[6] = "9 bits, with non-Unicode entries";
 @MEDIA_SPEEDS_D = @MEDIA_SPEEDS_STD = ( 1, 2, 4, 6, 8, 12, 16 );
 @MEDIA_SPEEDS_P = ( 0, 2.4, 4, 6, 8, 12, 16 );
 $MEDIA_SPEEDS = sub { ($_[0] == $MEDIA_TYPE_DVD_P | $_[0] == $MEDIA_TYPE_DVD_PR | $_[0] == $MEDIA_TYPE_DVD_PRW | $_[0] == $MEDIA_TYPE_DVD_PR9) ? \@MEDIA_SPEEDS_P : \@MEDIA_SPEEDS_D };
+
+$MEDIA_STDSPD2IDX[1] = 0;
+$MEDIA_STDSPD2IDX[2] = 1;
+$MEDIA_STDSPD2IDX[4] = 2;
+$MEDIA_STDSPD2IDX[6] = 3;
+$MEDIA_STDSPD2IDX[8] = 4;
+$MEDIA_STDSPD2IDX[12] = 5;
+$MEDIA_STDSPD2IDX[16] = 6;
 
 ##
 # Media code entry format...

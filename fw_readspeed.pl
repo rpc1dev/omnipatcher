@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : DVD read speeds
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/14, C64K
 #
 
 sub fw_rs_parse # ( )
@@ -16,32 +16,11 @@ sub fw_rs_parse # ( )
 
 		if ($Current{'fw_rs_status'} == 0x01)
 		{
-			# Set default speeds; I'm too lazy to go and read this from the firmware's
-			# own function
+			# Special case: read from the special global variable
 			#
-			if ($Current{'fw_gen'} < 0x020)
+			foreach my $i (@FW_RS_IDX)
 			{
-				$Current{'fw_rs'}->[$FW_RS_DVDROM][0] = $Current{'fw_rs'}->[$FW_RS_DVDROM][1] = 12;
-				$Current{'fw_rs'}->[$FW_RS_DVD9  ][0] = $Current{'fw_rs'}->[$FW_RS_DVD9  ][1] = 8;
-				$Current{'fw_rs'}->[$FW_RS_DVDR  ][0] = $Current{'fw_rs'}->[$FW_RS_DVDR  ][1] = 6;
-				$Current{'fw_rs'}->[$FW_RS_DVDRW ][0] = $Current{'fw_rs'}->[$FW_RS_DVDRW ][1] = 6;
-				$Current{'fw_rs'}->[$FW_RS_DVDR9 ][0] = $Current{'fw_rs'}->[$FW_RS_DVDR9 ][1] = 6;
-			}
-			elsif ($Current{'fw_gen'} < 0x030)
-			{
-				$Current{'fw_rs'}->[$FW_RS_DVDROM][0] = $Current{'fw_rs'}->[$FW_RS_DVDROM][1] = 12;
-				$Current{'fw_rs'}->[$FW_RS_DVD9  ][0] = $Current{'fw_rs'}->[$FW_RS_DVD9  ][1] = 8;
-				$Current{'fw_rs'}->[$FW_RS_DVDR  ][0] = $Current{'fw_rs'}->[$FW_RS_DVDR  ][1] = 8;
-				$Current{'fw_rs'}->[$FW_RS_DVDRW ][0] = $Current{'fw_rs'}->[$FW_RS_DVDRW ][1] = 8;
-				$Current{'fw_rs'}->[$FW_RS_DVDR9 ][0] = $Current{'fw_rs'}->[$FW_RS_DVDR9 ][1] = 6;
-			}
-			else
-			{
-				$Current{'fw_rs'}->[$FW_RS_DVDROM][0] = $Current{'fw_rs'}->[$FW_RS_DVDROM][1] = 16;
-				$Current{'fw_rs'}->[$FW_RS_DVD9  ][0] = $Current{'fw_rs'}->[$FW_RS_DVD9  ][1] = 8;
-				$Current{'fw_rs'}->[$FW_RS_DVDR  ][0] = $Current{'fw_rs'}->[$FW_RS_DVDR  ][1] = 8;
-				$Current{'fw_rs'}->[$FW_RS_DVDRW ][0] = $Current{'fw_rs'}->[$FW_RS_DVDRW ][1] = 8;
-				$Current{'fw_rs'}->[$FW_RS_DVDR9 ][0] = $Current{'fw_rs'}->[$FW_RS_DVDR9 ][1] = 6;
+				$Current{'fw_rs'}->[$i][0] = $Current{'fw_rs'}->[$i][1] = $Current{'fw_rs_type1parse'}->[$i];
 			}
 		}
 		else
@@ -113,13 +92,14 @@ sub fw_rs_patch # ( testmode, patchmode )
 	my($rsbank) = 0x20000;
 	my($bank) = substr(${$fw}, $rsbank, 0x10000);
 
-	if ($bank =~ /(?#1)((?:\x02(?#2:insert_addr)(\xFF.)\x00|\xE5\x24\x24\x7E)(?#type_detection)(?#82)(?:\x60.)\x14(?#83)(?:\x60.).+?\x24.\x70.(?#speed_assignment)(?:\x7F.\x80.)+?\x7F\x01(?!\x80)(?#return_point)(.*?\x22))/sg)
+	if ($bank =~ /(?#1)((?:\x02(?#2:insert_addr)(\xFF.)\x00|\xE5\x24\x24\x7E)(?#type_detection)(?#type82)(?:\x60.)\x14(?#type83)(?:\x60.).+?\x24.\x70.(?#3:speed_assignment)((?:\x7F.\x80.)+?)\x7F\x01(?!\x80)(?#4:return_point)(.*?\x22))/sg)
 	{
 		# Type 1 function (401S thru 1673S)
 		#
 		my($patch_pt) = (pos($bank)) - length($1);
 		my($insert_pt) = unicode2int($2);
-		my($return_pt) = (pos($bank)) - length($3);
+		my($return_pt) = (pos($bank)) - length($4);
+		my($speed_sel) = $3;
 
 		op_dbgout("fw_rs_patch", sprintf("Type 1 function: loc=%05X, ins_pt=%04X, ret_pt=%04X, len=%d", $patch_pt + $rsbank, $insert_pt, $return_pt, length($1)));
 
@@ -158,12 +138,45 @@ sub fw_rs_patch # ( testmode, patchmode )
 			$insert_pt = (pos($bank)) - length($1);
 			op_dbgout("fw_rs_patch", sprintf("... Patch insertion point set to %X", $insert_pt));
 
+			# The standard parser function (see above) can't read the original
+			# speeds because they are not stored in the patch insert location
+			# so we have to save them to a special global variable that is used
+			# only for parsing a 0x11 return from this patch function.
+			#
+			if ($testmode)
+			{
+				op_dbgout("fw_rs_patch", sprintf("... Length of current speed area: %d", length($speed_sel)));
+
+				if ($speed_sel =~ /^\x7F(?#1)(.)\x80.\x7F(?#2)(.)\x80.(?:\x7F.\x80.)?\x7F(?#3)(.)\x80.\x7F(?#4)(.)\x80.\x7F(?#5)(.)\x80.\x7F(?#6)(.)\x80.$/s)
+				{
+					$Current{'fw_rs_type1parse'} = [ ord($1), ord($2), ord($6), ord($4), min(ord($2), ord($3)) ];
+					op_dbgout("fw_rs_patch", "... Parsing of current speed area successful");
+				}
+				elsif ($Current{'fw_gen'} < 0x020)
+				{
+					$Current{'fw_rs_type1parse'} = [ 12, 8, 6, 6, 6 ];
+					op_dbgout("fw_rs_patch", "... Parsing of current speed area failed; default to 1S");
+				}
+				elsif ($Current{'fw_gen'} < 0x030)
+				{
+					$Current{'fw_rs_type1parse'} = [ 12, 8, 8, 8, 6 ];
+					op_dbgout("fw_rs_patch", "... Parsing of current speed area failed; default to 2S");
+				}
+				else
+				{
+					$Current{'fw_rs_type1parse'} = [ 16, 8, 8, 8, 6 ];
+					op_dbgout("fw_rs_patch", "... Parsing of current speed area failed; default to 3S/Unknown");
+				}
+
+				map { $Current{'fw_rs'}->[$_][2] = [ $rsbank + $insert_pt + $speed_pts[$_] ] } (@FW_RS_IDX);
+			}
+
+			# And now, patch
+			#
 			substr($insert, $insert_ret_pt, 2, int2unicode($return_pt));
 			substr($bank, $insert_pt, $insert_len, $insert);
 			substr($bank, $patch_pt, 4, chr(0x02) . int2unicode($insert_pt) . chr(0x00));
 			substr(${$fw}, $rsbank, 0x10000, $bank);
-
-			map { $Current{'fw_rs'}->[$_][2] = [ $rsbank + $insert_pt + $speed_pts[$_] ] } (@FW_RS_IDX) if ($testmode);
 
 			return 0x01;
 		}
