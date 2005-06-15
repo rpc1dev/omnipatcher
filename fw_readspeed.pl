@@ -7,7 +7,7 @@
 
 sub fw_rs_parse # ( )
 {
-	if ($Current{'fw_gen'} < 0x100 && ($Current{'fw_rs_status'} = fw_rs_patch(1, 1)) >= 0)
+	if (($Current{'fw_rs_status'} = fw_rs_patch(1, 1)) >= 0)
 	{
 		##
 		# Tell the debug stream what info it has gathered
@@ -89,10 +89,9 @@ sub fw_rs_patch # ( testmode, patchmode )
 	# 0x02 = Type 2
 	#
 
-	my($rsbank) = 0x20000;
-	my($bank) = substr(${$fw}, $rsbank, 0x10000);
+	my($bank) = substr(${$fw}, $Current{'fw_rbank'}, 0x10000);
 
-	if ($bank =~ /(?#1)((?:\x02(?#2:insert_addr)(\xFF.)\x00|\xE5\x24\x24\x7E)(?#type_detection)(?#type82)(?:\x60.)\x14(?#type83)(?:\x60.).+?\x24.\x70.(?#3:speed_assignment)((?:\x7F.\x80.)+?)\x7F\x01(?!\x80)(?#4:return_point)(.*?\x22))/sg)
+	if ($bank =~ /(?#1)((?:\x02(?#2:insert_addr)(\xFF.)\x00|\xE5\x24\x24\x7E)(?#type_detection)(?#type82)(?:\x60.)\x14(?#type83)(?:\x60.).+?\x24.\x70.(?#3:speed_assignment)((?:\x7F.\x80.)+)\x7F[\x01\x02](?!\x80)(?#4:return_point)(.*?\x22))/sg)
 	{
 		# Type 1 function (401S thru 1673S)
 		#
@@ -101,7 +100,7 @@ sub fw_rs_patch # ( testmode, patchmode )
 		my($return_pt) = (pos($bank)) - length($4);
 		my($speed_sel) = $3;
 
-		op_dbgout("fw_rs_patch", sprintf("Type 1 function: loc=%05X, ins_pt=%04X, ret_pt=%04X, len=%d", $patch_pt + $rsbank, $insert_pt, $return_pt, length($1)));
+		op_dbgout("fw_rs_patch", sprintf("Type 1 function: loc=%05X, ins_pt=%04X, ret_pt=%04X, len=%d", $patch_pt + $Current{'fw_rbank'}, $insert_pt, $return_pt, length($1)));
 
 		# Establish patch parameters
 		#
@@ -128,7 +127,7 @@ sub fw_rs_patch # ( testmode, patchmode )
 		{
 			# If already patched
 			#
-			map { $Current{'fw_rs'}->[$_][2] = [ $rsbank + $insert_pt + $speed_pts[$_] ] } (@FW_RS_IDX) if ($testmode);
+			map { $Current{'fw_rs'}->[$_][2] = [ $Current{'fw_rbank'} + $insert_pt + $speed_pts[$_] ] } (@FW_RS_IDX) if ($testmode);
 			return 0x11;
 		}
 		elsif ($bank =~ /\x00{2}(\x00{$insert_len}\x00{16})$/sg)
@@ -141,34 +140,34 @@ sub fw_rs_patch # ( testmode, patchmode )
 			# The standard parser function (see above) can't read the original
 			# speeds because they are not stored in the patch insert location
 			# so we have to save them to a special global variable that is used
-			# only for parsing a 0x11 return from this patch function.
+			# only for parsing a 0x01 return from this patch function.
 			#
 			if ($testmode)
 			{
 				op_dbgout("fw_rs_patch", sprintf("... Length of current speed area: %d", length($speed_sel)));
 
-				if ($speed_sel =~ /^\x7F(?#1)(.)\x80.\x7F(?#2)(.)\x80.(?:\x7F.\x80.)?\x7F(?#3)(.)\x80.\x7F(?#4)(.)\x80.\x7F(?#5)(.)\x80.\x7F(?#6)(.)\x80.$/s)
+				if ($Current{'fw_gen'} >= 0x011 && $Current{'fw_gen'} < 0x040 && $speed_sel =~ /^\x7F(?#1)(.)\x80.\x7F(?#2)(.)\x80.(?:\x7F.\x80.)?\x7F(?#3)(.)\x80.\x7F(?#4)(.)\x80.\x7F(?#5)(.)\x80.\x7F(?#6)(.)\x80.$/s)
 				{
 					$Current{'fw_rs_type1parse'} = [ ord($1), ord($2), ord($6), ord($4), min(ord($2), ord($3)) ];
-					op_dbgout("fw_rs_patch", "... Parsing of current speed area successful");
+					op_dbgout("fw_rs_patch", "... Parsing of current speed area successful: standard");
 				}
-				elsif ($Current{'fw_gen'} < 0x020)
+				elsif ($Current{'fw_gen'} >= 0x121 && $Current{'fw_gen'} < 0x130 && $speed_sel =~ /^\x7F(?#1)(.)\x80.\x7F(?#2)(.)\x80.\x7F(?#3)(.)\x80.\x7F(?#4)(.)\x80.\x7F(?#5)(.)\x80.$/s)
 				{
-					$Current{'fw_rs_type1parse'} = [ 12, 8, 6, 6, 6 ];
-					op_dbgout("fw_rs_patch", "... Parsing of current speed area failed; default to 1S");
+					$Current{'fw_rs_type1parse'} = [ ord($1), ord($2), ord($1), ord($4), ord($3) ];
+					op_dbgout("fw_rs_patch", "... Parsing of current speed area successful: 2S slimtype");
 				}
-				elsif ($Current{'fw_gen'} < 0x030)
+				elsif ($Current{'fw_gen'} >= 0x111 && $Current{'fw_gen'} < 0x120 && $speed_sel =~ /^\x7F(?#1)(.)\x80.\x7F(?#2)(.)\x80.$/s)
 				{
-					$Current{'fw_rs_type1parse'} = [ 12, 8, 8, 8, 6 ];
-					op_dbgout("fw_rs_patch", "... Parsing of current speed area failed; default to 2S");
+					$Current{'fw_rs_type1parse'} = [ ord($1), ord($2), ord($2), ord($2), $Current{'fw_rs_defaults'}->[$FW_RS_DVDR9] ];
+					op_dbgout("fw_rs_patch", "... Parsing of current speed area successful: 1S slimtype");
 				}
 				else
 				{
-					$Current{'fw_rs_type1parse'} = [ 16, 8, 8, 8, 6 ];
-					op_dbgout("fw_rs_patch", "... Parsing of current speed area failed; default to 3S/Unknown");
+					$Current{'fw_rs_type1parse'} = [ @{$Current{'fw_rs_defaults'}} ];
+					op_dbgout("fw_rs_patch", "... Parsing of current speed area failed; using defaults");
 				}
 
-				map { $Current{'fw_rs'}->[$_][2] = [ $rsbank + $insert_pt + $speed_pts[$_] ] } (@FW_RS_IDX);
+				map { $Current{'fw_rs'}->[$_][2] = [ $Current{'fw_rbank'} + $insert_pt + $speed_pts[$_] ] } (@FW_RS_IDX);
 			}
 
 			# And now, patch
@@ -176,7 +175,7 @@ sub fw_rs_patch # ( testmode, patchmode )
 			substr($insert, $insert_ret_pt, 2, int2unicode($return_pt));
 			substr($bank, $insert_pt, $insert_len, $insert);
 			substr($bank, $patch_pt, 4, chr(0x02) . int2unicode($insert_pt) . chr(0x00));
-			substr(${$fw}, $rsbank, 0x10000, $bank);
+			substr(${$fw}, $Current{'fw_rbank'}, 0x10000, $bank);
 
 			return 0x01;
 		}
@@ -192,15 +191,15 @@ sub fw_rs_patch # ( testmode, patchmode )
 	{
 		# Type 2 function (starting with -R9)
 		#
-		op_dbgout("fw_rs_patch", sprintf("Type 2 function: loc=%05X", (pos($bank)) - length($1) + $rsbank));
+		op_dbgout("fw_rs_patch", sprintf("Type 2 function: loc=%05X", (pos($bank)) - length($1) + $Current{'fw_rbank'}));
 
 		if ($testmode)
 		{
-			$Current{'fw_rs'}->[$FW_RS_DVDROM][2] = [ makeset(map { $rsbank + unicode2int($_) + 1 } ($2)) ];
-			$Current{'fw_rs'}->[$FW_RS_DVD9  ][2] = [ makeset(map { $rsbank + unicode2int($_) + 1 } ($3, $4)) ];
-			$Current{'fw_rs'}->[$FW_RS_DVDR  ][2] = [ makeset(map { $rsbank + unicode2int($_) + 1 } ($8, $10)) ];
-			$Current{'fw_rs'}->[$FW_RS_DVDRW ][2] = [ makeset(map { $rsbank + unicode2int($_) + 1 } ($5, $6, $7)) ];
-			$Current{'fw_rs'}->[$FW_RS_DVDR9 ][2] = [ makeset(map { $rsbank + unicode2int($_) + 1 } ($9, $11)) ];
+			$Current{'fw_rs'}->[$FW_RS_DVDROM][2] = [ makeset(map { $Current{'fw_rbank'} + unicode2int($_) + 1 } ($2)) ];
+			$Current{'fw_rs'}->[$FW_RS_DVD9  ][2] = [ makeset(map { $Current{'fw_rbank'} + unicode2int($_) + 1 } ($3, $4)) ];
+			$Current{'fw_rs'}->[$FW_RS_DVDR  ][2] = [ makeset(map { $Current{'fw_rbank'} + unicode2int($_) + 1 } ($8, $10)) ];
+			$Current{'fw_rs'}->[$FW_RS_DVDRW ][2] = [ makeset(map { $Current{'fw_rbank'} + unicode2int($_) + 1 } ($5, $6, $7)) ];
+			$Current{'fw_rs'}->[$FW_RS_DVDR9 ][2] = [ makeset(map { $Current{'fw_rbank'} + unicode2int($_) + 1 } ($9, $11)) ];
 		}
 
 		return 0x02;

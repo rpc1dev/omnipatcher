@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : Main module
 #
-# Modified: 2005/06/13, C64K
+# Modified: 2005/06/15, C64K
 #
 
 sub fw_rebank # ( &data, &bootcode, mode )
@@ -94,6 +94,11 @@ sub fw_load # ( filename )
 	}
 
 	op_dbgout("fw_load", "Loaded $new_file{'longname'}");
+
+	ui_settext($ObjMainCmdGrp, "Loading, please wait...");
+	ui_setdisable($ObjMainCmd->{'Load'});
+	ui_setdisable($ObjMainCmd->{'Save'});
+	ui_doevents();
 
 	%Current = %new_file;
 	fw_parse();
@@ -190,21 +195,36 @@ sub fw_parse # ( )
 			ui_error('Unable to classify firmware.');
 		}
 
-		@Current{'fw_gen', 'fw_family', 'fw_ebank', 'media_pbank', 'media_dbank', 'media_limits', 'media_count_expected', 'fw_idlist'} = @{$FW_PARAMS{$fw_letter}};
+		@Current{'fw_gen', 'fw_family', 'fw_ebank', 'fw_rbank', 'media_pbank', 'media_dbank', 'media_limits', 'media_count_expected', 'fw_rs_limits', 'fw_rs_defaults', 'fw_idlist'} = @{$FW_PARAMS{$fw_letter}};
 		$Current{'fw_fwrev'} = 'Unknown' if ($Current{'fw_fwrev'} eq ' ');
+
+		# Correct for deviations in the read bank address
+		#
+		if ($Current{'fw_rbank'} > 0 && substr($Current{'fw'}, $Current{'fw_rbank'}, 0x10000) !~ /\x02\xFF.\x00|\xE5\x24\x24\x7E|\xE5\x24\x12/s)
+		{
+			op_dbgout("fw_parse", sprintf("Read routine not found in bank 0x%02X; searching for new bank", addr_bankid($Current{'fw_rbank'})));
+
+			if ($Current{'fw'} =~ /\x02\xFF.\x00\x60|\xE5\x24\x24\x7E\x60|\xE5\x24\x12....\x80.{70,95}?\x22/sg)
+			{
+				$Current{'fw_rbank'} = addr_bank(pos($Current{'fw'}));
+				op_dbgout("fw_parse", sprintf("... Changing read bank to 0x%02X", addr_bankid($Current{'fw_rbank'})));
+			}
+
+			pos($Current{'fw'}) = 0;
+		}
 
 		# Correct for deviations in the plus/dash bank addresses
 		#
 		foreach $check ( [ 'media_pbank', $MEDIA_SAMPLES_SHORT[$MEDIA_TYPE_DVD_PR] ], [ 'media_dbank', $MEDIA_SAMPLES_SHORT[$MEDIA_TYPE_DVD_DR] ] )
 		{
-			if (getaddr_bank($Current{$check->[0]}) > 0 && substr($Current{'fw'}, getaddr_full($Current{$check->[0]}), 0x10000) !~ /$check->[1]/s)
+			if ($Current{$check->[0]} > 0 && substr($Current{'fw'}, $Current{$check->[0]}, 0x10000) !~ /$check->[1]/s)
 			{
 				op_dbgout("fw_parse", "No media codes found in $check->[0]; searching for new bank");
 
 				if ($Current{'fw'} =~ /$check->[1]/sg)
 				{
-					op_dbgout("fw_parse", sprintf("Changing %s from 0x%02X to 0x%02X", $check->[0], getaddr_bank($Current{$check->[0]}), getaddr_bank(pos($Current{'fw'}))));
-					$Current{$check->[0]} = [ getaddr_bank(pos($Current{'fw'})) ];
+					op_dbgout("fw_parse", sprintf("Changing %s from 0x%02X to 0x%02X", $check->[0], addr_bankid($Current{$check->[0]}), addr_bankid(pos($Current{'fw'}))));
+					$Current{$check->[0]} = addr_bank(pos($Current{'fw'}));
 				}
 
 				pos($Current{'fw'}) = 0;
@@ -314,7 +334,6 @@ sub fw_init # ( )
 
 		ui_setenable($MediaTab->{'List'});
 		ui_setenable($MediaTab->{'Tweak'});
-		ui_setenable($MediaTab->{'Report'});
 		ui_setenable($MediaTab->{'ExtCmds'});
 		ui_doevents();
 	}
@@ -364,17 +383,15 @@ sub fw_init # ( )
 		#
 		if ($Current{'fw_rs_status'} >= 0)
 		{
-			my(@maxspeeds) = ($Current{'fw_gen'} < 0x030) ? (12, 8, 8, 8, 8) : (16, 16, 16, 16, 12);
-
 			foreach my $i (@FW_RS_IDX)
 			{
 				my($speed) = $Current{'fw_rs'}->[$i][0];
 				$speed = 4 if ($speed < 4);
-				$speed = $maxspeeds[$i] if ($speed > $maxspeeds[$i]);
+				$speed = $Current{'fw_rs_limits'}->[$i] if ($speed > $Current{'fw_rs_limits'}->[$i]);
 
 				ui_doevents();
 				ui_clear($PatchesTab->{'Drops'}[$i]);
-				ui_add($PatchesTab->{'Drops'}[$i], map { "$FW_RS_IDX2SPD[$i][$_]x" } (0 .. $FW_RS_SPD2IDX[$i][$maxspeeds[$i]]));
+				ui_add($PatchesTab->{'Drops'}[$i], map { "$FW_RS_IDX2SPD[$i][$_]x" } (0 .. $FW_RS_SPD2IDX[$i][$Current{'fw_rs_limits'}->[$i]]));
 				ui_select($PatchesTab->{'Drops'}[$i], $FW_RS_SPD2IDX[$i][$speed]);
 
 				ui_setenable($PatchesTab->{'DropLabels'}[$i]);
@@ -394,6 +411,7 @@ sub fw_init # ( )
 	}
 
 	ui_settext($ObjMainCmdGrp, ($Current{'fw_fwrev'} eq 'Unknown') ? $Current{'shortname'} : "$Current{'fw_fwrev'} ($Current{'shortname'})");
+	ui_setenable($ObjMainCmd->{'Load'});
 	ui_setenable($ObjMainCmd->{'Save'});
 }
 

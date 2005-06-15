@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Main module
 #
-# Modified: 2005/06/13, C64K
+# Modified: 2005/06/14, C64K
 #
 
 use Win32::GUI;
@@ -80,6 +80,12 @@ use Win32::GUI;
 	{
 		Win32::GUI::MessageBox($hWndMain, $_[0], $_[1], MB_OK | MB_ICONINFORMATION);
 		return $_[2];
+	}
+
+	sub ui_error_mib # ( message[, retcode ] )
+	{
+		Win32::GUI::MessageBox($hWndMIDBox, $_[0], "Error", MB_OK | MB_ICONWARNING);
+		return $_[1];
 	}
 }
 

@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Media : Write strategy reassignment
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/14, C64K
 #
 
 sub media_strat_init # ( )
@@ -103,7 +103,7 @@ sub media_strat_p # ( testmode, patchmode )
 {
 	my($testmode, $patchmode) = @_;
 
-	if ($Current{'media_strat_type'} == 5 || (substr($Current{'fw'}, getaddr_full($Current{'media_dbank'}), 0x10000) =~ /\xC2\xAF..\x0B..\x08\x90..\x74.\xF0\x80\x06\x90..\x74.\xF0/s))
+	if ($Current{'media_strat_type'} == 5 || (substr($Current{'fw'}, $Current{'media_dbank'}, 0x10000) =~ /\xC2\xAF..\x0B..\x08\x90..\x74.\xF0\x80\x06\x90..\x74.\xF0/s))
 	{
 		# 1S/2S/3S-v1
 		#
@@ -165,8 +165,8 @@ sub media_strat_p1s # ( testmode, patchmode )
 	##
 	# Process each bank
 	#
-	foreach my $type ( [ $MEDIA_TYPE_DVD_PR, substr(${$fw}, getaddr_full($Current{'media_pbank'}), 0x10000), getaddr_full($Current{'media_pbank'}), chr(0x94) ],
-	                   [ $MEDIA_TYPE_DVD_DR, substr(${$fw}, getaddr_full($Current{'media_dbank'}), 0x10000), getaddr_full($Current{'media_dbank'}), chr(0x90) ] )
+	foreach my $type ( [ $MEDIA_TYPE_DVD_PR, substr(${$fw}, $Current{'media_pbank'}, 0x10000), $Current{'media_pbank'}, chr(0x94) ],
+	                   [ $MEDIA_TYPE_DVD_DR, substr(${$fw}, $Current{'media_dbank'}, 0x10000), $Current{'media_dbank'}, chr(0x90) ] )
 	{
 		op_dbgout("media_strat_p1s", "Processing the $MEDIA_TYPE_NAME[$type->[0]] bank");
 
@@ -335,8 +335,8 @@ sub media_strat_p3s # ( testmode, patchmode )
 	##
 	# Process each bank
 	#
-	TYPELOOP: foreach my $type ( [ $MEDIA_TYPE_DVD_PR, substr(${$fw}, getaddr_full($Current{'media_pbank'}), 0x10000), getaddr_full($Current{'media_pbank'}), $Current{'media_pstrat_pts'} ],
-	                             [ $MEDIA_TYPE_DVD_DR, substr(${$fw}, getaddr_full($Current{'media_dbank'}), 0x10000), getaddr_full($Current{'media_dbank'}), $Current{'media_dstrat_pts'} ] )
+	TYPELOOP: foreach my $type ( [ $MEDIA_TYPE_DVD_PR, substr(${$fw}, $Current{'media_pbank'}, 0x10000), $Current{'media_pbank'}, $Current{'media_pstrat_pts'} ],
+	                             [ $MEDIA_TYPE_DVD_DR, substr(${$fw}, $Current{'media_dbank'}, 0x10000), $Current{'media_dbank'}, $Current{'media_dstrat_pts'} ] )
 	{
 		op_dbgout("media_strat_p3s", "Processing the $MEDIA_TYPE_NAME[$type->[0]] bank");
 

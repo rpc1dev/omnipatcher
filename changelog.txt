@@ -1,3 +1,9 @@
+2.1.0 (14 Jun 2005)
+	* Added: The ability to rename a media code using a media code block import, like in MCSE.
+	* Improved: The read speed and disable learning patches are now available for slimtype drives.
+	* Changed: The button to save a media report has been removed; the function is now a part of the "More Commands" button, which has been moved to take its place.
+	* Other: Updated the internal list of OEM rebadges.
+
 2.0.1 (13 Jun 2005)
 	* Added: An "Extended Commands" button in the media tab.  This will bring up a menu of additional commands: load media settings from a media report and undoing name/speed changes to a media code.
 	* Improved: Slightly mitigated the GUI refresh lag when loading a new firmware.

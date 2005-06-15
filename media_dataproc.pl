@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Media : Data processing
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/14, C64K
 #
 
 sub media_istype # ( type, general_type )
@@ -34,7 +34,7 @@ sub media_spd2stdspd # ( spd )
 		#
 		return (($spd & 0b00111111) | (($spd & 0b10000000) >> 1))
 	}
-	elsif ($Current{'media_spd_type'} == 5 || $Current{'media_spd_type'} == 6)
+	elsif ($Current{'media_spd_type'} == 5)
 	{
 		# 9-bit
 		#
@@ -56,13 +56,13 @@ sub media_stdspd2spd # ( spd )
 	{
 		# Slimtype
 		#
-		return 0x10 if ($_[0] >= 0b01000000);
-		return 0x0C if ($_[0] >= 0b00100000);
-		return 0x08 if ($_[0] >= 0b00010000);
-		return 0x06 if ($_[0] >= 0b00001000);
-		return 0x04 if ($_[0] >= 0b00000100);
-		return 0x02 if ($_[0] >= 0b00000010);
-		return 0x01 if ($_[0] >= 0b00000001);
+		return 0x10 if ($_[0] & 0b01000000);
+		return 0x0C if ($_[0] & 0b00100000);
+		return 0x08 if ($_[0] & 0b00010000);
+		return 0x06 if ($_[0] & 0b00001000);
+		return 0x04 if ($_[0] & 0b00000100);
+		return 0x02 if ($_[0] & 0b00000010);
+		return 0x01 if ($_[0] & 0b00000001);
 		return 0x00;
 	}
 	elsif ($Current{'media_spd_type'} == 3)
@@ -77,7 +77,7 @@ sub media_stdspd2spd # ( spd )
 		#
 		return (($spd & 0b00111111) | (($spd & 0b01000000) << 1))
 	}
-	elsif ($Current{'media_spd_type'} == 5 || $Current{'media_spd_type'} == 6)
+	elsif ($Current{'media_spd_type'} == 5)
 	{
 		# 9-bit
 		#
@@ -94,14 +94,14 @@ sub media_stdspd2spd # ( spd )
 sub media_makefield # ( datatype, len, addr, addr2offset )
 {
 	my($datatype, $len, $addr, $addr2offset) = @_;
-	my($value);
 
-	$value = substr($Current{'fw'}, $addr, $len << $datatype->[1]);
+	my($value) = substr($Current{'fw'}, $addr, $len << $datatype->[1]);
+
 	$value = ($datatype->[0] == $MEDIA_DATA_STR) ?
 		(($datatype->[1]) ? nulltrim(unicode2str($value)) : nulltrim($value)) :
 		(($datatype->[1]) ? unicode2int($value) : ord($value));
 
-	return ($addr2offset) ? [ $value, $datatype, $len, [ $addr, $addr + $addr2offset ] ] : [ $value, $datatype, $len, [ $addr ] ];
+	return [ $value, $datatype, $len, ($addr2offset) ? [ $addr, $addr + $addr2offset ] : [ $addr ] ];
 }
 
 sub media_makechange # ( entry, new_value )
@@ -110,6 +110,7 @@ sub media_makechange # ( entry, new_value )
 
 	if (($entry->[1][0] == $MEDIA_DATA_STR) ? ($entry->[0] ne $new_value) : ($entry->[0] != $new_value))
 	{
+		# Adjust the length of the entry as necessary if Unicode
 		my($new_len) = $entry->[2] << $entry->[1][1];
 
 		if ($entry->[1][0] == $MEDIA_DATA_STR)
@@ -123,22 +124,21 @@ sub media_makechange # ( entry, new_value )
 		}
 
 		(length($new_value) == $new_len) ?
-		map { substr($Current{'fw'}, $_, $new_len, $new_value) } @{$entry->[3]} :
-		op_dbgout("media_makechange", "Fatal error: length mismatch");
+			map { substr($Current{'fw'}, $_, $new_len, $new_value) } @{$entry->[3]} :
+			op_dbgout("media_makechange", "Fatal error: length mismatch");
 	}
 }
 
 sub media_parse # ( )
 {
-	my(@table, $i);
-	my($non_unicode, $b6set);
+	my(@table);
 
-	op_dbgout("media_parse", sprintf("Media banks: +/%02X, -/%02X", getaddr_bank($Current{'media_pbank'}), getaddr_bank($Current{'media_dbank'})));
+	op_dbgout("media_parse", sprintf("Media banks: +/%02X, -/%02X", addr_bankid($Current{'media_pbank'}), addr_bankid($Current{'media_dbank'})));
 
 	##
 	# Call the appropriate child function to get the raw data
 	#
-	if (substr($Current{'fw'}, getaddr_full($Current{'media_dbank'}), 0x10000) =~ /\xC2\xAF..\x0B..\x08\x90..\x74.\xF0\x80\x06\x90..\x74.\xF0/s)
+	if (substr($Current{'fw'}, $Current{'media_dbank'}, 0x10000) =~ /\xC2\xAF..\x0B..\x08\x90..\x74.\xF0\x80\x06\x90..\x74.\xF0/s)
 	{
 		# 1S/2S/3S-v1
 		#
@@ -168,6 +168,8 @@ sub media_parse # ( )
 	# Process the raw data to filter out bad codes, etc...
 	#
 	op_dbgout("media_parse", sprintf("Beginning media code post-processing: %d media codes", scalar(@table)));
+
+	my($i, $b6set);
 
 	for ($i = 0; $i <= $#table; ++$i)
 	{
@@ -236,15 +238,12 @@ sub media_parse # ( )
 
 		foreach $i (@{$Current{'media_table'}})
 		{
-			$non_unicode = 1 if ($i->[0] == $MEDIA_TYPE_NAME[$MEDIA_TYPE_DVD_PR] && $i->[2]{'SPD'}[1][1] == 0);
-			$b6set = 1 if ($i->[2]{'SPD'}[0] & 0b01000000);
-
-			$Current{'media_spd_type'} = 5 if ($Current{'media_spd_type'} < 5 && $i->[2]{'SPD'}[0] > 0xFF);
-			$Current{'media_spd_type'} = 4 if ($Current{'media_spd_type'} < 4 && $i->[2]{'SPD'}[0] > 0x7F);
+			$b6set = 1 if ($i->[2]{'SPD'}[0] & 0x040);
+			$Current{'media_spd_type'} = 5 if ($Current{'media_spd_type'} < 5 && ($i->[2]{'SPD'}[0] & 0x100));
+			$Current{'media_spd_type'} = 4 if ($Current{'media_spd_type'} < 4 && ($i->[2]{'SPD'}[0] & 0x080));
 		}
 
 		$Current{'media_spd_type'} = 3 if ($Current{'media_spd_type'} == 4 && $b6set);
-		$Current{'media_spd_type'} = 6 if ($Current{'media_spd_type'} == 5 && $non_unicode);
 	}
 
 	op_dbgout("media_parse", "Speed encoding: $MEDIA_SPEED_TYPE[$Current{'media_spd_type'}]");
@@ -278,8 +277,8 @@ sub media_parse_1s # ( )
 {
 	my($table) = @_;
 
-	my($pdata) = substr($Current{'fw'}, getaddr_full($Current{'media_pbank'}), 0x10000);
-	my($ddata) = substr($Current{'fw'}, getaddr_full($Current{'media_dbank'}), 0x10000);
+	my($pdata) = substr($Current{'fw'}, $Current{'media_pbank'}, 0x10000);
+	my($ddata) = substr($Current{'fw'}, $Current{'media_dbank'}, 0x10000);
 
 	my($ppat) = '\x75\xF0\x1A\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83';
 	my($dpat) = '\x75\xF0\x0D\xA4\x24(.)\xF5\x82(?:\xE5\xF0|\xE4)\x34(.)\xF5\x83';
@@ -297,7 +296,7 @@ sub media_parse_1s # ( )
 	if ($pdata =~ s/$ricoh_hack_pat/$ricoh_hack_ins/s)
 	{
 		op_dbgout("media_parse_1s", "Removing faulty RICOHJPNR00 +R DL entry");
-		my($pdata) = substr($Current{'fw'}, getaddr_full($Current{'media_pbank'}), 0x10000, $pdata);
+		substr($Current{'fw'}, $Current{'media_pbank'}, 0x10000, $pdata);
 	}
 
 	##
@@ -310,9 +309,9 @@ sub media_parse_1s # ( )
 	#
 	if ($pdata =~ /$ppat.{47,66}?$ppat(?:.{47,51}?$ppat)?.{35,42}?\x90..\xE0\x64\x0B/s)
 	{
-		$table_loc[$MEDIA_TYPE_DVD_PR]  = [ getaddr_bank($Current{'media_pbank'}), unicode2int("$4$3") ];
-		$table_loc[$MEDIA_TYPE_DVD_PRW] = [ getaddr_bank($Current{'media_pbank'}), unicode2int("$2$1") ];
-		$table_loc[$MEDIA_TYPE_DVD_PR9] = [ getaddr_bank($Current{'media_pbank'}), unicode2int("$6$5") ] if (length($5) == 1);
+		$table_loc[$MEDIA_TYPE_DVD_PR]  = $Current{'media_pbank'} + unicode2int("$4$3");
+		$table_loc[$MEDIA_TYPE_DVD_PRW] = $Current{'media_pbank'} + unicode2int("$2$1");
+		$table_loc[$MEDIA_TYPE_DVD_PR9] = $Current{'media_pbank'} + unicode2int("$6$5") if (length($5) == 1);
 	}
 
 	if ( $pdata =~ /\xE5\x24\x90..\xB4\x94\x05\x74(.)\xF0\x80\x03\x74(.)\xF0/s ||
@@ -330,8 +329,8 @@ sub media_parse_1s # ( )
 	#
 	if ($ddata =~ /$dpat.{43,47}?$dpat.{375,384}?\x90..\xE0\x64\x0E/s)
 	{
-		$table_loc[$MEDIA_TYPE_DVD_DR]  = [ getaddr_bank($Current{'media_dbank'}), unicode2int("$4$3") ];
-		$table_loc[$MEDIA_TYPE_DVD_DRW] = [ getaddr_bank($Current{'media_dbank'}), unicode2int("$2$1") ];
+		$table_loc[$MEDIA_TYPE_DVD_DR]  = $Current{'media_dbank'} + unicode2int("$4$3");
+		$table_loc[$MEDIA_TYPE_DVD_DRW] = $Current{'media_dbank'} + unicode2int("$2$1");
 	}
 
 	if ($ddata =~ /\xC2\xAF..\x0B..\x08\x90..\x74(.)\xF0\x80\x06\x90..\x74(.)\xF0/s)
@@ -344,7 +343,7 @@ sub media_parse_1s # ( )
 	#
 	foreach $media_type (@{$MEDIA_TYPES[$MEDIA_TYPE_DVD_P]}, @{$MEDIA_TYPES[$MEDIA_TYPE_DVD_D]})
 	{
-		op_dbgout("media_parse_1s", sprintf("%-3s, loc=%05X, n=%s", $MEDIA_TYPE_NAME[$media_type], getaddr_full($table_loc[$media_type]), ($table_cnt[$media_type] > 0) ? $table_cnt[$media_type] : '??')) if (ref($table_loc[$media_type]));
+		op_dbgout("media_parse_1s", sprintf("%-3s, loc=%05X, n=%s", $MEDIA_TYPE_NAME[$media_type], $table_loc[$media_type], ($table_cnt[$media_type] > 0) ? $table_cnt[$media_type] : '??')) if ($table_loc[$media_type]);
 	}
 
 	##
@@ -352,21 +351,22 @@ sub media_parse_1s # ( )
 	#
 	foreach $media_type (@{$MEDIA_TYPES[$MEDIA_TYPE_DVD_P]})
 	{
-		next unless (ref($table_loc[$media_type]));
+		next unless ($table_loc[$media_type]);
 
 		my($isR9) = ($media_type == $MEDIA_TYPE_DVD_PR9);
 
-		for ($i = 0; ($table_cnt[$media_type]) ? $i < $table_cnt[$media_type] : unicode2str(substr($pdata, getaddr_16bit($table_loc[$media_type]) + $plus_len * $i, $plus_len)) =~ /$MEDIA_PLUS_PATTERN/s; ++$i )
+		# Hideous loop because we can't read the +R9 table length so we have to brute-force.
+		for ($i = 0; ($table_cnt[$media_type]) ? $i < $table_cnt[$media_type] : unicode2str(substr($pdata, addr_16bit($table_loc[$media_type]) + $plus_len * $i, $plus_len)) =~ /$MEDIA_PLUS_PATTERN/s; ++$i )
 		{
 			push( @{$table},
 			[
 				$media_type,
 				$i,
 				{
-					MID => media_makefield([ $MEDIA_DATA_STR, 1 ], 8, getaddr_full($table_loc[$media_type]) + $plus_len * $i + 0x00, ($isR9) ? $plus_len : 0),
-					TID => media_makefield([ $MEDIA_DATA_STR, 1 ], 3, getaddr_full($table_loc[$media_type]) + $plus_len * $i + 0x10, ($isR9) ? $plus_len : 0),
-					RID => media_makefield([ $MEDIA_DATA_INT, 1 ], 1, getaddr_full($table_loc[$media_type]) + $plus_len * $i + 0x16, ($isR9) ? $plus_len : 0),
-					SPD => media_makefield([ $MEDIA_DATA_INT, 1 ], 1, getaddr_full($table_loc[$media_type]) + $plus_len * $i + 0x18, ($isR9) ? $plus_len : 0),
+					MID => media_makefield([ $MEDIA_DATA_STR, 1 ], 8, $table_loc[$media_type] + $plus_len * $i + 0x00, ($isR9) ? $plus_len : 0),
+					TID => media_makefield([ $MEDIA_DATA_STR, 1 ], 3, $table_loc[$media_type] + $plus_len * $i + 0x10, ($isR9) ? $plus_len : 0),
+					RID => media_makefield([ $MEDIA_DATA_INT, 1 ], 1, $table_loc[$media_type] + $plus_len * $i + 0x16, ($isR9) ? $plus_len : 0),
+					SPD => media_makefield([ $MEDIA_DATA_INT, 1 ], 1, $table_loc[$media_type] + $plus_len * $i + 0x18, ($isR9) ? $plus_len : 0),
 				}
 			] );
 
@@ -379,7 +379,7 @@ sub media_parse_1s # ( )
 	#
 	foreach $media_type (@{$MEDIA_TYPES[$MEDIA_TYPE_DVD_D]})
 	{
-		next unless (ref($table_loc[$media_type]));
+		next unless ($table_loc[$media_type]);
 
 		for ($i = 0; $i < $table_cnt[$media_type]; ++$i )
 		{
@@ -388,9 +388,9 @@ sub media_parse_1s # ( )
 				$media_type,
 				$i,
 				{
-					MID => media_makefield([ $MEDIA_DATA_STR, 0 ], 12, getaddr_full($table_loc[$media_type]) + $dash_len * $i + 0x00, 0),
-					RID => media_makefield([ $MEDIA_DATA_INT, 0 ], 1, getaddr_full($table_loc[$media_type]) + $dash_len * $i + 0x0C, 0),
-					SPD => media_makefield([ $MEDIA_DATA_INT, 0 ], 1, getaddr_full($table_loc[$media_type]) + $dash_len * $table_cnt[$media_type] + $i, 0),
+					MID => media_makefield([ $MEDIA_DATA_STR, 0 ], 12, $table_loc[$media_type] + $dash_len * $i + 0x00, 0),
+					RID => media_makefield([ $MEDIA_DATA_INT, 0 ], 1, $table_loc[$media_type] + $dash_len * $i + 0x0C, 0),
+					SPD => media_makefield([ $MEDIA_DATA_INT, 0 ], 1, $table_loc[$media_type] + $dash_len * $table_cnt[$media_type] + $i, 0),
 				}
 			] );
 		}
@@ -425,9 +425,9 @@ sub media_parse_3s # ( )
 
 	##
 	# Loop through each format and search for tables...
-	#                  0                  1/2                                                                           3      4
-	foreach my $param ( [ $MEDIA_TYPE_DVD_P, (substr($Current{'fw'}, getaddr_full($Current{'media_pbank'}), 0x10000)) x 2, $ppat, getaddr_bank($Current{'media_pbank'}) ],
-	                    [ $MEDIA_TYPE_DVD_D, (substr($Current{'fw'}, getaddr_full($Current{'media_dbank'}), 0x10000)) x 2, $dpat, getaddr_bank($Current{'media_dbank'}) ] )
+	#                     0                  1/2                                                                           3      4
+	foreach my $param ( [ $MEDIA_TYPE_DVD_P, (substr($Current{'fw'}, $Current{'media_pbank'}, 0x10000)) x 2, $ppat, $Current{'media_pbank'} ],
+	                    [ $MEDIA_TYPE_DVD_D, (substr($Current{'fw'}, $Current{'media_dbank'}, 0x10000)) x 2, $dpat, $Current{'media_dbank'} ] )
 	{
 		# Some temporary variables for this segment of code
 		#
@@ -435,13 +435,13 @@ sub media_parse_3s # ( )
 
 		while ($param->[1] =~ /$param->[3]/sg)
 		{
-			if (grep { getaddr_16bit($_->[1]) == unicode2int("$3$2") } @tables3s)
+			if (grep { addr_16bit($_->[1]) == unicode2int("$3$2") } @tables3s)
 			{
 				op_dbgout("media_parse_3s", "Warning, duplicate table captured and removed!");
 			}
 			else
 			{
-				$new_entry = [ $param->[0], [ $param->[4], unicode2int("$3$2") ], ord($7), (ord($1) == 0xF0) ? 0x10 : ord($1), (length($5)) ? [ (pos($param->[1])) - length($5) - length($6) - length($7), 1 ] : [ unicode2int($4), 0 ] ];
+				$new_entry = [ $param->[0], $param->[4] + unicode2int("$3$2"), ord($7), (ord($1) == 0xF0) ? 0x10 : ord($1), (length($5)) ? [ (pos($param->[1])) - length($5) - length($6) - length($7), 1 ] : [ unicode2int($4), 0 ] ];
 
 				# If it turns out that there is a second strat patch point, we'll
 				# need to find it...
@@ -467,7 +467,7 @@ sub media_parse_3s # ( )
 
 				# Now let's be more specific than just '+' or '-'
 				#
-				$x = substr($param->[1], getaddr_16bit($new_entry->[1]), $new_entry->[2] * $new_entry->[3]);
+				$x = substr($param->[1], addr_16bit($new_entry->[1]), $new_entry->[2] * $new_entry->[3]);
 
 				foreach $y (@{$MEDIA_TYPES[$param->[0]]})
 				{
@@ -482,7 +482,7 @@ sub media_parse_3s # ( )
 				#
 				push(@tables3s, $new_entry);
 
-				op_dbgout("media_parse_3s", sprintf("%-3s, fw=%06X, loc=%06X, n=%02d, len=%02d, strat=%02X%04X/%04X", $MEDIA_TYPE_NAME[$tables3s[-1][0]], getaddr_full([ $param->[4], pos($param->[1]) ]), getaddr_full($tables3s[-1][1]), @{$tables3s[-1]}[2 .. 3], $param->[4], @{$tables3s[-1][4]}));
+				op_dbgout("media_parse_3s", sprintf("%-3s, fw=%06X, loc=%06X, n=%02d, len=%02d, strat=%02X%04X/%04X", $MEDIA_TYPE_NAME[$tables3s[-1][0]], $param->[4] + pos($param->[1]), $tables3s[-1][1], @{$tables3s[-1]}[2 .. 3], addr_bankid($param->[4]), @{$tables3s[-1][4]}));
 
 			} # End: if duplicate table
 
@@ -515,10 +515,10 @@ sub media_parse_3s # ( )
 					$entry->[0],
 					$i + $id_offset,
 					{
-						MID => media_makefield([ $MEDIA_DATA_STR, $isUC ], 8, getaddr_full($entry->[1]) + $entry->[3] * $i + (0x00 << $isUC), ($isR9) ? $entry->[3] : 0),
-						TID => media_makefield([ $MEDIA_DATA_STR, $isUC ], 3, getaddr_full($entry->[1]) + $entry->[3] * $i + (0x08 << $isUC), ($isR9) ? $entry->[3] : 0),
-						RID => media_makefield([ $MEDIA_DATA_INT, $isUC ], 1, getaddr_full($entry->[1]) + $entry->[3] * $i + (0x0B << $isUC), ($isR9) ? $entry->[3] : 0),
-						SPD => media_makefield([ $MEDIA_DATA_INT, $isUC ], 1, getaddr_full($entry->[1]) + $entry->[3] * $i + (0x0C << $isUC), ($isR9) ? $entry->[3] : 0),
+						MID => media_makefield([ $MEDIA_DATA_STR, $isUC ], 8, $entry->[1] + $entry->[3] * $i + (0x00 << $isUC), ($isR9) ? $entry->[3] : 0),
+						TID => media_makefield([ $MEDIA_DATA_STR, $isUC ], 3, $entry->[1] + $entry->[3] * $i + (0x08 << $isUC), ($isR9) ? $entry->[3] : 0),
+						RID => media_makefield([ $MEDIA_DATA_INT, $isUC ], 1, $entry->[1] + $entry->[3] * $i + (0x0B << $isUC), ($isR9) ? $entry->[3] : 0),
+						SPD => media_makefield([ $MEDIA_DATA_INT, $isUC ], 1, $entry->[1] + $entry->[3] * $i + (0x0C << $isUC), ($isR9) ? $entry->[3] : 0),
 					}
 				] );
 
@@ -538,9 +538,9 @@ sub media_parse_3s # ( )
 					$entry->[0],
 					$i + $id_offset,
 					{
-						MID => media_makefield([ $MEDIA_DATA_STR, 0 ], 12, getaddr_full($entry->[1]) + $entry->[3] * $i + 0x00, ($isR9) ? $entry->[3] : 0),
-						RID => media_makefield([ $MEDIA_DATA_INT, 0 ], 1, getaddr_full($entry->[1]) + $entry->[3] * $i + 0x0C, ($isR9) ? $entry->[3] : 0),
-						SPD => media_makefield([ $MEDIA_DATA_INT, 0 ], 1, getaddr_full($entry->[1]) + $entry->[3] * $entry->[2] + $i, ($isR9) ? 1 : 0),
+						MID => media_makefield([ $MEDIA_DATA_STR, 0 ], 12, $entry->[1] + $entry->[3] * $i + 0x00, ($isR9) ? $entry->[3] : 0),
+						RID => media_makefield([ $MEDIA_DATA_INT, 0 ], 1, $entry->[1] + $entry->[3] * $i + 0x0C, ($isR9) ? $entry->[3] : 0),
+						SPD => media_makefield([ $MEDIA_DATA_INT, 0 ], 1, $entry->[1] + $entry->[3] * $entry->[2] + $i, ($isR9) ? 1 : 0),
 					}
 				] );
 
@@ -559,7 +559,7 @@ sub media_parse_slim # ( )
 
 	my($data, $type, $tbl_start, $i);
 
-	$data = substr($Current{'fw'}, getaddr_full($Current{'media_pbank'}), 0x10000);
+	$data = substr($Current{'fw'}, $Current{'media_pbank'}, 0x10000);
 
 	foreach $type ( [ $MEDIA_TYPE_DVD_PR,  quotemeta(str2unicode("RICOHJPNR01")) ],
 	                [ $MEDIA_TYPE_DVD_PRW, quotemeta(str2unicode("RICOHJPNW01")) ],
@@ -572,23 +572,23 @@ sub media_parse_slim # ( )
 			# Calculate the table start point
 			#
 			for ($tbl_start = (pos($data)) - length($1); unicode2str(substr($data, $tbl_start - $plus_len, $plus_len)) =~ /$MEDIA_PLUS_PATTERN/s; $tbl_start -= $plus_len) { }
-			$tbl_start = [ getaddr_bank($Current{'media_pbank'}), $tbl_start ];
+			$tbl_start += $Current{'media_pbank'};
 
 			my($isR9) = ($type->[0] == $MEDIA_TYPE_DVD_PR9);
 
 			for ($i = 0; ; ++$i)
 			{
-				last unless (unicode2str(substr($data, getaddr_16bit($tbl_start) + $plus_len * $i, $plus_len)) =~ /$MEDIA_PLUS_PATTERN/s);
+				last unless (unicode2str(substr($data, addr_16bit($tbl_start) + $plus_len * $i, $plus_len)) =~ /$MEDIA_PLUS_PATTERN/s);
 
 				push( @{$table},
 				[
 					$type->[0],
 					$i,
 					{
-						MID => media_makefield([ $MEDIA_DATA_STR, 1 ], 8, getaddr_full($tbl_start) + $plus_len * $i + 0x00, ($isR9) ? $plus_len : 0),
-						TID => media_makefield([ $MEDIA_DATA_STR, 1 ], 3, getaddr_full($tbl_start) + $plus_len * $i + 0x10, ($isR9) ? $plus_len : 0),
-						RID => media_makefield([ $MEDIA_DATA_INT, 1 ], 1, getaddr_full($tbl_start) + $plus_len * $i + 0x16, ($isR9) ? $plus_len : 0),
-						SPD => media_makefield([ $MEDIA_DATA_INT, 1 ], 1, getaddr_full($tbl_start) + $plus_len * $i + 0x18, ($isR9) ? $plus_len : 0),
+						MID => media_makefield([ $MEDIA_DATA_STR, 1 ], 8, $tbl_start + $plus_len * $i + 0x00, ($isR9) ? $plus_len : 0),
+						TID => media_makefield([ $MEDIA_DATA_STR, 1 ], 3, $tbl_start + $plus_len * $i + 0x10, ($isR9) ? $plus_len : 0),
+						RID => media_makefield([ $MEDIA_DATA_INT, 1 ], 1, $tbl_start + $plus_len * $i + 0x16, ($isR9) ? $plus_len : 0),
+						SPD => media_makefield([ $MEDIA_DATA_INT, 1 ], 1, $tbl_start + $plus_len * $i + 0x18, ($isR9) ? $plus_len : 0),
 					}
 				] );
 
@@ -596,13 +596,13 @@ sub media_parse_slim # ( )
 
 			} # End: for each code of this type
 
-			op_dbgout("media_parse_slim", sprintf("%-3s, loc=%05X, n=%02d", $MEDIA_TYPE_NAME[$type->[0]], getaddr_full($tbl_start), $i));
+			op_dbgout("media_parse_slim", sprintf("%-3s, loc=%05X, n=%02d", $MEDIA_TYPE_NAME[$type->[0]], $tbl_start, $i));
 
 		} # End: if sample for this type is found
 
 	} # End: for each media type
 
-	$data = substr($Current{'fw'}, getaddr_full($Current{'media_dbank'}), 0x10000);
+	$data = substr($Current{'fw'}, $Current{'media_dbank'}, 0x10000);
 
 	foreach $type ( [ $MEDIA_TYPE_DVD_DR,  quotemeta("RITEKG03") ],
 	                [ $MEDIA_TYPE_DVD_DRW, quotemeta("RITEKW01") ] )
@@ -614,20 +614,20 @@ sub media_parse_slim # ( )
 			# Calculate the table start point
 			#
 			for ($tbl_start = (pos($data)) - length($1); substr($data, $tbl_start - $dash_len, $dash_len) =~ /$MEDIA_DASH_PATTERN/s; $tbl_start -= $dash_len) { }
-			$tbl_start = [ getaddr_bank($Current{'media_dbank'}), $tbl_start ];
+			$tbl_start += $Current{'media_dbank'};
 
 			for ($i = 0; ; ++$i)
 			{
-				last unless (substr($data, getaddr_16bit($tbl_start) + $dash_len * $i, $dash_len) =~ /$MEDIA_DASH_PATTERN/s);
+				last unless (substr($data, addr_16bit($tbl_start) + $dash_len * $i, $dash_len) =~ /$MEDIA_DASH_PATTERN/s);
 
 				push( @{$table},
 				[
 					$type->[0],
 					$i,
 					{
-						MID => media_makefield([ $MEDIA_DATA_STR, 0 ], 12, getaddr_full($tbl_start) + $dash_len * $i + 0x00, 0),
-						RID => media_makefield([ $MEDIA_DATA_INT, 0 ], 1, getaddr_full($tbl_start) + $dash_len * $i + 0x0C, 0),
-						SPD => media_makefield([ $MEDIA_DATA_INT, 0 ], 1, getaddr_full($tbl_start) + $dash_len * $i + 0x0D, 0),
+						MID => media_makefield([ $MEDIA_DATA_STR, 0 ], 12, $tbl_start + $dash_len * $i + 0x00, 0),
+						RID => media_makefield([ $MEDIA_DATA_INT, 0 ], 1, $tbl_start + $dash_len * $i + 0x0C, 0),
+						SPD => media_makefield([ $MEDIA_DATA_INT, 0 ], 1, $tbl_start + $dash_len * $i + 0x0D, 0),
 					}
 				] );
 
@@ -635,7 +635,7 @@ sub media_parse_slim # ( )
 
 			} # End: for each code of this type
 
-			op_dbgout("media_parse_slim", sprintf("%-3s, loc=%05X, n=%02d", $MEDIA_TYPE_NAME[$type->[0]], getaddr_full($tbl_start), $i));
+			op_dbgout("media_parse_slim", sprintf("%-3s, loc=%05X, n=%02d", $MEDIA_TYPE_NAME[$type->[0]], $tbl_start, $i));
 
 		} # End: if sample for this type is found
 

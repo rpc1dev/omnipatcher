@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Event handlers
 #
-# Modified: 2005/06/13, C64K
+# Modified: 2005/06/15, C64K
 #
 
 ################################################################################
@@ -18,6 +18,11 @@
 		if ($ObjStBox->IsVisible())
 		{
 			$ObjStBox->SetForegroundWindow();
+			return 0;
+		}
+		elsif ($ObjMIDBox->IsVisible())
+		{
+			$ObjMIDBox->SetForegroundWindow();
 			return 0;
 		}
 
@@ -208,7 +213,44 @@
 		return 1;
 	}
 
-	sub MainTabs1Report_Click
+	sub MainTabs1ExtCmds_Click
+	{
+		##
+		# Determine if the reset code and import code functions should
+		# be disabled or not.
+		#
+		$MediaTab->{'Menu'}->{'PopupImportCode'}->Change(-enabled => 0);
+		$MediaTab->{'Menu'}->{'PopupUndoCode'}->Change(-enabled => 0);
+
+		if (ui_getselected($MediaTab->{'List'}) >= 0)
+		{
+			my($code) = $Current{'media_table'}->[ui_getselected($MediaTab->{'List'})];
+
+			$MediaTab->{'Menu'}->{'PopupImportCode'}->Change(-enabled => 1);
+
+			if ( ($code->[2]{'MID'}[0] ne $code->[4]{'MID'}) ||
+			     (exists($code->[2]{'TID'}) && $code->[2]{'TID'}[0] ne $code->[4]{'TID'}) ||
+			     ($code->[2]{'RID'}[0] != $code->[4]{'RID'}) ||
+			     ($code->[2]{'SPD'}[0] != $code->[4]{'SPD'}) )
+			{
+				$MediaTab->{'Menu'}->{'PopupUndoCode'}->Change(-enabled => 1);
+			}
+		}
+
+		##
+		# Pop it up
+		#
+		$ObjMain->TrackPopupMenu
+		(
+			$MediaTab->{'Menu'}->{'Popup'},
+			$ObjMain->Left() + $MediaTab->{'ExtCmds'}->Left() + $UI_NC_WIDTH - ($UI_NC_WIDTH >> 1),
+			$ObjMain->Top() + $MediaTab->{'ExtCmds'}->Top() + $MediaTab->{'ExtCmds'}->Height() + $UI_NC_HEIGHT - ($UI_NC_WIDTH >> 1)
+		);
+
+		return 1;
+	}
+
+	sub PopupSaveReport_Click
 	{
 		my($default_name) = $Current{'shortname'};
 		$default_name =~ s/\.(?:bin|exe)$/-media_report.txt/i;
@@ -227,40 +269,6 @@
 		return 1 unless ($ofn{'-ret'} = Win32::GUI::GetSaveFileName(%ofn));
 
 		media_save_report($ofn{'-ret'});
-
-		return 1;
-	}
-
-	sub MainTabs1ExtCmds_Click
-	{
-		##
-		# Determine if change name/speed changes have been made and set the
-		# status of that command as appropriate.
-		#
-		$MediaTab->{'Menu'}->{'PopupUndoCode'}->Change(-enabled => 0);
-
-		if (ui_getselected($MediaTab->{'List'}) >= 0)
-		{
-			my($code) = $Current{'media_table'}->[ui_getselected($MediaTab->{'List'})];
-
-			if ( ($code->[2]{'MID'}[0] ne $code->[4]{'MID'}) ||
-			     (exists($code->[2]{'TID'}) && $code->[2]{'TID'}[0] ne $code->[4]{'TID'}) ||
-			     ($code->[2]{'RID'}[0] != $code->[4]{'RID'}) ||
-			     ($code->[2]{'SPD'}[0] != $code->[4]{'SPD'}) )
-			{
-				$MediaTab->{'Menu'}->{'PopupUndoCode'}->Change(-enabled => 1);
-			}
-		}
-
-		##
-		# Pop it up
-		#
-		$ObjMain->TrackPopupMenu
-		(
-			$MediaTab->{'Menu'}->{'Popup'},
-			$ObjMain->Left() + $MediaTab->{'ExtCmds'}->Left() + $MediaTab->{'ExtCmds'}->Width() + $UI_NC_WIDTH - ($UI_NC_WIDTH >> 1),
-			$ObjMain->Top() + $MediaTab->{'ExtCmds'}->Top() + $UI_NC_HEIGHT - ($UI_NC_WIDTH >> 1)
-		);
 
 		return 1;
 	}
@@ -287,9 +295,23 @@
 		return 1;
 	}
 
+	sub PopupImportCode_Click
+	{
+		my($idx) = ui_getselected($MediaTab->{'List'});
+		return 1 if ($idx < 0);
+
+		$ObjMIDBoxEdit->Text($UI_MIDBOX_SAMPLE);
+		$ObjMIDBox->Left($ObjMain->Left() + $UI_NC_WIDTH);
+		$ObjMIDBox->Top($ObjMain->Top() + $UI_NC_HEIGHT);
+		$ObjMIDBox->Show();
+
+		return 1;
+	}
+
 	sub PopupUndoCode_Click
 	{
 		media_undo_nschanges(ui_getselected($MediaTab->{'List'}));
+		$MediaTab->{'List'}->SetFocus();
 		return 1;
 	}
 }
@@ -365,6 +387,36 @@
 	sub StBoxCancel_Click
 	{
 		$ObjStBox->Hide();
+		$MediaTab->{'List'}->SetFocus();
+		return 1;
+	}
+}
+
+################################################################################
+# Media code input window
+{
+	sub MIDBox_Terminate
+	{
+		MIDBoxCancel_Click();
+		return 0;
+	}
+
+	sub MIDBoxEdit_GotFocus
+	{
+		$ObjMIDBoxEdit->Text("") if ($ObjMIDBoxEdit->Text() eq $UI_MIDBOX_SAMPLE);
+		return 1;
+	}
+
+	sub MIDBoxImport_Click
+	{
+		return ui_error_mib("Why are you trying to import the sample media code block?", 1) if ($ObjMIDBoxEdit->Text() eq $UI_MIDBOX_SAMPLE);
+		return (media_import_code(ui_getselected($MediaTab->{'List'}), $ObjMIDBoxEdit->Text())) ? MIDBoxCancel_Click() : 1;
+	}
+
+	sub MIDBoxCancel_Click
+	{
+		$ObjMIDBox->Hide();
+		$MediaTab->{'List'}->SetFocus();
 		return 1;
 	}
 }

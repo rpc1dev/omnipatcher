@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Media : Constants and initialization
 #
-# Modified: 2005/06/13, C64K
+# Modified: 2005/06/14, C64K
 #
 
 ##
@@ -121,7 +121,7 @@ $MEDIA_DASH_PATTERN = '.\xFF{13}|\x00{13}.|(?:\w[\w \-=\.,\xAD\x00\!\/\[\]]{11}.
 #
 # xxxxxxxx x0C86421 <- 1
 # xxxxxxxx 0xC86421 <- 3, 4
-# xxxxxxx0 xCx86421 <- 5, 6
+# xxxxxxx0 xCx86421 <- 5
 #
 # Type 3
 # ----------
@@ -135,7 +135,7 @@ $MEDIA_DASH_PATTERN = '.\xFF{13}|\x00{13}.|(?:\w[\w \-=\.,\xAD\x00\!\/\[\]]{11}.
 # 0 00111000
 # 0 00011000
 #
-# Type 5, 6
+# Type 5
 # ----------
 # 1 11011100
 # 0 01011100
@@ -147,7 +147,6 @@ $MEDIA_SPEED_TYPE[2] = "7 bits, slimtype";
 $MEDIA_SPEED_TYPE[3] = "8 bits, with bit 6 set";
 $MEDIA_SPEED_TYPE[4] = "8 bits, with bit 6 unset";
 $MEDIA_SPEED_TYPE[5] = "9 bits";
-$MEDIA_SPEED_TYPE[6] = "9 bits, with non-Unicode entries";
 
 @MEDIA_SPEEDS_D = @MEDIA_SPEEDS_STD = ( 1, 2, 4, 6, 8, 12, 16 );
 @MEDIA_SPEEDS_P = ( 0, 2.4, 4, 6, 8, 12, 16 );

@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : Constants and initialization
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/14, C64K
 #
 
 ##
@@ -25,8 +25,8 @@ $FW_CUSTOMID_CAPTION = 'Specify a custom drive ID below...';
 	ES  => [ "Earlier shift (faster burn) for 8x +R",						\&fw_pat_es,	0, sub { $Current{'fw_gen'} >= 0x011 && $Current{'fw_gen'} < 0x030 && $Current{'media_limits'}[$MEDIA_TYPE_DVD_PR] == 8 } ],
 	FS  => [ "Utilize \"force-shifting\" for 6x/8x burns",				\&fw_pat_fs,	0, sub { $Current{'fw_gen'} >= 0x012 && $Current{'fw_gen'} < 0x030 && $Current{'media_limits'}[$MEDIA_TYPE_DVD_PR] == 8 } ],
 	FF  => [ "Utilize \"force-fallback\" for 8x +R",						\&fw_pat_ff,	0, sub { $Current{'fw_gen'} >= 0x012 && $Current{'fw_gen'} < 0x030 && $Current{'media_limits'}[$MEDIA_TYPE_DVD_PR] == 8 } ],
-	DL  => [ "Disable media learning",											\&fw_pat_dl,	0, sub { $Current{'fw_gen'} >= 0x011 && $Current{'fw_gen'} < 0x040 } ],
-	CF  => [ "Fix the \"dead drive blink\" / Enable cross-flashing",	\&fw_pat_cf,	0, sub { $Current{'fw_gen'} >= 0x011 && $Current{'fw_gen'} < 0x200 } ],
+	DL  => [ "Disable media learning",											\&fw_pat_dl,	0, sub { $Current{'fw_gen'} >= 0x011 && $Current{'fw_gen'} < 0x130 } ],
+	CF  => [ "Fix the \"dead drive blink\" / Enable cross-flashing",	\&fw_pat_cf,	0, sub { $Current{'fw_gen'} >= 0x011 && $Current{'fw_gen'} < 0x130 && $Current{'fw_ebank'} > 0 } ],
 );
 
 ##

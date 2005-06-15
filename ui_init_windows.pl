@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Initialization, part 2: Object creation
 #
-# Modified: 2005/06/13, C64K
+# Modified: 2005/06/14, C64K
 #
 
 ################################################################################
@@ -96,7 +96,7 @@
 	) or ui_abort('Initialization Error.');
 
 	$hWndMain = Win32::GUI::FindWindow('', $unique_title);
-	$ObjMain->Change(-text => $PROGRAM_TITLE);
+	$ObjMain->Text($PROGRAM_TITLE);
 	$ObjMain->ChangeIcon($OPIconLg);
 	$ObjMain->ChangeSmallIcon($OPIconSm);
 }
@@ -449,12 +449,12 @@
 
 	) or ui_abort('Initialization Error.');
 
-	$group->{'Report'} = new Win32::GUI::Button
+	$group->{'ExtCmds'} = new Win32::GUI::Button
 	(
 		($UI_USE_ROOT) ? $ObjMain : $group->{'Frame'},
 
-		-name			=> $namepre . 'Report',
-		-text			=> 'Save DVD Media Code &Report...',
+		-name			=> $namepre . 'ExtCmds',
+		-text			=> 'More &Commands >>',
 		-pos			=> ui_addpairs([ $UI_MARGINS_GENERAL + $ui_dim_mediacmd->[0], 0 ], ui_getpos($group->{'Tweak'})),
 		-size			=> $ui_dim_mediacmd,
 		-disabled	=> 1,
@@ -463,31 +463,15 @@
 
 	) or ui_abort('Initialization Error.');
 
-	$group->{'ExtCmds'} = new Win32::GUI::Button
-	(
-		($UI_USE_ROOT) ? $ObjMain : $group->{'Frame'},
-
-		-name			=> $namepre . 'ExtCmds',
-		-text			=> '>>',
-		-pos			=> ui_addpairs([ $UI_MARGINS_GENERAL + $ui_dim_medialabel->[0], 0 ], ui_getpos($group->{'StratLabel'})),
-		-size			=> [ $ui_dim_mediaspd->[0], $ui_dim_medialabel->[1] ],
-		-addstyle	=> 0x8000,
-		-disabled	=> 1,
-		-font			=> $FontMSSansSerif,
-		-tabstop		=> 0,
-
-	) or ui_abort('Initialization Error.');
-
 	$group->{'Menu'} = new Win32::GUI::Menu
 	(
 		"Extended Commands" => "Popup",
-		">Extended Commands:" => "PopupLabel",
-		">-" => "PopupSep",
-		">Apply settings from a report file..." => "PopupLoadReport",
-		">Reset name/speed changes for this code" => "PopupUndoCode",
-	) or ui_abort('Initialization Error.');
+		">&Save DVD media code report..." => "PopupSaveReport",
+		">&Import speed and strategy settings from a report file..." => "PopupLoadReport",
+		">Rename this code using a media code &block dump..." => "PopupImportCode",
+		">&Reset media ID and speed changes for this code" => "PopupUndoCode",
 
-	$group->{'Menu'}->{'PopupLabel'}->Change(-enabled => 0);
+	) or ui_abort('Initialization Error.');
 }
 
 ################################################################################
@@ -523,7 +507,7 @@
 		($UI_USE_ROOT) ? $ObjMain : $group->{'Frame'},
 
 		-name		=> $namepre . "RSFrame",
-		-text		=> 'DVD Read Speeds',
+		-text		=> 'Set DVD Read Speeds',
 		-pos		=> ui_addpairs([ $ui_margins_patchesframe, $ui_dim_frame->[1] - ($ui_dim_rsgroup->[1] + $ui_margins_patchesframe) ], ui_getpos_cond($group->{'Frame'})),
 		-size		=> $ui_dim_rsgroup,
 		-font		=> $FontTahomaBold,
@@ -623,6 +607,109 @@
 		-text			=> "&Cancel",
 		-pos			=> ui_addpairs([ $ui_dim_stb_cmd->[0] + $UI_MARGINS_GENERAL, 0 ], ui_getpos($ObjStBoxApply)),
 		-size			=> $ui_dim_stb_cmd,
+		-cancel		=> 1,
+		-font			=> $FontTahoma,
+		-tabstop		=> 1,
+
+	) or ui_abort('Initialization Error.');
+}
+
+################################################################################
+# Media code input window
+{
+	my($title) = "Input Media Code Block";
+	my($unique_title) = $title . (time() + 0);
+
+	$ObjMIDBox = new GUI::DialogBox
+	(
+		-name			=> "MIDBox",
+		-text			=> $unique_title,
+		-size			=> $ui_dim_mib,
+		-remexstyle	=> WS_EX_CONTEXTHELP,
+
+	) or ui_abort('Initialization Error.');
+
+	$hWndMIDBox = Win32::GUI::FindWindow('', $unique_title);
+	$ObjMIDBox->Text($title);
+	$ObjMIDBox->ChangeIcon($OPIconLg);
+	$ObjMIDBox->ChangeSmallIcon($OPIconSm);
+
+	$ObjMIDBoxInstrGroup = new Win32::GUI::Groupbox
+	(
+		$ObjMIDBox,
+
+		-name	=> "MIDBoxInstrGroup",
+		-text	=> "Instructions",
+		-pos	=> [ $UI_MARGINS_GENERAL, $UI_MARGINS_GENERAL ],
+		-size	=> $ui_dim_mib_instrgrp,
+		-font	=> $FontTahomaBold,
+
+	) or ui_abort('Initialization Error.');
+
+	$ObjMIDBoxInstr = new Win32::GUI::Textfield
+	(
+		$ObjMIDBox,
+
+		-name			=> "MIDBoxInstr",
+		-text			=> $UI_MIDBOX_INSTR,
+		-pos			=> ui_addpairs([ $UI_MARGINS_GROUP->[0], $UI_MARGINS_GROUP->[1] ], ui_getpos($ObjMIDBoxInstrGroup)),
+		-size			=> $ui_dim_mib_instr,
+		-addstyle	=> WS_VSCROLL | ES_READONLY,
+		-font			=> $FontTahoma,
+		-multiline	=> 1,
+		-remstyle	=> WS_BORDER,
+
+	) or ui_abort('Initialization Error.');
+
+	$ObjMIDBoxEditGroup = new Win32::GUI::Groupbox
+	(
+		$ObjMIDBox,
+
+		-name	=> "MIDBoxEditGroup",
+		-text	=> "Media Code Block",
+		-pos	=> ui_addpairs([ 0, $ui_dim_mib_instrgrp->[1] + $UI_MARGINS_GENERAL ], ui_getpos($ObjMIDBoxInstrGroup)),
+		-size	=> $ui_dim_mib_editgrp,
+		-font	=> $FontTahomaBold,
+
+	) or ui_abort('Initialization Error.');
+
+	$ObjMIDBoxEdit = new Win32::GUI::Textfield
+	(
+		$ObjMIDBox,
+
+		-name			=> "MIDBoxEdit",
+		-pos			=> ui_addpairs([ $UI_MARGINS_GROUP->[0], $UI_MARGINS_GROUP->[1] ], ui_getpos($ObjMIDBoxEditGroup)),
+		-size			=> $ui_dim_mib_edit,
+		-addstyle	=> WS_VSCROLL,
+		-font			=> $FontCourierNewSmall,
+		-multiline	=> 1,
+		-remstyle	=> WS_BORDER,
+
+	) or ui_abort('Initialization Error.');
+
+	$ObjMIDBoxImport = new Win32::GUI::Button
+	(
+		$ObjMIDBox,
+
+		-name			=> "MIDBoxImport",
+		-text			=> "&Import",
+		-pos			=> ui_addpairs([ $ui_dim_mib_instrgrp->[0] - (2 * $ui_dim_mib_cmd->[0] + $UI_MARGINS_GROUP->[0] + $UI_MARGINS_GENERAL), $ui_dim_mib_edit->[1] + $UI_MARGINS_GENERAL + $UI_MARGINS_GROUP->[1] ], ui_getpos($ObjMIDBoxEditGroup)),
+		-size			=> $ui_dim_mib_cmd,
+		-addstyle	=> WS_GROUP,
+		-font			=> $FontTahoma,
+		-ok			=> 1,
+		-tabstop		=> 1,
+
+	) or ui_abort('Initialization Error.');
+
+	$ObjMIDBoxCancel = new Win32::GUI::Button
+	(
+		$ObjMIDBox,
+
+		-name			=> "MIDBoxCancel",
+		-text			=> "&Cancel",
+		-pos			=> ui_addpairs([ $ui_dim_mib_instrgrp->[0] - ($ui_dim_mib_cmd->[0] + $UI_MARGINS_GROUP->[0]), $ui_dim_mib_edit->[1] + $UI_MARGINS_GENERAL + $UI_MARGINS_GROUP->[1] ], ui_getpos($ObjMIDBoxEditGroup)),
+		-size			=> $ui_dim_mib_cmd,
 		-cancel		=> 1,
 		-font			=> $FontTahoma,
 		-tabstop		=> 1,

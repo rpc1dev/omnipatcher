@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : General patches
 #
-# Modified: 2005/06/13, C64K
+# Modified: 2005/06/14, C64K
 #
 
 ##
@@ -643,7 +643,7 @@ sub fw_pat_ff # ( testmode, patchmode )
 	my($curkey) = "";
 	my($addr, $idbyte, $offbyte);
 
-	my($plusbank) = substr(${$fw}, getaddr_full($Current{'media_pbank'}), 0x10000);
+	my($plusbank) = substr(${$fw}, $Current{'media_pbank'}, 0x10000);
 
 	my($temp) = $plusbank;
 
@@ -660,7 +660,7 @@ sub fw_pat_ff # ( testmode, patchmode )
 
 	if ($curkey eq $onkey || $curkey eq $offkey)
 	{
-		substr(${$fw}, getaddr_full($Current{'media_pbank'}), 0x10000, $plusbank);
+		substr(${$fw}, $Current{'media_pbank'}, 0x10000, $plusbank);
 
 		return ($curkey eq $onkey) ? 1 : 0;
 	}
@@ -695,7 +695,7 @@ sub fw_pat_ff_ricoh # ( testmode, patchmode )
 	my($onkey)  = "\xFF\xFF";
 	my($curkey) = "";
 
-	my($plusbank) = substr(${$fw}, getaddr_full($Current{'media_pbank'}), 0x10000);
+	my($plusbank) = substr(${$fw}, $Current{'media_pbank'}, 0x10000);
 
 	my($temp) = $plusbank;
 
@@ -709,7 +709,7 @@ sub fw_pat_ff_ricoh # ( testmode, patchmode )
 
 	if ($curkey eq $onkey || $curkey eq $offkey0 || $curkey eq $offkey1)
 	{
-		substr(${$fw}, getaddr_full($Current{'media_pbank'}), 0x10000, $plusbank);
+		substr(${$fw}, $Current{'media_pbank'}, 0x10000, $plusbank);
 
 		return ($curkey eq $onkey) ? 1 : 0;
 	}
@@ -744,7 +744,8 @@ sub fw_pat_dl # ( testmode, patchmode )
 		op_dbgout("fw_pat_dl", sprintf("%02X at %05X", @{$points[-1]}));
 	}
 
-	if ($#points == 3 && $points[0][0] == $points[1][0] && $points[0][0] == $points[2][0] && $points[0][0] == $points[3][0])
+	if ( ($#points == 3 && $points[0][0] == $points[1][0] && $points[0][0] == $points[2][0] && $points[0][0] == $points[3][0]) ||
+	     ($#points == 5 && $points[0][0] == $points[1][0] && $points[0][0] == $points[2][0] && $points[0][0] == $points[3][0] && $points[0][0] == $points[4][0] && $points[0][0] == $points[5][0]) )
 	{
 		foreach my $point (@points)
 		{
@@ -776,8 +777,6 @@ sub fw_pat_cf # ( testmode, patchmode )
 		$fw = \$Current{'fw'};
 	}
 
-	use integer;
-
 	my($insert) = join('', map { chr } ( 0xE5, 0x81, 0x24, 0xFC, 0xF8, 0xE6, 0xFF, 0x22 ));
 	my($off) = join('', map { chr } ( 0xFF, 0xEE, 0x6F, 0x60, 0x02, 0xC3, 0x22 ));
 	my($on1) = join('', map { chr } ( 0xFF, 0xEE, 0x6F, 0x00, 0x00, 0xD3, 0x22 ));
@@ -785,7 +784,7 @@ sub fw_pat_cf # ( testmode, patchmode )
 	my($onc) = join('', map { chr } ( 0xFF, 0xEE, 0x6F, 0x60, 0x00, 0xD3, 0x22 ));
 	my($offpat, $on1pat, $on2pat, $oncpat) = map { quotemeta } ($off, $on1, $on2, $onc);
 
-	my($work) = substr(${$fw}, getaddr_full($Current{'fw_ebank'}), 0x10000);
+	my($work) = substr(${$fw}, $Current{'fw_ebank'}, 0x10000);
 
 	##
 	# LDW-411S mode
@@ -806,7 +805,7 @@ sub fw_pat_cf # ( testmode, patchmode )
 			$work =~ s/$offoldpat|$onoldpat/$onold/s :
 			$work =~ s/$offoldpat|$onoldpat/$offold/s;
 
-			substr(${$fw}, getaddr_full($Current{'fw_ebank'}), 0x10000, $work);
+			substr(${$fw}, $Current{'fw_ebank'}, 0x10000, $work);
 
 			return ($orig eq $onold) ? 1 : 0;
 		}
@@ -828,10 +827,10 @@ sub fw_pat_cf # ( testmode, patchmode )
 		my($addr) = (pos($work)) - length($1);
 		my($orig) = $1;
 
-		op_dbgout("fw_pat_cf", sprintf("Main patch point found at 0x%X", getaddr_full($Current{'fw_ebank'}) + $addr + 3));
+		op_dbgout("fw_pat_cf", sprintf("Main patch point found at 0x%X", $Current{'fw_ebank'} + $addr + 3));
 
 		substr($work, $addr, length($orig), ($patchmode) ? $on1 : $off);
-		substr(${$fw}, getaddr_full($Current{'fw_ebank'}), 0x10000, $work);
+		substr(${$fw}, $Current{'fw_ebank'}, 0x10000, $work);
 
 		# Code for multibank patching for VS05+ protections schemes.
 		#
@@ -841,7 +840,7 @@ sub fw_pat_cf # ( testmode, patchmode )
 		{
 			$check_addr = substr($work, $check_addr + 1, 2);
 
-			op_dbgout("fw_pat_cf", sprintf("Checksum function found at 0x%X", getaddr_full($Current{'fw_ebank'}) + unicode2int($check_addr)));
+			op_dbgout("fw_pat_cf", sprintf("Checksum function found at 0x%X", $Current{'fw_ebank'} + unicode2int($check_addr)));
 			op_dbgout("fw_pat_cf", sprintf("Checksum XOR value: 0x%02X", ord($1))) if ($work =~ /\x90..\xE0\x64(.)\xFF\xF0\x22/s);
 
 			my($check_addr_m) = quotemeta("\x90$check_addr\x02");
@@ -854,7 +853,7 @@ sub fw_pat_cf # ( testmode, patchmode )
 			{
 				++$check_count;
 
-				$check_temp = ((pos(${$fw})) - 4) & 0xFFFF;
+				$check_temp = addr_16bit((pos(${$fw})) - 4);
 
 				if ($check_count == 1)
 				{
@@ -895,10 +894,10 @@ sub fw_pat_cf # ( testmode, patchmode )
 					substr(${$fw}, $check_jump + ($check_temp << 16), 4, $check_1);
 				}
 
-				if ( substr(${$fw}, getaddr_full($Current{'fw_ebank'}) + 0xFFF0, 8) eq chr(0x00) x 8 ||
-				     substr(${$fw}, getaddr_full($Current{'fw_ebank'}) + 0xFFF0, 8) eq $insert )
+				if ( substr(${$fw}, $Current{'fw_ebank'} + 0xFFF0, 8) eq chr(0x00) x 8 ||
+				     substr(${$fw}, $Current{'fw_ebank'} + 0xFFF0, 8) eq $insert )
 				{
-					substr(${$fw}, getaddr_full($Current{'fw_ebank'}) + 0xFFF0, 8, $check_2);
+					substr(${$fw}, $Current{'fw_ebank'} + 0xFFF0, 8, $check_2);
 				}
 				else
 				{

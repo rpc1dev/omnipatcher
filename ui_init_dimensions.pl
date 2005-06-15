@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Initialization, part 1: Establishing dimensions
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/14, C64K
 #
 
 ################################################################################
@@ -107,6 +107,22 @@
 	$ui_dim_stb_group = [ $ui_dim_stb_list->[0] + $UI_MARGINS_GROUP->[0] * 2, $ui_dim_stb_list->[1] + $ui_dim_stb_cmd->[1] + $UI_MARGINS_GENERAL + $UI_MARGINS_GROUP->[1] + $UI_MARGINS_GROUP->[3] ];
 
 	$ui_dim_stb = [ $ui_dim_stb_group->[0] + $UI_MARGINS_GENERAL * 2 + $UI_NC_WIDTH, $ui_dim_stb_group->[1] + $UI_MARGINS_GENERAL * 2 + $UI_NC_HEIGHT ];
+}
+
+################################################################################
+# Initialize GUI dimensions for the media code input window
+{
+	use integer;
+
+	$ui_dim_mib_cmd = [ 96, $UI_HEIGHT_BUTTON ];
+
+	$ui_dim_mib_edit = [ 80 * 7 + 6, 192 ];
+	$ui_dim_mib_editgrp = [ $ui_dim_mib_edit->[0] + $UI_MARGINS_GROUP->[0] * 2, $ui_dim_mib_edit->[1] + $ui_dim_mib_cmd->[1] + $UI_MARGINS_GENERAL + $UI_MARGINS_GROUP->[1] + $UI_MARGINS_GROUP->[3] ];
+
+	$ui_dim_mib_instr = [ $ui_dim_mib_edit->[0], 84 ];
+	$ui_dim_mib_instrgrp = [ $ui_dim_mib_editgrp->[0], $ui_dim_mib_instr->[1] + $UI_MARGINS_GROUP->[1] + $UI_MARGINS_GROUP->[3] ];
+
+	$ui_dim_mib = [ $ui_dim_mib_editgrp->[0] + $UI_MARGINS_GENERAL * 2 + $UI_NC_WIDTH, $ui_dim_mib_editgrp->[1] + $ui_dim_mib_instrgrp->[1] + 3 * $UI_MARGINS_GENERAL + $UI_NC_HEIGHT ];
 }
 
 1;

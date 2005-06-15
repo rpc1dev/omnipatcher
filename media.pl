@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Media : Main module
 #
-# Modified: 2005/06/13, C64K
+# Modified: 2005/06/15, C64K
 #
 
 sub media_refresh_listitem # ( idx )
@@ -12,6 +12,11 @@ sub media_refresh_listitem # ( idx )
 	if ($idx >= 0)
 	{
 		my($code) = $Current{'media_table'}->[$idx];
+
+		$code->[5] = (media_istype($code->[0], $MEDIA_TYPE_DVD_P)) ?
+			media_cleandisp(sprintf("%-8s-%-3s-%02X", $code->[4]{'MID'}, $code->[4]{'TID'}, $code->[4]{'RID'})) :
+			media_cleandisp(sprintf("%-12s-%02X", $code->[4]{'MID'}, $code->[4]{'RID'}));
+
 		ui_changeitem_safe($MediaTab->{'List'}, $idx, ($code->[1] == $code->[3]) ? " $code->[5] : $MEDIA_TYPE_NAME[$code->[0]]" : "!$code->[5] : $MEDIA_TYPE_NAME[$code->[0]]");
 	}
 }
@@ -58,7 +63,7 @@ sub media_proc_listclick # ( idx )
 				ui_setdisable($MediaTab->{'Speeds'}[$i]);
 				ui_setinvisible($MediaTab->{'Speeds'}[$i]);
 			}
-			elsif ($MEDIA_SPEEDS_STD[$i] == 16 && $Current{'media_spd_type'} == 6 && $code->[2]{'SPD'}[1][1] == 0)
+			elsif ($MEDIA_SPEEDS_STD[$i] == 16 && $Current{'media_spd_type'} == 5 && $code->[2]{'SPD'}[1][1] == 0)
 			{
 				ui_setdisable($MediaTab->{'Speeds'}[$i]);
 				ui_setvisible($MediaTab->{'Speeds'}[$i]);
@@ -167,14 +172,7 @@ sub media_proc_fieldchange # ( )
 			$code->[4]{'RID'} = hex(ui_gettext($MediaTab->{'Fields'}[$UI_MEDIA_TXTID_RID]));
 		}
 
-		if ($changed)
-		{
-			$code->[5] = (media_istype($code->[0], $MEDIA_TYPE_DVD_P)) ?
-				media_cleandisp(sprintf("%-8s-%-3s-%02X", $code->[4]{'MID'}, $code->[4]{'TID'}, $code->[4]{'RID'})) :
-				media_cleandisp(sprintf("%-12s-%02X", $code->[4]{'MID'}, $code->[4]{'RID'}));
-
-			media_refresh_listitem($idx);
-		}
+		media_refresh_listitem($idx) if ($changed);
 	}
 }
 
@@ -323,7 +321,7 @@ sub media_load_report # ( filename )
 			next;
 		}
 
-		if ($type >= 0 && $line =~ /^(?:0x[0-9A-Z]{2}: )?(?#1-code)(.{12}[\/-][0-9A-Z]{2})  \[(?#2-speed)( .* )\](?: -> (?#3-strat)(.{12}[\/-][0-9A-Z]{2}))?/s)
+		if ($type >= 0 && $line =~ /^(?:0x[0-9A-F]{2}: )?(?#1-code)(.{12}[\/-][0-9A-F]{2})  \[(?#2-speed)( .* )\](?: -> (?#3-strat)(.{12}[\/-][0-9A-F]{2}))?/s)
 		{
 			my($src) = media_disp2idx($type, $1);
 			my($dst) = media_disp2idx($type, $3);
@@ -373,40 +371,180 @@ sub media_undo_nschanges # ( idx )
 	if ($idx >= 0)
 	{
 		my($code) = $Current{'media_table'}->[$idx];
+
 		$code->[4]{'MID'} = $code->[2]{'MID'}[0];
 		$code->[4]{'TID'} = $code->[2]{'TID'}[0] if (exists($code->[2]{'TID'}));
 		$code->[4]{'RID'} = $code->[2]{'RID'}[0];
 		$code->[4]{'SPD'} = $code->[2]{'SPD'}[0];
-
-		$code->[5] = (media_istype($code->[0], $MEDIA_TYPE_DVD_P)) ?
-			media_cleandisp(sprintf("%-8s-%-3s-%02X", $code->[4]{'MID'}, $code->[4]{'TID'}, $code->[4]{'RID'})) :
-			media_cleandisp(sprintf("%-12s-%02X", $code->[4]{'MID'}, $code->[4]{'RID'}));
 
 		media_refresh_listitem($idx);
 		media_proc_listclick($idx);
 	}
 }
 
+sub media_import_code # ( idx, text )
+{
+	my($idx, $text) = @_;
+	return 1 if ($idx < 0);
+
+	# Convert the hex dump into a raw string
+	#
+	my(@lines) = split(/\r?\n/, $text);
+	my($str, $isdip);
+
+	foreach my $line (@lines)
+	{
+		if ($line =~ /^(?:(0{6}\d0)?\s+|.*?\s+|\s*)((?:[0-9A-Fa-f]{2}\s{1,4}){16})\s*/s)
+		{
+			$isdip = ($isdip || length($1) > 0);
+			my(@bytes) = split(/\s+/, $2);
+			$str .= join('', map { chr(hex($_)) } @bytes);
+		}
+	}
+
+	return ui_error_mib("The media code block appears to be either too short\nor incorrectly formatted!", 0) if (length($str) < 0x30);
+
+	# Now let's see if we can make heads or tails of it
+	#
+	my($code) = $Current{'media_table'}->[$idx];
+	my(@offset_try_order) = ($isdip) ? (4, 0) : (0, 4);
+	my($pmid, $ptid, $prid, $pokay);
+	my($dmid, $drid, $dokay);
+
+	# A private helper sub that shares this function's scope will check
+	# out which offsets (i.e., discard first 4 bytes?) is right for this input.
+	#
+	my($try_offset) = sub # ( offset )
+	{
+		my($offset) = @_;
+
+		$pmid = nulltrim(substr($str, 0x13 + $offset, 8));
+		$ptid = nulltrim(substr($str, 0x1B + $offset, 3));
+		$prid = ord(substr($str, 0x1E + $offset, 1));
+		$pokay = 0;
+
+		if ( (length($pmid) == 0 || $pmid =~ /^[0-9A-Z]/) &&
+		     (length($ptid) == 0 || $ptid =~ /^[0-9A-Za-z]/) &&
+			$pmid =~ /^[\x20-\x7F]*$/ && $ptid =~ /^[\x20-\x7F]*$/ && $prid < 0x10 )
+		{
+			$pokay = 1;
+		}
+
+		$dmid = nulltrim(substr($str, 0x11 + $offset, 6) . substr($str, 0x19 + $offset, 6));
+		$drid = ord(substr($str, 0x06 + $offset, 1));
+		$dokay = 0;
+
+		if ($dmid =~ /^[0-9A-Z][\x00\x20-\x7F]*$/)
+		{
+			$dokay = 1;
+		}
+	};
+
+	foreach (@offset_try_order)
+	{
+		$try_offset->($_);
+		last if ($pokay || $dokay);
+	}
+
+	# Now deal with this result in the context of the selected code.
+	#
+	if (media_istype($code->[0], $MEDIA_TYPE_DVD_P))
+	{
+		if ($pokay)
+		{
+			return ui_error_mib("This media code is already in this firmware!", 0) if (media_newname2idx([ $pmid, $ptid, $prid ], $code->[0]) >= 0);
+
+			$code->[4]{'MID'} = $pmid;
+			$code->[4]{'TID'} = $ptid;
+			$code->[4]{'RID'} = $prid;
+		}
+		elsif ($dokay)
+		{
+			return ui_error_mib("You cannot load a dash code into the plus table!", 0);
+		}
+		else
+		{
+			return ui_error_mib("This media code block (or the media code itself)\ndoes not appear to be valid!", 0);
+		}
+	}
+	else
+	{
+		if ($dokay)
+		{
+			return ui_error_mib("This media code is already in this firmware!", 0) if (media_newname2idx([ $dmid, $drid ], $code->[0]) >= 0);
+
+			$code->[4]{'MID'} = $dmid;
+			$code->[4]{'RID'} = $drid;
+		}
+		elsif ($pokay)
+		{
+			return ui_error_mib("You cannot load a plus code into the dash table!", 0);
+		}
+		else
+		{
+			return ui_error_mib("This media code block (or the media code itself)\ndoes not appear to be valid!", 0);
+		}
+	}
+
+	media_refresh_listitem($idx);
+	media_proc_listclick($idx);
+
+	return 1;
+}
+
 sub media_cleandisp # ( str )
 {
 	my($str) = @_;
-	$str =~ s/[\x00-\x1F]/ /sg;
+	op_dbgout("media_cleandisp", "Cleaned code [$str]") if ($str =~ s/[\x00-\x1F]/ /sg);
 	return $str;
 }
 
-sub media_name2idx # ( name )
+sub media_name2idx # ( name[, type ] )
 {
-	my($name) = @_;
+	my($name, $type) = @_;
 	my($code, $i);
 
 	if ($#{$name} == 1 || $#{$name} == 2)
 	{
 		foreach $code (@{$Current{'media_table'}})
 		{
-			if ( ($#{$name} == 2 && $name->[0] eq $code->[2]{'MID'}[0] && $name->[1] eq $code->[2]{'TID'}[0] && $name->[2] == $code->[2]{'RID'}[0]) ||
-			     ($#{$name} == 1 && $name->[0] eq $code->[2]{'MID'}[0] && $name->[1] == $code->[2]{'RID'}[0]) )
+			if (!defined($type) || $type == $code->[0])
 			{
-				return $i;
+				if ( ($#{$name} == 2 && $name->[0] eq $code->[2]{'MID'}[0] && $name->[1] eq $code->[2]{'TID'}[0] && $name->[2] == $code->[2]{'RID'}[0]) ||
+				     ($#{$name} == 1 && $name->[0] eq $code->[2]{'MID'}[0] && $name->[1] == $code->[2]{'RID'}[0]) )
+				{
+					return $i;
+				}
+			}
+
+			++$i;
+		}
+	}
+
+	return -1;
+}
+
+sub media_newname2idx # ( name[, type ] )
+{
+	##
+	# Just like media_name2idx, except that instead of checking for a match
+	# against the original name, it checks against the new name, which may
+	# differ from the original if the user has made changes
+	#
+	my($name, $type) = @_;
+	my($code, $i);
+
+	if ($#{$name} == 1 || $#{$name} == 2)
+	{
+		foreach $code (@{$Current{'media_table'}})
+		{
+			if (!defined($type) || $type == $code->[0])
+			{
+				if ( ($#{$name} == 2 && $name->[0] eq $code->[4]{'MID'} && $name->[1] eq $code->[4]{'TID'} && $name->[2] == $code->[4]{'RID'}) ||
+				     ($#{$name} == 1 && $name->[0] eq $code->[4]{'MID'} && $name->[1] == $code->[4]{'RID'}) )
+				{
+					return $i;
+				}
 			}
 
 			++$i;
@@ -418,6 +556,11 @@ sub media_name2idx # ( name )
 
 sub media_disp2idx # ( type, display_name )
 {
+	##
+	# Since the display name always reflects the current/new names and
+	# not the original names, this, by its nature, is more akin to newname2idx
+	# than to name2idx
+	#
 	my($type, $display_name) = @_;
 	my($found) = -1;
 	my($i);
