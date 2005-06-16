@@ -2,8 +2,8 @@
 # Code Guys Perl Projects
 # Common : XFlash functions
 #
-# Modified: 2005/06/10, C64K
-# Revision: 2.0.1
+# Modified: 2005/06/16, C64K
+# Revision: 2.1.1
 #
 # Implicit dependencies: common_util.pl
 #
@@ -174,7 +174,7 @@ sub com_xf_scram3 # ( str, key, fwrev, andkey[, exkey ] )
 		$hdbgtemp = sprintf("0x%02X:%02d%% / 0x%02X:%02d%%", $exkey, 100 * $excount[$exkey] / sum(@excount), $hdbgtemp, 100 * $excount[$hdbgtemp] / sum(@excount));
 	}
 
-	dbgout(sprintf("Detected keys: A(0x%02X), E(0x%02X), E_SN(%s)\n", $andkey, $exkey, $hdbgtemp));
+	dbgout(sprintf("Keys: A(0x%02X), E(0x%02X), E_S/N(%s), F(0x%02X)\n", $andkey, $exkey, $hdbgtemp, $fwkey));
 
 	foreach $count (0 .. length($key) - 1)
 	{
@@ -203,7 +203,7 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 	my(@ret, $i);
 
 	my($data, $mode, $loaded, $f_upx);
-	my($xfversion, $xfvernum);
+	my($xfversion, $xfvernum, $xfb);
 
 	my($ext_method) = -1;
 
@@ -289,19 +289,31 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 	#
 	dbgout("Determining XFlash version...\n");
 
-	if ($data =~ /(?:(?:rr.\x00v)|(?:Ver ))(\d\.\d{1,2}\.\d{1,2})\x00{2}/s)
+	if ($data =~ /(?:rr.\x00v|Ver )(XFB-)?(\d\.\d{1,2}\.\d{1,2})\x00{2}/sg)
 	{
-		$xfversion = $1;
+		$xfb = (length($1) > 0);
+		$xfversion = $2;
 		$xfvernum = sprintf("%d%02d%02d", split(/\./, $xfversion));
 
 		dbgout("Version detected: XFlash v$xfversion...\n");
 
-		if ($mode != 2 && $xfvernum >= 20005)
+		if ($xfb)
+		{
+			if ($data =~ /\[(01)([US])-CG-XFB-(\d\.\d{1,2}\.\d{1,2})\]/sg)
+			{
+				dbgout("XFB flasher type detected, type $1$2, made with version $3...\n");
+				$mode = ($2 eq 'U') ? 1 : 2;
+			}
+			else
+			{
+				com_xf_status("Unable to recognize this flasher type; you may require a newer version.\n");
+				return [ [ ], [ ] ];
+			}
+		}
+		elsif ($mode != 2 && $xfvernum >= 20005)
 		{
 			$mode = 2;
 			dbgout("Mode correction initiated, entering mode $mode...\n");
-
-			$COM_XF_EXTR_UNSCRAMBLE = 1 if ($data =~ /\[CG\-XF_BUILDER\]/s);
 
 			if ($mode == 2 && $COM_XF_EXTR_UNSCRAMBLE == 0)
 			{
@@ -424,6 +436,7 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 				{
 					# Unscrambled
 					#
+					$start += 0x1000 if ($xfb);
 					$bin_fw = substr($data, $start, $bins[$i][2]);
 					$ext_info = [ ];
 				}

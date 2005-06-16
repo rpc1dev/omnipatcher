@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Initialization, part 2: Object creation
 #
-# Modified: 2005/06/14, C64K
+# Modified: 2005/06/16, C64K
 #
 
 ################################################################################
@@ -43,15 +43,6 @@
 
 	) or ui_abort('Initialization Error.');
 
-	$FontMSSansSerif = Win32::GUI::Font->new
-	(
-		-face		=> "MS Sans Serif",
-		-size		=> 8,
-		-bold		=> 0,
-		-italic	=>	0,
-
-	) or ui_abort('Initialization Error.');
-
 	$FontCourierNew = Win32::GUI::Font->new
 	(
 		-face		=> "Courier New",
@@ -89,7 +80,7 @@
 		-text			=> $unique_title,
 		-pos			=> [ 64, 47 ],
 		-size			=> $ui_dim_window,
-		-addstyle	=> WS_MINIMIZEBOX | WS_CLIPSIBLINGS,
+		-addstyle	=> WS_MINIMIZEBOX,
 		-addexstyle	=> WS_EX_ACCEPTFILES,
 		-remexstyle	=> WS_EX_CONTEXTHELP,
 
@@ -111,6 +102,7 @@
 		-name			=> 'MainTabstrip',
 		-pos			=> [ $UI_MARGINS_GENERAL, $UI_MARGINS_GENERAL ],
 		-size			=> $ui_dim_tabstrip,
+		-addstyle	=> WS_GROUP,
 		-buttons		=> (!$UI_USE_TABS),
 		-flat			=> (!$UI_USE_TABS),
 		-font			=> $FontTahoma,

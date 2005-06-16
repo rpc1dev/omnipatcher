@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : General patches
 #
-# Modified: 2005/06/14, C64K
+# Modified: 2005/06/16, C64K
 #
 
 ##
@@ -287,20 +287,22 @@ sub fw_pat_abs # ( testmode, patchmode )
 
 	if (${$fw} =~ /\x90..\xE0\x54($offpat[0]|$onpat[0])(.{0,24}?)($offpat[1]|$onpat[1])(\x90..\xF0\x22)/sg)
 	{
+		my($key) = $1;
 		my($addr) = (pos(${$fw})) - length($4);
 		my($patch) = ($patchmode) ? "$on[0]$2$on[1]" : "$off[0]$2$off[1]";
 
 		pos ${$fw} = 0;
 
-		return -1 if (length($1) + length($3) != 7);
+		return -1 if (length("$1$3") != 7);
 
 		op_dbgout("fw_pat_abs", sprintf("Main patch point found at 0x%X", $addr - length($patch)));
 		substr(${$fw}, $addr - length($patch), length($patch), $patch);
 
-		return ($1 eq $on[0]) ? 1 : 0;
+		return ($key eq $on[0]) ? 1 : 0;
 	}
 	elsif (${$fw} =~ /\x90..\xE0\x54$offpat[0].{0,24}?($offpat[2]|$onpat[2])(\x12..\x90..\xEF\xF0\x22)/sg)
 	{
+		my($key) = $1;
 		my($addr) = pos(${$fw});
 		my($patch) = ($patchmode) ? "$on[2]$2" : "$off[2]$2";
 
@@ -310,7 +312,7 @@ sub fw_pat_abs # ( testmode, patchmode )
 		return -3 unless ($FW_ALLOW_ADVANCED_AUTOBS);
 		substr(${$fw}, $addr - length($patch), length($patch), $patch);
 
-		return ($1 eq $on[2]) ? 1 : 0;
+		return ($key eq $on[2]) ? 1 : 0;
 	}
 
 	return -1;
@@ -479,15 +481,6 @@ sub fw_pat_led # ( testmode, patchmode )
 	return -1 if ($pcount[0] != $pcount[1] || ($pcount[0] != 1 && $pcount[0] != $Current{'fw_nbanks'}));
 
 	##
-	# Patch: fix IDE problem
-	#
-	if ($Current{'fw_fwrev'} =~ /^.[FY]/s && ${$fw} =~ /\x12..\x78\x02\x74(\x04\xF2)/sg)
-	{
-		op_dbgout("fw_pat_led", sprintf("... IDE fix location: %05X", (pos(${$fw})) - length($1)));
-		substr(${$fw}, (pos(${$fw})) - length($1), 1, chr(0x08));
-	}
-
-	##
 	# Patch: insertion of new code
 	#
 	substr($insert, 0x10, 2, $fdvar);
@@ -500,6 +493,39 @@ sub fw_pat_led # ( testmode, patchmode )
 	substr(${$fw}, $insert_pt, length($insert), $insert);
 
 	return 0;
+}
+
+sub fw_pat_ide # ( testmode, patchmode )
+{
+	my($testmode, $patchmode) = @_;
+
+	##
+	# Establish the framework for testmode
+	#
+	my($fw, $fw_testmode);
+
+	if ($testmode)
+	{
+		$fw_testmode = $Current{'fw'};
+		$fw = \$fw_testmode;
+	}
+	else
+	{
+		$fw = \$Current{'fw'};
+	}
+
+	op_dbgout("fw_pat_ide", "Looking for patch points...");
+
+	my(%calls);
+
+	while (${$fw} =~ /\x12(..)\x78\x02\x74(\x04\xF2)/sg)
+	{
+		$calls{unicode2int($2)} = 1;
+		op_dbgout("fw_pat_ide", sprintf("... Found: loc=%05X, call=%04X", (pos(${$fw})) - length($2), unicode2int($1)));
+		substr(${$fw}, (pos(${$fw})) - length($2), 1, chr(0x08));
+	}
+
+	return (scalar(keys(%calls)) == 1) ? 0 : -3;
 }
 
 sub fw_pat_es # ( testmode, patchmode )

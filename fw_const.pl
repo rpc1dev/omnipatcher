@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : Constants and initialization
 #
-# Modified: 2005/06/14, C64K
+# Modified: 2005/06/16, C64K
 #
 
 ##
@@ -13,7 +13,7 @@ $FW_CUSTOMID_CAPTION = 'Specify a custom drive ID below...';
 ##
 # Config table for general patches
 #
-@FW_PATCH_KEYS = ('FBS', 'ABS', 'LED', 'ES', 'FS', 'FF', 'DL', 'CF');
+@FW_PATCH_KEYS = ('FBS', 'ABS', 'LED', 'IDE', 'ES', 'FS', 'FF', 'DL', 'CF');
 
 %FW_PATCHES =
 (
@@ -21,7 +21,8 @@ $FW_CUSTOMID_CAPTION = 'Specify a custom drive ID below...';
 	#
 	FBS => [ "Fix bitsetting support",											\&fw_pat_fbs,	0, sub { $Current{'fw_fwrev'} =~ /^BYX|[CJK]Y/ || ($Current{'fw_family'} eq 'SOHW-812S/802S' && $Current{'fw_date_num'} < 20040414) } ],
 	ABS => [ "Enable auto-bitsetting",											\&fw_pat_abs,	0, sub { $Current{'fw_gen'} >= 0x011 && $Current{'fw_gen'} < 0x040 } ],
-	LED => [ "Fix LED colors",														\&fw_pat_led,	0, sub { $Current{'fw_gen'} >= 0x031 && $Current{'fw_gen'} < 0x033 || $Current{'fw_fwrev'} =~ /^[UV][YF]/ } ],
+	LED => [ "Use a tri-color LED color scheme",								\&fw_pat_led,	0, sub { $Current{'fw_gen'} >= 0x031 && $Current{'fw_gen'} < 0x033 || $Current{'fw_fwrev'} =~ /^[UV][YF]/ } ],
+	IDE => [ "Fix IDE blink problem",											\&fw_pat_ide,	0, sub { $Current{'fw_gen'} >= 0x021 && $Current{'fw_gen'} < 0x040 && $Current{'fw_fwrev'} =~ /^.[YF]/ } ],
 	ES  => [ "Earlier shift (faster burn) for 8x +R",						\&fw_pat_es,	0, sub { $Current{'fw_gen'} >= 0x011 && $Current{'fw_gen'} < 0x030 && $Current{'media_limits'}[$MEDIA_TYPE_DVD_PR] == 8 } ],
 	FS  => [ "Utilize \"force-shifting\" for 6x/8x burns",				\&fw_pat_fs,	0, sub { $Current{'fw_gen'} >= 0x012 && $Current{'fw_gen'} < 0x030 && $Current{'media_limits'}[$MEDIA_TYPE_DVD_PR] == 8 } ],
 	FF  => [ "Utilize \"force-fallback\" for 8x +R",						\&fw_pat_ff,	0, sub { $Current{'fw_gen'} >= 0x012 && $Current{'fw_gen'} < 0x030 && $Current{'media_limits'}[$MEDIA_TYPE_DVD_PR] == 8 } ],

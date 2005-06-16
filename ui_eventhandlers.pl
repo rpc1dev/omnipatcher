@@ -190,6 +190,7 @@
 				media_cleandisp(sprintf("%s-%02X", $code->[4]{'MID'}, $code->[4]{'RID'})));
 
 			$ObjStBox->Show();
+			$ObjStBoxList->SetFocus();
 		}
 
 		return 1;
@@ -304,6 +305,7 @@
 		$ObjMIDBox->Left($ObjMain->Left() + $UI_NC_WIDTH);
 		$ObjMIDBox->Top($ObjMain->Top() + $UI_NC_HEIGHT);
 		$ObjMIDBox->Show();
+		$ObjMIDBoxCancel->SetFocus();
 
 		return 1;
 	}

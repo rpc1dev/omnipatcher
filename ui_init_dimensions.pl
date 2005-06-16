@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Initialization, part 1: Establishing dimensions
 #
-# Modified: 2005/06/14, C64K
+# Modified: 2005/06/16, C64K
 #
 
 ################################################################################
@@ -17,17 +17,17 @@
 
 	# Experimentally-determined dimensions
 	#
-	$ObjTempWindow = new GUI::Window( -name => "TempWindow", -size => [ 64, 64 ], -style => WS_CAPTION | WS_SYSMENU ) or ui_abort('Initialization Error.');
-	$ObjTempTabs = new GUI::TabStrip( $ObjTempWindow, -name => "TempTabs", -size => [ 100, 100 ], -buttons => (!$UI_USE_TABS), -flat => (!$UI_USE_TABS), -font => Win32::GUI::Font->new(-face => "Tahoma", -size => 8) ) or ui_abort('Initialization Error.');
+	my($ObjTempWindow) = new GUI::Window( -name => "TempWindow", -size => [ 64, 64 ], -style => WS_CAPTION | WS_SYSMENU ) or ui_abort('Initialization Error.');
+	my($ObjTempTabs) = new GUI::TabStrip( $ObjTempWindow, -name => "TempTabs", -size => [ 100, 100 ], -buttons => (!$UI_USE_TABS), -flat => (!$UI_USE_TABS), -font => Win32::GUI::Font->new(-face => "Tahoma", -size => 8) ) or ui_abort('Initialization Error.');
 	$ObjTempTabs->InsertItem(-text => "Test");
 
 	$UI_NC_WIDTH = $ObjTempWindow->Width() - $ObjTempWindow->ScaleWidth();
 	$UI_NC_HEIGHT = $ObjTempWindow->Height() - $ObjTempWindow->ScaleHeight();
 
 	$UI_MARGINS_TABSTRIP = [ $ObjTempTabs->DisplayArea() ];
-	$UI_MARGINS_TABSTRIP->[1] += 2 if ($UI_USE_SUNKEN),
-	$UI_MARGINS_TABSTRIP->[2] = $ObjTempTabs->Width() - ($UI_MARGINS_TABSTRIP->[0] + $UI_MARGINS_TABSTRIP->[2]),
-	$UI_MARGINS_TABSTRIP->[3] = $ObjTempTabs->Height() - ($UI_MARGINS_TABSTRIP->[1] + $UI_MARGINS_TABSTRIP->[3]),
+	$UI_MARGINS_TABSTRIP->[2] = $ObjTempTabs->Width() - ($UI_MARGINS_TABSTRIP->[0] + $UI_MARGINS_TABSTRIP->[2]);
+	$UI_MARGINS_TABSTRIP->[3] = $ObjTempTabs->Height() - ($UI_MARGINS_TABSTRIP->[1] + $UI_MARGINS_TABSTRIP->[3]);
+	$UI_MARGINS_TABSTRIP->[1] += 2 if ($UI_USE_SUNKEN);
 	$UI_MARGINS_TABSTRIP = [ map { $_ + (($UI_USE_TABS) ? 4 : -$UI_MARGINS_TABSTRIP->[0]) } @{$UI_MARGINS_TABSTRIP} ];
 
 	# Some dimensions
@@ -69,13 +69,13 @@
 		$ui_dim_mediadiv[0][0] + 2 * ($UI_MARGINS_TABSTRIP->[0] + $UI_MARGINS_BLANKGROUP->[0]),
 		$ui_dim_medialist->[1] + $ui_dim_medialabel->[1] + $ui_dim_mediadiv[0][1] + $ui_dim_mediacmd->[1] + 3 * $UI_MARGINS_GENERAL + $UI_MARGINS_TABSTRIP->[1] + $UI_MARGINS_TABSTRIP->[3] + $UI_MARGINS_BLANKGROUP->[1] + $UI_MARGINS_BLANKGROUP->[3]
 	];
-	$ui_dim_frame = [ $ui_dim_tabstrip->[0] - ($UI_MARGINS_TABSTRIP->[0] + $UI_MARGINS_TABSTRIP->[2]), $ui_dim_tabstrip->[1] - ($UI_MARGINS_TABSTRIP->[1] + $UI_MARGINS_TABSTRIP->[3])],
+	$ui_dim_frame = [ $ui_dim_tabstrip->[0] - ($UI_MARGINS_TABSTRIP->[0] + $UI_MARGINS_TABSTRIP->[2]), $ui_dim_tabstrip->[1] - ($UI_MARGINS_TABSTRIP->[1] + $UI_MARGINS_TABSTRIP->[3])];
 	$ui_dim_cmdgrp = [ $ui_dim_tabstrip->[0], $UI_HEIGHT_BUTTON + $UI_MARGINS_GROUP->[1] + $UI_MARGINS_GROUP->[3] ];
 	$ui_dim_cmd = [ 80, $UI_HEIGHT_BUTTON ];
 
 	$ui_dim_window = [ $ui_dim_tabstrip->[0] + 2 * $UI_MARGINS_GENERAL + $UI_NC_WIDTH, $ui_dim_tabstrip->[1] + $ui_dim_cmdgrp->[1] + 3 * $UI_MARGINS_GENERAL + $UI_NC_HEIGHT ];
 
-	$ui_dim_drivespace = [ $ui_dim_frame->[0] - 2 * $UI_MARGINS_BLANKGROUP->[0] - 4 * $UI_MARGINS_GENERAL, $ui_dim_frame->[1] - $UI_MARGINS_BLANKGROUP->[1] - $UI_MARGINS_BLANKGROUP->[3] - 4 * $UI_MARGINS_GENERAL ],
+	$ui_dim_drivespace = [ $ui_dim_frame->[0] - 2 * $UI_MARGINS_BLANKGROUP->[0] - 4 * $UI_MARGINS_GENERAL, $ui_dim_frame->[1] - $UI_MARGINS_BLANKGROUP->[1] - $UI_MARGINS_BLANKGROUP->[3] - 4 * $UI_MARGINS_GENERAL ];
 	$ui_pos_driveupleft = [ ($ui_dim_frame->[0] - $ui_dim_drivespace->[0]) / 2, ($ui_dim_frame->[1] - $ui_dim_drivespace->[1]) / 2 ];
 
 	$ui_dim_drivesel = [ $ui_dim_drivespace->[0] - 2 * $UI_MARGINS_GROUP->[0], 24 ];

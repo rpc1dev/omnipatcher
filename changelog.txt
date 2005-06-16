@@ -1,3 +1,9 @@
+2.2.0 (16 Jun 2005)
+	* Added: "Fix IDE blink problem" to address an issue with some Sony firmwares where the drive's LED blink would cause the hard drive's LED to blink in unison.  This used to be a part of the general LED-fix patch, but by separating it, this patch can now be used by 7/93S users and by people who want this fix but who do not want the tri-color fix.
+	* Changed: "Fix LED colors" has been renamed to "Use a tri-color LED color scheme" for the sake of clarity.
+	* Fixed: Addressed a potential crashing bug with opening firmwares in integrated flashers.
+	* Other: Updated the internal list of OEM rebadges.
+
 2.1.0 (14 Jun 2005)
 	* Added: The ability to rename a media code using a media code block import, like in MCSE.
 	* Improved: The read speed and disable learning patches are now available for slimtype drives.

@@ -2,8 +2,8 @@
 # Code Guys Perl Projects
 # Common : General utility functions
 #
-# Modified: 2005/06/12, C64K
-# Revision: 1.1.0
+# Modified: 2005/06/16, C64K
+# Revision: 1.1.1
 #
 # Implicit dependencies: (none)
 #
@@ -124,7 +124,6 @@ sub int2unicode # ( int )
 	# Converts an integer to Unicode (as a 2-byte string).
 	# Works only with values from 0-FFFF.
 	#
-	use integer;
 	return chr($_[0] >> 8) . chr($_[0] & 0xFF);
 }
 
@@ -134,7 +133,6 @@ sub unicode2int # ( unicode )
 	# Converts a Unicode number (as a 2-byte string) to an integer.
 	# Works only with values from 0-FFFF.
 	#
-	use integer;
 	return (ord(substr($_[0], 0, 1)) << 8) + ord(substr($_[0], 1, 1));
 }
 
