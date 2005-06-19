@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : Specifications/parameters table
 #
-# Modified: 2005/06/18, C64K
+# Modified: 2005/06/19, C64K
 #
 
 %FW_PARAMS =
@@ -163,7 +163,7 @@ push( @{$FW_PARAMS{'P'}}, [
 ] );
 
 push( @{$FW_PARAMS{'Q'}}, [
-	[ 'Slimtype', 'DVDRW SOSW-862S'  ],
+	[ 'Slimtype', 'DVD+RW SOSW-862S' ],
 	[ 'SONY'    , 'DVD+RW DW-R56A'   ],
 ] );
 

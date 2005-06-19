@@ -12,7 +12,7 @@ goto EndOfPerl
 
 	$PL_FILE = 'dvdrw_omnipatcher.pl';
 	$EXE_FILE = 'dvdrw_omnipatcher.exe';
-	$ICO_FILE = 'gears.ico';
+	$ICO_FILE = 'chip.ico';
 	$ICO_ID = '!';
 	$USE_GUI = 1;
 

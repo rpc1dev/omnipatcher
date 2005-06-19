@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Media : Constants and initialization
 #
-# Modified: 2005/06/14, C64K
+# Modified: 2005/06/18, C64K
 #
 
 ##
@@ -114,7 +114,7 @@ $MEDIA_STRAT_REVLOC = 0x0FFEF;
 # Note that the dash pattern here is for slimline drives.
 #
 $MEDIA_PLUS_PATTERN = '(?:\x00{12}|\xFF{12}|(?:\w{2}.{6}[\w\x00]{3}.)|(?:[A-Z]\w{2}.{9})|(?:\x00{8}\w.{3}))[\x00-\x7F]';
-$MEDIA_DASH_PATTERN = '.\xFF{13}|\x00{13}.|(?:\w[\w \-=\.,\xAD\x00\!\/\[\]]{11}..)';
+$MEDIA_DASH_PATTERN = '.\xFF{13}|\x00{13}.|(?:\w[\w \-=\.,\xAD\x00\x01\!\/\[\]]{11}..)';
 
 ##
 # Speed type IDs...
