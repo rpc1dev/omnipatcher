@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Main : Application-specific configuration overrides
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/25, C64K
 #
 
 ##
@@ -31,9 +31,8 @@ $UI_USE_SUNKEN = 1;
 ##
 # XFlash Options
 #
-$COM_XF_PRINT_STATUS         = 0;				# Print status messages?
+$COM_XF_OUT_DEBUG            = sub { op_dbgout("common_xflash", $_[0]) if ($COM_PRINT_DEBUGGING_MESSAGES); };
 $COM_XF_UPX_ERR              = sub { &ui_error("'$COM_XF_UPX' could not be found!"); };
-$COM_XF_UPX_SYSTEM           = 1;				# Use system() to invoke UPX?
 $COM_XF_EXTR_SCRAMSIZE       = 0x110000;		# Scrambled flasher threshold size; -1 to disable
 $COM_XF_EXTR_FINGERPRINT     = 0;				# Output to the status stream a md5sum of the firmware?
 

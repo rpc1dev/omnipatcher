@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Initialization, part 2: Object creation
 #
-# Modified: 2005/06/16, C64K
+# Modified: 2005/06/25, C64K
 #
 
 ################################################################################
@@ -10,7 +10,6 @@
 {
 	my(undef, $major, $minor) = Win32::GetOSVersion();
 	$UI_OS_VERSION = sprintf("%d.%d", $major, $minor) + 0;
-	op_dbgout("ui_init_windows", "Windows version: $UI_OS_VERSION");
 }
 
 ################################################################################
@@ -110,9 +109,9 @@
 
 	) or ui_abort('Initialization Error.');
 
-	foreach $i (0 .. $#UI_TABS)
+	foreach my $i (0 .. $#UI_TABS)
 	{
-		$ObjMainTabstrip->InsertItem(-text => $UI_TABS[$i]);
+		$ObjMainTabstrip->InsertItem(-text => $UI_TABS[$i]) if ($i != $UI_TABID_DEBUG || $COM_PRINT_DEBUGGING_MESSAGES);
 
 		if ($UI_USE_ROOT && $i)
 		{
@@ -219,7 +218,6 @@
 	my($tid) = $UI_TABID_DRIVE;
 	my($namepre) = "MainTabs$tid";
 	my($group) = $ObjMainTabs[$tid];
-	my($i);
 
 	$group->{'InfoFrame'} = new Win32::GUI::Groupbox
 	(
@@ -265,7 +263,7 @@
 
 		-name			=> $namepre . "Selector",
 		-pos			=> ui_addpairs([ $UI_MARGINS_GROUP->[0], $UI_MARGINS_GROUP->[1] ], ui_getpos_cond($group->{'ChangeFrame'})),
-		-size			=> [ $ui_dim_drivesel->[0], $ui_dim_drivesel->[1] + 2 + $UI_FONTHEIGHT_CNEW * 7 ],
+		-size			=> [ $ui_dim_drivesel->[0], $ui_dim_drivesel->[1] + 6 + $UI_FONTHEIGHT_CNEW * 7 ],
 		-addstyle	=> WS_VSCROLL | WS_GROUP | 0x03,
 		-disabled	=> 1,
 		-font			=> $FontCourierNew,
@@ -273,7 +271,7 @@
 
 	) or ui_abort('Initialization Error.');
 
-	foreach $i (0 .. $#UI_DRIVE_FIELDS)
+	foreach my $i (0 .. $#UI_DRIVE_FIELDS)
 	{
 		$group->{'FieldLabels'}[$i] = new Win32::GUI::Label
 		(
@@ -314,7 +312,6 @@
 	my($tid) = $UI_TABID_MEDIA;
 	my($namepre) = "MainTabs$tid";
 	my($group) = $ObjMainTabs[$tid];
-	my($i);
 
 	$group->{'List'} = new Win32::GUI::Listbox
 	(
@@ -330,7 +327,7 @@
 
 	) or ui_abort('Initialization Error.');
 
-	foreach $i (0 .. $#MEDIA_SPEEDS_STD)
+	foreach my $i (0 .. $#MEDIA_SPEEDS_STD)
 	{
 		$group->{'Speeds'}[$i] = new Win32::GUI::Checkbox
 		(
@@ -348,7 +345,7 @@
 		) or ui_abort('Initialization Error.');
 	}
 
-	foreach $i (0 .. $#UI_MEDIA_TXT)
+	foreach my $i (0 .. $#UI_MEDIA_TXT)
 	{
 		$group->{'FieldLabels'}[$i] = new Win32::GUI::Label
 		(
@@ -396,7 +393,7 @@
 
 	) or ui_abort('Initialization Error.');
 
-	foreach $i (0 .. 1)
+	foreach my $i (0 .. 1)
 	{
 		$group->{'Divider'}[$i] = new Win32::GUI::Label
 		(
@@ -472,9 +469,8 @@
 	my($tid) = $UI_TABID_PATCHES;
 	my($namepre) = "MainTabs$tid";
 	my($group) = $ObjMainTabs[$tid];
-	my($i);
 
-	foreach $key (@FW_PATCH_KEYS)
+	foreach my $key (@FW_PATCH_KEYS)
 	{
 		push(@ui_pos_patches, ui_addpairs([ $ui_margins_patchesframe, $UI_MARGINS_BLANKGROUP->[1] + $UI_MARGINS_GENERAL + (($UI_FONTHEIGHT_TAHOMA + 4) * ($#ui_pos_patches + 1)) ], ui_getpos_cond($group->{'Frame'})));
 
@@ -506,7 +502,7 @@
 
 	) or ui_abort('Initialization Error.');
 
-	foreach $i (@FW_RS_IDX)
+	foreach my $i (@FW_RS_IDX)
 	{
 		$group->{'DropLabels'}[$i] = new Win32::GUI::Label
 		(
@@ -527,7 +523,7 @@
 
 			-name			=> $namepre . "Drops$i",
 			-pos			=> ui_addpairs([ 0, $UI_FONTHEIGHT_TAHOMA + 1 ], ui_getpos($group->{'DropLabels'}[$i])),
-			-size			=> [ $group->{'DropLabels'}[$i]->Width(), $ui_dim_rsdrop->[1] + 2 + $UI_FONTHEIGHT_TAHOMA * 7 ],
+			-size			=> [ $group->{'DropLabels'}[$i]->Width(), $ui_dim_rsdrop->[1] + 6 + $UI_FONTHEIGHT_TAHOMA * 7 ],
 			-addstyle	=> WS_VSCROLL | ((($i == 0) ? 1 : 0) * WS_GROUP) | 0x03,
 			-disabled	=> 1,
 			-font			=> $FontTahoma,
@@ -535,6 +531,72 @@
 
 		) or ui_abort('Initialization Error.');
 	}
+
+	$group->{'LEDFrame'} = new Win32::GUI::Groupbox
+	(
+		($UI_USE_ROOT) ? $ObjMain : $group->{'Frame'},
+
+		-name		=> $namepre . "LEDFrame",
+		-text		=> 'LED Blink Options',
+		-pos		=> ui_addpairs([ 0, -($ui_dim_rsgroup->[1] + $UI_MARGINS_GENERAL) ], ui_getpos($group->{'RSFrame'})),
+		-size		=> $ui_dim_rsgroup,
+		-font		=> $FontTahomaBold,
+
+	) or ui_abort('Initialization Error.');
+
+	foreach my $i (0 .. $#FW_LED_LABELS)
+	{
+		$group->{'LEDDropLabels'}[$i] = new Win32::GUI::Label
+		(
+			($UI_USE_ROOT) ? $ObjMain : $group->{'LEDFrame'},
+
+			-name			=> $namepre . "LEDDropLabels$i",
+			-text			=> "$FW_LED_LABELS[$i]:",
+			-pos			=> ($i) ? ui_addpairs([ $group->{'LEDDropLabels'}[$i - 1]->Width() + $UI_MARGINS_GENERAL, 0 ], ui_getpos($group->{'LEDDropLabels'}[$i - 1])) : ui_addpairs([ $UI_MARGINS_GROUP->[0], $UI_MARGINS_GROUP->[1] ], ui_getpos_cond($group->{'LEDFrame'})),
+			-size			=> [ $ui_width_leddrop[$i], $UI_FONTHEIGHT_TAHOMA ],
+			-font			=> $FontTahoma,
+
+		) or ui_abort('Initialization Error.');
+
+		$group->{'LEDDrops'}[$i] = new Win32::GUI::Combobox
+		(
+			($UI_USE_ROOT) ? $ObjMain : $group->{'LEDFrame'},
+
+			-name			=> $namepre . "LEDDrops$i",
+			-pos			=> ui_addpairs([ 0, $UI_FONTHEIGHT_TAHOMA + 1 ], ui_getpos($group->{'LEDDropLabels'}[$i])),
+			-size			=> [ $group->{'LEDDropLabels'}[$i]->Width(), $ui_dim_rsdrop->[1] + 6 + $UI_FONTHEIGHT_TAHOMA * 7 ],
+			-addstyle	=> WS_VSCROLL | ((($i == 0) ? 1 : 0) * WS_GROUP) | 0x03,
+			-font			=> $FontTahoma,
+			-tabstop		=> 1,
+
+		) or ui_abort('Initialization Error.');
+	}
+
+	$group->{'LEDDrops'}[0]->Add(@FW_LED_BEHAVS);
+	$group->{'LEDDrops'}[1]->Add( map { sprintf("%d ms", $_ * 20) } ($FW_LED_MINRATE .. $FW_LED_MAXRATE));
+}
+
+################################################################################
+# Tab contents: debug log
+{
+	my($tid) = $UI_TABID_DEBUG;
+	my($namepre) = "MainTabs$tid";
+	my($group) = $ObjMainTabs[$tid];
+
+	$group->{'Log'} = new Win32::GUI::Textfield
+	(
+		($UI_USE_ROOT) ? $ObjMain : $group->{'Frame'},
+
+		-name				=> $namepre . 'Log',
+		-pos				=> ui_addpairs([ 0 * $UI_MARGINS_BLANKGROUP->[0], 0 * $UI_MARGINS_BLANKGROUP->[1] ], ui_getpos_cond($group->{'Frame'})),
+		-size				=> ui_addpairs([ -0 * $UI_MARGINS_BLANKGROUP->[0], -0 * $UI_MARGINS_BLANKGROUP->[1] ], $ui_dim_frame),
+		-addstyle		=> WS_VSCROLL | WS_HSCROLL,
+		-font				=> $FontCourierNewSmall,
+		-keepselection	=> 1,
+		-multiline		=> 1,
+		-remstyle		=> WS_BORDER,
+
+	) or ui_abort('Initialization Error.');
 }
 
 ################################################################################
@@ -714,11 +776,12 @@
 {
 	$DriveTab = $ObjMainTabs[$UI_TABID_DRIVE];
 	$MediaTab = $ObjMainTabs[$UI_TABID_MEDIA];
-	$ReadingTab = $ObjMainTabs[$UI_TABID_READING];
 	$PatchesTab = $ObjMainTabs[$UI_TABID_PATCHES];
+	$DebugTab = $ObjMainTabs[$UI_TABID_DEBUG];
 }
 
 $ObjMain->Show();
 MainTabstrip_Change();
+fw_led_ctrltoggle(0);
 
 1;

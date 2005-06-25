@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Constants and initialization
 #
-# Modified: 2005/06/14, C64K
+# Modified: 2005/06/25, C64K
 #
 
 ##
@@ -11,10 +11,12 @@
 $UI_TABID_DRIVE   = 0;
 $UI_TABID_MEDIA   = 1;
 $UI_TABID_PATCHES = 2;
+$UI_TABID_DEBUG   = 3;	# This must always be the last tab
 
 $UI_TABS[$UI_TABID_DRIVE  ] = "Drive ID";
 $UI_TABS[$UI_TABID_MEDIA  ] = "DVD Media Support";
 $UI_TABS[$UI_TABID_PATCHES] = "General Patches";
+$UI_TABS[$UI_TABID_DEBUG  ] = "Debug Log";
 
 ##
 # Media Tab

@@ -2,8 +2,8 @@
 # Code Guys Perl Projects
 # Common : XFlash functions
 #
-# Modified: 2005/06/16, C64K
-# Revision: 2.1.1
+# Modified: 2005/06/25, C64K
+# Revision: 2.2.0
 #
 # Implicit dependencies: common_util.pl
 #
@@ -14,25 +14,27 @@ use Digest::MD5 qw(md5_hex);
 # Default config variables for this module.
 # Override these in each program's own config file.
 #
-$COM_XF_PRINT_STATUS         = 1;				# Print status messages?
-$COM_XF_PATTERN              = &com_xf_initpattern();
+$COM_XF_OUT_DEBUG            = sub { dbgout("$_[0]\n"); };
 $COM_XF_UPX                  = 'upx.exe';		# UPX filename
-$COM_XF_UPX_ERR              = sub { &com_xf_status("'$COM_XF_UPX' could not be found!\n"); };
+$COM_XF_UPX_ERR              = sub { $COM_XF_OUT_DEBUG->("... '$COM_XF_UPX' could not be found!"); };
 $COM_XF_UPX_SYSTEM           = 0;				# Use system() to invoke UPX?
 $COM_XF_EXTR_UPX_TEMP_SUFFIX = '.upx-temp';	# UPX temporary file suffix
 $COM_XF_EXTR_UPX_KEEP_TEMP   = 0;				# Keep the UPX temp file?
 $COM_XF_EXTR_UNSCRAMBLE      = 0;				# Allow unscrambling of scrambled firmwares?
 $COM_XF_EXTR_SCRAMSIZE       = -1;				# Scrambled flasher threshold size; -1 to disable
 $COM_XF_EXTR_VERIFYFW        = 1;				# Verify firmwares?
-$COM_XF_EXTR_FINGERPRINT     = 1;				# Output to the status stream a md5sum of the firmware?
+$COM_XF_EXTR_FINGERPRINT     = 1;				# Output a md5sum of the firmware?
 
-sub com_xf_initpattern # ( )
+##
+# Extraction pattern
+#
+$COM_XF_PATTERN = sub
 {
-	my($count_pattern, $start_pattern, $size_pattern, $name_pattern, $i);
+	my($count_pattern, $start_pattern, $size_pattern, $name_pattern);
 
 	$count_pattern = '(?:HOW_MANY_BIN|PARA_OPT)=(\d+\x00+).*?';
 
-	foreach $i (1 .. 4)
+	foreach my $i (1 .. 4)
 	{
 		$start_pattern .= 'BIN_START' . $i . '=(\d{10})\x00';
 		$size_pattern .= 'BIN_SIZE' . $i . '=(\d{10})\x00';
@@ -40,13 +42,11 @@ sub com_xf_initpattern # ( )
 	}
 
 	return "$count_pattern$start_pattern$size_pattern$name_pattern";
-}
+}->();
 
-sub com_xf_status # ( str )
-{
-	print @_ if ($COM_XF_PRINT_STATUS);
-}
-
+##
+# Scrambling routines
+#
 sub com_xf_scram1_dec # ( str, skip_pre, skip_len )
 {
 	my($str, $skip_pre, $skip_len) = @_;
@@ -171,10 +171,10 @@ sub com_xf_scram3 # ( str, key, fwrev, andkey[, exkey ] )
 
 		($exkey, $hdbgtemp, undef) = sort { $excount[$b] <=> $excount[$a] } (0x00 .. 0xFF);
 
-		$hdbgtemp = sprintf("0x%02X:%02d%% / 0x%02X:%02d%%", $exkey, 100 * $excount[$exkey] / sum(@excount), $hdbgtemp, 100 * $excount[$hdbgtemp] / sum(@excount));
+		$hdbgtemp = sprintf("%02X:%02d%% / %02X:%02d%%", $exkey, 100 * $excount[$exkey] / sum(@excount), $hdbgtemp, 100 * $excount[$hdbgtemp] / sum(@excount));
 	}
 
-	dbgout(sprintf("Keys: A(0x%02X), E(0x%02X), E_S/N(%s), F(0x%02X)\n", $andkey, $exkey, $hdbgtemp, $fwkey));
+	$COM_XF_OUT_DEBUG->(sprintf("... > Keys: A(%02X), E(%02X), E_S/N(%s), F(%02X)", $andkey, $exkey, $hdbgtemp, $fwkey));
 
 	foreach $count (0 .. length($key) - 1)
 	{
@@ -197,6 +197,9 @@ sub com_xf_scram3 # ( str, key, fwrev, andkey[, exkey ] )
 	return ($str, $exkey);
 }
 
+##
+# The stuff that's actually useful...
+#
 sub com_xf_extract # ( f_in[, ret_extended ] )
 {
 	my($f_in, $ret_extended) = @_;
@@ -207,18 +210,16 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 
 	my($ext_method) = -1;
 
-	com_xf_status("Loading and analyzing...\n\n");
-
 	###
 	# Optional: Override the unscrambling setup if UPX is found...
 	# Comment this line out to disable this behavior.
 	#
-	$COM_XF_EXTR_UNSCRAMBLE = 1 if (-f $COM_XF_UPX);
+	#$COM_XF_EXTR_UNSCRAMBLE = 1 if (-f $COM_XF_UPX);
 
 	###
 	# Determine Mode
 	#
-	dbgout("Performing initial analysis... ");
+	$COM_XF_OUT_DEBUG->("Performing initial analysis");
 
 	$loaded = 0;
 
@@ -236,18 +237,19 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 
 	if ($mode == 2 && $COM_XF_EXTR_UNSCRAMBLE == 0)
 	{
-		dbgout("\n");
-		com_xf_status("This flasher is scrambled and/or compressed and cannot be processed.\n");
+		$COM_XF_OUT_DEBUG->("... This flasher is scrambled and/or compressed!");
 		return [ [ ], [ ] ];
 	}
 
-	dbgout("done, entering mode $mode\n\n");
+	$COM_XF_OUT_DEBUG->("... Entering mode $mode");
 
 	###
 	# UPX
 	#
 	if ($mode == 2)
 	{
+		$COM_XF_OUT_DEBUG->("Preparing to attempt decompression");
+
 		unless (-f $COM_XF_UPX)
 		{
 			&$COM_XF_UPX_ERR();
@@ -257,7 +259,7 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 		$f_upx = $f_in;
 		$f_upx =~ s/\.exe$/$COM_XF_EXTR_UPX_TEMP_SUFFIX.exe/i;
 
-		dbgout("Creating temp file '$f_upx'...\n");
+		$COM_XF_OUT_DEBUG->("... Creating temp file");
 
 		loadbinary($f_in, \$data) unless ($loaded);
 		$loaded = 0;
@@ -268,7 +270,7 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 
 		writebinary($f_upx, \$data);
 
-		dbgout("Preparing '$f_upx'...\n");
+		$COM_XF_OUT_DEBUG->("... Decompressing");
 
 		my($upx_cmd) = qq($COM_XF_UPX -d -q "$f_upx");
 		($COM_XF_UPX_SYSTEM) ? system($upx_cmd) : qx($upx_cmd);
@@ -279,7 +281,7 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 	###
 	# Read input
 	#
-	dbgout("Reading input file '$f_in'...\n\n");
+	$COM_XF_OUT_DEBUG->("Reading input file");
 
 	loadbinary($f_in, \$data) unless ($loaded);
 	unlink($f_upx) if ($mode == 2 && !$COM_XF_EXTR_UPX_KEEP_TEMP);
@@ -287,7 +289,7 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 	###
 	# Finding out more about the flasher
 	#
-	dbgout("Determining XFlash version...\n");
+	$COM_XF_OUT_DEBUG->("Determining XFlash version");
 
 	if ($data =~ /(?:rr.\x00v|Ver )(XFB-)?(\d\.\d{1,2}\.\d{1,2})\x00{2}/sg)
 	{
@@ -295,47 +297,47 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 		$xfversion = $2;
 		$xfvernum = sprintf("%d%02d%02d", split(/\./, $xfversion));
 
-		dbgout("Version detected: XFlash v$xfversion...\n");
+		$COM_XF_OUT_DEBUG->("... Version detected: XFlash v$xfversion");
 
 		if ($xfb)
 		{
 			if ($data =~ /\[(01)([US])-CG-XFB-(\d\.\d{1,2}\.\d{1,2})\]/sg)
 			{
-				dbgout("XFB flasher type detected, type $1$2, made with version $3...\n");
+				$COM_XF_OUT_DEBUG->("... XFB flasher type detected: type $1/$2, made with version $3");
 				$mode = ($2 eq 'U') ? 1 : 2;
 			}
 			else
 			{
-				com_xf_status("Unable to recognize this flasher type; you may require a newer version.\n");
+				$COM_XF_OUT_DEBUG->("... Unable to recognize XFB flasher type");
 				return [ [ ], [ ] ];
 			}
 		}
 		elsif ($mode != 2 && $xfvernum >= 20005)
 		{
 			$mode = 2;
-			dbgout("Mode correction initiated, entering mode $mode...\n");
+			$COM_XF_OUT_DEBUG->("... Mode correction initiated, entering mode $mode");
 
 			if ($mode == 2 && $COM_XF_EXTR_UNSCRAMBLE == 0)
 			{
-				com_xf_status("This flasher is scrambled and/or compressed and cannot be processed.\n");
+				$COM_XF_OUT_DEBUG->("... This flasher is scrambled and/or compressed!");
 				return [ [ ], [ ] ];
 			}
 		}
 		elsif ($mode == 2 && $xfvernum < 20005)
 		{
 			$mode = 1;
-			dbgout("Mode correction initiated, entering mode $mode...\n");
+			$COM_XF_OUT_DEBUG->("... Mode correction initiated, entering mode $mode");
 		}
 	}
 	else
 	{
-		dbgout("Unknown XFlash version...\n");
+		$COM_XF_OUT_DEBUG->("... Unknown XFlash version");
 	}
 
 	###
 	# Processing the firmwares
 	#
-	dbgout("Searching for the firmware descriptor table...\n");
+	$COM_XF_OUT_DEBUG->("Searching for the firmware descriptor table");
 
 	if ($data =~ /$COM_XF_PATTERN/sg)
 	{
@@ -348,7 +350,7 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 
 		my($bank, $verify_good, $md5sum);
 
-		dbgout("Firmware descriptor table found... parsing...\n\n");
+		$COM_XF_OUT_DEBUG->("... Parsing descriptor table");
 
 		$offset = pos($data);
 
@@ -374,17 +376,17 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 			$bins[$i][1] += 0;
 			$bins[$i][2] += 0;
 
-			dbgout(sprintf("[FW-%d] Name: %s, Offset: 0x%X, Size: 0x%06X\n", $i + 1, @{$bins[$i]}));
+			$COM_XF_OUT_DEBUG->(sprintf("... %d - Name: %s, Offset: 0x%X, Size: 0x%06X", $i + 1, @{$bins[$i]}));
 		}
 
-		dbgout(sprintf("\nInitial offset: 0x%X\n", $offset));
-		dbgout("Reported number of firmwares: $nbins\n\n");
+		$COM_XF_OUT_DEBUG->(sprintf("... Initial offset: 0x%X", $offset));
+		$COM_XF_OUT_DEBUG->("... Reported number of firmwares: $nbins");
 
 		# Now we should determine what form of extraction should be used...
 		# For some reason, this code used to be placed within the next loop,
 		# which was inefficient...
 		#
-		dbgout("Attempting to determine the appropriate extraction method...\n");
+		$COM_XF_OUT_DEBUG->("Attempting to determine the appropriate extraction method");
 
 		if ($mode == 1)
 		{
@@ -417,17 +419,17 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 
 		if ($ext_method == -1)
 		{
-			dbgout("Unable to determine extraction method.\n\n");
+			$COM_XF_OUT_DEBUG->("... Unable to determine extraction method!");
 		}
 		else
 		{
-			dbgout("Preparing to extract from XFlash v$xfversion, using extraction method $ext_method...\n\n");
+			$COM_XF_OUT_DEBUG->("Extracting from XFlash v$xfversion, using extraction method $ext_method");
 
 			foreach $i (0 .. $nbins - 1)
 			{
 				next if ($bins[$i][2] == 0);
 
-				dbgout(sprintf("Attempting to extract '%s': 0x%06X bytes with offset 0x%X...\n", $bins[$i][0], $bins[$i][2], $bins[$i][1]));
+				$COM_XF_OUT_DEBUG->(sprintf("... Extracting '%s': 0x%06X bytes with offset 0x%X", $bins[$i][0], $bins[$i][2], $bins[$i][1]));
 
 				$flag_fail = 0;
 				$start = $bins[$i][1] + $offset;
@@ -476,7 +478,7 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 				#
 				if ($flag_fail == 0 && length($bin_fw) != $bins[$i][2])
 				{
-					com_xf_status("Size mismatch! ");
+					$COM_XF_OUT_DEBUG->("... > Size mismatch!");
 					$flag_fail = 1;
 				}
 
@@ -511,14 +513,14 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 				if ($flag_fail)
 				{
 					push @ret, [ $bins[$i][0], '', 0, [ ] ];
-					com_xf_status("Error extracting '$bins[$i][0]'...\n\n");
+					$COM_XF_OUT_DEBUG->("... > Failed!");
 				}
 				else
 				{
 					$md5sum = ($COM_XF_EXTR_FINGERPRINT) ? sprintf(" (MD5: %s)", md5_hex($bin_fw)) : "";
 
 					push @ret, [ $bins[$i][0], $bin_fw, $start, $ext_info ];
-					com_xf_status("'$bins[$i][0]' has been extracted!$md5sum\n\n");
+					$COM_XF_OUT_DEBUG->("... > Success!$md5sum");
 				}
 
 			} # foreach firmware
@@ -528,7 +530,7 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 	} # if descriptor table was found
 	else
 	{
-		dbgout("Firmware descriptor table not found...\n\n");
+		$COM_XF_OUT_DEBUG->("... Firmware descriptor table not found");
 	}
 
 	###

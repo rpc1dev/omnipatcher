@@ -2,8 +2,8 @@
 # Code Guys Perl Projects
 # Common : General utility functions
 #
-# Modified: 2005/06/16, C64K
-# Revision: 1.1.1
+# Modified: 2005/06/25, C64K
+# Revision: 1.1.2
 #
 # Implicit dependencies: (none)
 #
@@ -226,14 +226,14 @@ sub writebinary # ( filename, &buffer )
 ##
 # Firmware utilities
 #
-sub getfwid # ( &str[, relax_rules ] )
+sub getfwid # ( &str[, relax_rules, internal_fwlen ] )
 {
 	##
 	# Extracts basic firmware information.
 	# Returns: (vid, pid, fwrev, timestamp, int_fwrev)
 	# Notes: Does not work with LTD-166S and older drives
 	#
-	my($str, $relax_rules) = @_;
+	my($str, $relax_rules, $internal_fwlen) = @_;
 	my($core) = substr(${$str}, 0x4000);
 	my($internal_fwrev);
 
@@ -243,7 +243,7 @@ sub getfwid # ( &str[, relax_rules ] )
 	# it'll detect some very old DVDRW drives (and mis-detect some DVD-ROM
 	# drives, which is why only OP can fudge on these rules).
 	#
-	my($internal_fwlen) = ($relax_rules) ? 10 : 8;
+	$internal_fwlen = ($relax_rules) ? 10 : 8 unless (defined($internal_fwlen));
 	my($idbyte) = ($relax_rules) ? '[\x1F\x5B]' : '\x5B';
 
 	# Regexp patterns for finding the internal firmware version...
@@ -264,14 +264,19 @@ sub getfwid # ( &str[, relax_rules ] )
 		$internal_fwrev = join('', map { substr($core, $-[$_], $+[$_] - $-[$_]) } (1 .. $internal_fwlen));
 	}
 
-	# Extract the drive identification...
+	# Extract the drive identification... and convert null bytes to spaces
 	#
-	return
+	my(@ret) =
 	(
+		map { my($x) = $_; $x =~ s/\x00/ /sg; $x; }
 		($core =~ /\x05\x80\x00\x32$idbyte\x00{3}(.{8})(.{16})(.{4})(.{16})/s) ?
 		($1, $2, $3, $4, $internal_fwrev) :
 		('', '', '', '', $internal_fwrev)
 	);
+
+	$ret[3] = '' if ($relax_rules && $ret[3] !~ /(?:199|20[01])\d/);
+
+	return @ret;
 }
 
 sub normalize_timestamp # ( str )
@@ -301,6 +306,25 @@ sub normalize_timestamp # ( str )
 	{
 		return [ 0, 0, 0 ];
 	}
+}
+
+sub format_fwrev # ( std, int )
+{
+	##
+	# Formats the standard and internal firmware revisions into one
+	# combined firmware revision suitable for concise display
+	#
+	my($std, $int) = @_;
+
+	return $std if ($int eq '');
+	return $int if ($std eq '');
+
+	my($std_pattern) = quotemeta($std);
+
+	$int =~ s/^$std_pattern//s;
+	$int = "-$int" if (length($int) > 0 && substr($int, 0, 1) ne '-');
+
+	return "$std$int";
 }
 
 1;

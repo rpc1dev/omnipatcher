@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Media : Write strategy reassignment
 #
-# Modified: 2005/06/14, C64K
+# Modified: 2005/06/25, C64K
 #
 
 sub media_strat_init # ( )
@@ -10,10 +10,12 @@ sub media_strat_init # ( )
 	##
 	# Check the status flag area
 	#
-	if ( substr($Current{'fw'}, $MEDIA_STRAT_REVLOC - 8, 8) eq chr(0x00) x 8 &&
-	     substr($Current{'fw'}, $MEDIA_STRAT_REVLOC + 1, 1) eq chr(0x00) )
+	$Current{'media_strat_revloc'} = ($Current{'fw_gen'} < 0x100) ? $MEDIA_STRAT_REVLOC : $MEDIA_STRAT_REVLOC - 0x28;
+
+	if ( substr($Current{'fw'}, $Current{'media_strat_revloc'} - 8, 8) eq chr(0x00) x 8 &&
+	     substr($Current{'fw'}, $Current{'media_strat_revloc'} + 1, 1) eq chr(0x00) )
 	{
-		$Current{'media_strat_status'} = ord(substr($Current{'fw'}, $MEDIA_STRAT_REVLOC, 1));
+		$Current{'media_strat_status'} = ord(substr($Current{'fw'}, $Current{'media_strat_revloc'}, 1));
 		op_dbgout("media_strat_init", sprintf("Status flag area is valid; flag value is: %d", $Current{'media_strat_status'}));
 
 		if ($Current{'media_strat_status'} > 6)
@@ -103,16 +105,16 @@ sub media_strat_p # ( testmode, patchmode )
 {
 	my($testmode, $patchmode) = @_;
 
-	if ($Current{'media_strat_type'} == 5 || (substr($Current{'fw'}, $Current{'media_dbank'}, 0x10000) =~ /\xC2\xAF..\x0B..\x08\x90..\x74.\xF0\x80\x06\x90..\x74.\xF0/s))
+	if ($Current{'media_strat_type'} == 5 || (substr($Current{'fw'}, $Current{'media_dbank'}, 0x10000) =~ /\xC2\xAF..\x0B..\x08\x90..\x74.\xF0\x80\x06\x90..\x74.\xF0/s) || ($Current{'fw_gen'} >= 0x110 && $Current{'fw_gen'} < 0x130))
 	{
-		# 1S/2S/3S-v1
+		# 1S/2S/1213S/Slim
 		#
 		$Current{'media_strat_type'} = 5;
 		return media_strat_p1s(@_);
 	}
 	elsif ($Current{'media_strat_type'} == 6 || ($Current{'fw_gen'} >= 0x030 && $Current{'fw_gen'} < 0x040))
 	{
-		# 3S-v2
+		# 3S
 		#
 		$Current{'media_strat_type'} = 6;
 		return media_strat_p3s(@_);
@@ -161,6 +163,16 @@ sub media_strat_p1s # ( testmode, patchmode )
 
 	my($insert_pattern) = '\xC0\x82\xC0\x83\xFF\xE5\x24\xB4[\x90\x94]\x12\x90(\xFF.)\xE4\x93\x60\x0B\x6F\x60\x04\xA3\xA3\x80\xF5\x74\x01\x93\xFF\xEF\xD0\x83\xD0\x82\xF0\x90(..)\x22';
 	my($switch_pattern) = '\x90..\xE0\x64[\x0A\x0B\x0D\x0E](?:\x60\x03\x02..|\x70.)(?:\x90..|\xA3)\xE0([\x90\x12])(..)(\xF0)';
+	my($switch_check) = sub { $_[0] != 1 };
+
+	##
+	# Slimtype needs to be handled a bit differently
+	#
+	if ($Current{'fw_gen'} >= 0x110 && $Current{'fw_gen'} < 0x130)
+	{
+		$switch_pattern = '\x90..\xE0(?:\x64[\x0A-\x0E]|\x6F)(?:\x60\x03\x02..|\x70.)(?:\x90..|\xA3)\xE0([\x90\x12])(..)(\xF0)';
+		$switch_check = sub { $_[0] != 1 && $_[0] != 0 };
+	}
 
 	##
 	# Process each bank
@@ -185,7 +197,7 @@ sub media_strat_p1s # ( testmode, patchmode )
 			$temp_addr = (!defined($temp_addr)) ? unicode2int($2) : (($temp_addr == unicode2int($2)) ? $temp_addr : -1);
 		}
 
-		if ($#switch_points != 1 || $is_patched == -1 || $temp_addr == -1)
+		if ($switch_check->($#switch_points) || $is_patched == -1 || $temp_addr == -1)
 		{
 			$fail->("The switch points do not look right!");
 			next;
@@ -290,7 +302,7 @@ sub media_strat_p1s # ( testmode, patchmode )
 	my($status_code) = ($patchmode) ? $Current{'media_strat_type'} : 0;
 	my($return_code) = max($Current{'media_strat'}->[$MEDIA_TYPE_DVD_PR]{'status'}, $Current{'media_strat'}->[$MEDIA_TYPE_DVD_DR]{'status'});
 
-	substr(${$fw}, $MEDIA_STRAT_REVLOC, 1, chr($status_code)) if ($return_code >= 0);
+	substr(${$fw}, $Current{'media_strat_revloc'}, 1, chr($status_code)) if ($return_code >= 0);
 
 	return $return_code;
 }
@@ -359,7 +371,7 @@ sub media_strat_p3s # ( testmode, patchmode )
 		# Now, we should find out if this bank has already been patched, and
 		# if not, we need to allocate space for the patch.
 		#
-		my($rev_flag) = ord(substr(${$fw}, $MEDIA_STRAT_REVLOC, 1));
+		my($rev_flag) = ord(substr(${$fw}, $Current{'media_strat_revloc'}, 1));
 
 		if ($rev_flag == 2 || $rev_flag == 4)
 		{
@@ -376,10 +388,10 @@ sub media_strat_p3s # ( testmode, patchmode )
 			op_dbgout("media_strat_p3s", "... This bank is patched; determining parameters");
 			$is_patched = 1;
 
-			$size_of_area = 0xF0;
 			$insert_pt = (pos($type->[1])) - (length($1) + length($2));
 			$table_pt = unicode2int($2);
 			$dptr_val = unicode2int(substr($type->[1], $insert_pt + $template_offset_dptr, 2));
+			$size_of_area = 0xFFF0 - $insert_pt;
 		}
 		else
 		{
@@ -409,7 +421,7 @@ sub media_strat_p3s # ( testmode, patchmode )
 			}
 		}
 
-		# Let's gather together a list of all the patch points... remember that $type->[0]
+		# Let's gather together a list of all the patch points... remember that $type->[3]
 		# contains *pairs* of patch points because some tables have two patch points!
 		#
 		# Format: [ point address, which table it is for, is it the first in a pair ]
@@ -422,6 +434,11 @@ sub media_strat_p3s # ( testmode, patchmode )
 			if ($type->[3][$i][1] == 0xFFFF)
 			{
 				$fail->("Oops, we got an invalid second patch point!");
+				next TYPELOOP;
+			}
+			elsif ($type->[3][$i][2] > 0x40)
+			{
+				$fail->("Too many codes in a table!");
 				next TYPELOOP;
 			}
 
@@ -571,7 +588,7 @@ sub media_strat_p3s # ( testmode, patchmode )
 	my($status_code) = ($patchmode) ? $Current{'media_strat_type'} : 0;
 	my($return_code) = max($Current{'media_strat'}->[$MEDIA_TYPE_DVD_PR]{'status'}, $Current{'media_strat'}->[$MEDIA_TYPE_DVD_DR]{'status'});
 
-	substr(${$fw}, $MEDIA_STRAT_REVLOC, 1, chr($status_code)) if ($return_code >= 0);
+	substr(${$fw}, $Current{'media_strat_revloc'}, 1, chr($status_code)) if ($return_code >= 0);
 
 	return $return_code;
 }

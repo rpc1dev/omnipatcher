@@ -2,17 +2,23 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Main : Miscellaneous helper/utility functions
 #
-# Modified: 2005/06/14, C64K
+# Modified: 2005/06/25, C64K
 #
 
 sub op_dbgout # ( function, str )
 {
-	dbgout(sprintf("%-16s : %s\n", @_));
+	my($line) = sprintf("%-16s : %s", @_);
+
+	if ($COM_PRINT_DEBUGGING_MESSAGES)
+	{
+		ui_appendtext($DebugTab->{'Log'}, "$line\r\n");
+		dbgout("$line\n");
+	}
 
 	if ($OP_SAVE_LOG)
 	{
 		open logfile, ">>dvdrw_omnipatcher.log";
-		print logfile sprintf("%-16s : %s\n", @_);
+		print logfile "$line\n";
 		close logfile;
 	}
 }

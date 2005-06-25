@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Main module
 #
-# Modified: 2005/06/14, C64K
+# Modified: 2005/06/25, C64K
 #
 
 use Win32::GUI;
@@ -15,6 +15,7 @@ use Win32::GUI;
 	$FlagWarnedNonRSpeed = 0;
 	$FlagWarnedPatchFF = 0;
 	$FlagWarnedPatchDL = 0;
+	$FlagWarnedSlimStrat = 0;
 
 	# By default, all controls are "really visible", meaning that they
 	# are visible when their tab is selected and invisible when their
@@ -271,6 +272,12 @@ use Win32::GUI;
 	{
 		my($obj, $idx) = @_;
 		$obj->Select($idx);
+	}
+
+	sub ui_appendtext # ( obj, str )
+	{
+		my($obj, $str) = @_;
+		$obj->Append($str);
 	}
 }
 

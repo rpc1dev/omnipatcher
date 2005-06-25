@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : General patches
 #
-# Modified: 2005/06/16, C64K
+# Modified: 2005/06/25, C64K
 #
 
 ##
@@ -869,36 +869,18 @@ sub fw_pat_cf # ( testmode, patchmode )
 			op_dbgout("fw_pat_cf", sprintf("Checksum function found at 0x%X", $Current{'fw_ebank'} + unicode2int($check_addr)));
 			op_dbgout("fw_pat_cf", sprintf("Checksum XOR value: 0x%02X", ord($1))) if ($work =~ /\x90..\xE0\x64(.)\xFF\xF0\x22/s);
 
-			my($check_addr_m) = quotemeta("\x90$check_addr\x02");
-			my($check_fail) = 0;
-			my($check_count) = 0;
-			my($check_jump) = 0;
-			my($check_temp) = 0;
+			my($count, $match, $bsub_call_pt);
+			my($bsub_call_pattern) = quotemeta("\x90$check_addr\x02");
+			my($bank0) = substr(${$fw}, 0, 0x10000);
 
-			while (${$fw} =~ /$check_addr_m|\x90\xFF\xF0\x02/sg)
+			while ($bank0 =~ /($bsub_call_pattern)/sg)
 			{
-				++$check_count;
-
-				$check_temp = addr_16bit((pos(${$fw})) - 4);
-
-				if ($check_count == 1)
-				{
-					$check_jump = $check_temp;
-				}
-				else
-				{
-					if ($check_jump != $check_temp)
-					{
-						$check_fail = 1;
-						last;
-					}
-				}
+				$match = $1;
+				$bsub_call_pt = (pos($bank0)) - length($1);
+				++$count;
 			}
 
-			$check_fail = 1 if ($check_count != $Current{'fw_nbanks'});
-			pos(${$fw}) = 0;
-
-			if (!$check_fail)
+			if ($count == 1)
 			{
 				op_dbgout("fw_pat_cf", "Performing multi-bank patch");
 
@@ -915,9 +897,15 @@ sub fw_pat_cf # ( testmode, patchmode )
 					$check_2 = chr(0x00) x 8;
 				}
 
-				foreach $check_temp (0 .. $Current{'fw_nbanks'} - 1)
+				foreach my $bank (0 .. $Current{'fw_nbanks'} - 1)
 				{
-					substr(${$fw}, $check_jump + ($check_temp << 16), 4, $check_1);
+					if ($match ne substr(${$fw}, ($bank << 16) + $bsub_call_pt, 4))
+					{
+						op_dbgout("fw_pat_cf", "Multi-bank patch failed due to error patching bank calls");
+						return -1;
+					}
+
+					substr(${$fw}, ($bank << 16) + $bsub_call_pt, 4, $check_1);
 				}
 
 				if ( substr(${$fw}, $Current{'fw_ebank'} + 0xFFF0, 8) eq chr(0x00) x 8 ||
@@ -927,7 +915,7 @@ sub fw_pat_cf # ( testmode, patchmode )
 				}
 				else
 				{
-					op_dbgout("fw_pat_cf", "Multi-bank patch failed due lack of space");
+					op_dbgout("fw_pat_cf", "Multi-bank patch failed due to lack of space");
 					return -1;
 				}
 			}

@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : Main module
 #
-# Modified: 2005/06/15, C64K
+# Modified: 2005/06/25, C64K
 #
 
 sub fw_rebank # ( &data, &bootcode, mode )
@@ -111,7 +111,8 @@ sub fw_parse # ( )
 	#
 	{
 		@Current{'fw_vid', 'fw_pid', 'fw_stdfwrev', 'fw_timestamp', 'fw_intfwrev'} = map { rtrim($_) } getfwid(\$Current{'fw'}, 1);
-		@Current{'fw_vid', 'fw_pid', 'fw_timestamp'} = map { ($_ ne '') ? $_ : 'Unknown' } @Current{'fw_vid', 'fw_pid', 'fw_timestamp'};
+		$Current{'fw_dispfwrev'} = format_fwrev($Current{'fw_stdfwrev'}, $Current{'fw_intfwrev'});
+		map { $_ = ($_ ne '') ? $_ : 'Unknown' } @Current{'fw_vid', 'fw_pid', 'fw_timestamp', 'fw_dispfwrev'};
 
 		$Current{'fw_date_array'} = normalize_timestamp($Current{'fw_timestamp'});
 		$Current{'fw_date_num'} = sprintf("%04d%02d%02d", @{$Current{'fw_date_array'}}) + 0;
@@ -234,6 +235,7 @@ sub fw_parse # ( )
 
 	media_parse();
 	media_strat_init();
+	fw_led_parse();
 	fw_rs_parse();
 
 	##
@@ -408,9 +410,22 @@ sub fw_init # ( )
 				ui_setdisable($PatchesTab->{'Drops'}[$i]);
 			}
 		}
+
+		# Set up LED blink controls
+		#
+		if ($Current{'fw_led_status'} >= 0)
+		{
+			ui_select($PatchesTab->{'LEDDrops'}[0], $Current{'fw_led_type'});
+			ui_select($PatchesTab->{'LEDDrops'}[1], $Current{'fw_led_rate'} - $FW_LED_MINRATE);
+			fw_led_ctrltoggle(1)
+		}
+		else
+		{
+			fw_led_ctrltoggle(0)
+		}
 	}
 
-	ui_settext($ObjMainCmdGrp, ($Current{'fw_fwrev'} eq 'Unknown') ? $Current{'shortname'} : "$Current{'fw_fwrev'} ($Current{'shortname'})");
+	ui_settext($ObjMainCmdGrp, ($Current{'fw_dispfwrev'} eq 'Unknown') ? $Current{'shortname'} : "$Current{'fw_dispfwrev'} ($Current{'shortname'})");
 	ui_setenable($ObjMainCmd->{'Load'});
 	ui_setenable($ObjMainCmd->{'Save'});
 }
@@ -441,6 +456,7 @@ sub fw_save # ( filename )
 			}
 		}
 
+		fw_led_save();
 		fw_rs_save();
 	}
 

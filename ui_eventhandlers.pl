@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Event handlers
 #
-# Modified: 2005/06/15, C64K
+# Modified: 2005/06/25, C64K
 #
 
 ################################################################################
@@ -106,7 +106,7 @@
 	sub MainCmdSave_Click
 	{
 		my($default_name) = $Current{'shortname'};
-		$default_name =~ s/\.(?:bin|exe)$/-patched.$Current{'ext'}/i unless ($default_name =~ s/stock/patched/i);
+		$default_name =~ s/\.(?:bin|exe)$/.patched.$Current{'ext'}/i unless ($default_name =~ s/stock|patched/patched/i);
 
 		my(%ofn) =
 		(
@@ -172,6 +172,12 @@
 		     ($code->[0] == $MEDIA_TYPE_DVD_PR || $code->[0] == $MEDIA_TYPE_DVD_DR) &&
 		     $Current{'media_strat'}->[$code->[0]]{'status'} >= 0 )
 		{
+			if ($Current{'fw_gen'} >= 0x110 && $Current{'fw_gen'} < 0x130 && !$FlagWarnedSlimStrat)
+			{
+				$FlagWarnedSlimStrat = 1;
+				ui_warning("Write strategy reassignment for slimtype drives is an experimental\nfeature in this version of OmniPatcher!\n\nYou will not see this message again until the next time this program\nis run.");
+			}
+
 			@StratList = grep { $_->[0] == $code->[0] } @{$Current{'media_table'}};
 
 			for ($i = 0; $i <= $#StratList; ++$i)

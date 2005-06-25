@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Main : Main module
 #
-# Modified: 2005/06/12, C64K
+# Modified: 2005/06/25, C64K
 #
 
 require "appinfo.pl";
@@ -21,7 +21,8 @@ load_extconfig();
 require "fw.pl";
 require "fw_const.pl";
 require "fw_patches.pl";
-require "fw_readspeed.pl";
+require "fw_patches_ledblink.pl";
+require "fw_patches_readspeed.pl";
 require "fw_specs.pl";
 
 require "media.pl";

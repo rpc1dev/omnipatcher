@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : DVD read speeds
 #
-# Modified: 2005/06/14, C64K
+# Modified: 2005/06/25, C64K
 #
 
 sub fw_rs_parse # ( )
@@ -91,7 +91,7 @@ sub fw_rs_patch # ( testmode, patchmode )
 
 	my($bank) = substr(${$fw}, $Current{'fw_rbank'}, 0x10000);
 
-	if ($bank =~ /(?#1)((?:\x02(?#2:insert_addr)(\xFF.)\x00|\xE5\x24\x24\x7E)(?#type_detection)(?#type82)(?:\x60.)\x14(?#type83)(?:\x60.).+?\x24.\x70.(?#3:speed_assignment)((?:\x7F.\x80.)+)\x7F[\x01\x02](?!\x80)(?#4:return_point)(.*?\x22))/sg)
+	if ($bank =~ /(?#1)((?:\x02(?#2:insert_addr)(\xFF.)\x00|\xE5\x24\x24\x7E)(?#type_detection)(?#type82)(?:\x60.)\x14(?#type83)(?:\x60.).+?\x24.\x70.(?:(?#3:speed_assignment)((?:\x7F.\x80.)+)\x7F[\x01\x02](?!\x80)|.{146,162}?\x75\x3E.\xAF\x3E)(?#4:return_point)(.*?\x22))/sg)
 	{
 		# Type 1 function (401S thru 1673S)
 		#
@@ -100,7 +100,7 @@ sub fw_rs_patch # ( testmode, patchmode )
 		my($return_pt) = (pos($bank)) - length($4);
 		my($speed_sel) = $3;
 
-		op_dbgout("fw_rs_patch", sprintf("Type 1 function: loc=%05X, ins_pt=%04X, ret_pt=%04X, len=%d", $patch_pt + $Current{'fw_rbank'}, $insert_pt, $return_pt, length($1)));
+		op_dbgout("fw_rs_patch", sprintf("Type 1 routine: loc=%05X, ins_pt=%04X, ret_pt=%04X, len=%d", $patch_pt + $Current{'fw_rbank'}, $insert_pt, $return_pt, length($1)));
 
 		# Establish patch parameters
 		#
@@ -191,7 +191,7 @@ sub fw_rs_patch # ( testmode, patchmode )
 	{
 		# Type 2 function (starting with -R9)
 		#
-		op_dbgout("fw_rs_patch", sprintf("Type 2 function: loc=%05X", (pos($bank)) - length($1) + $Current{'fw_rbank'}));
+		op_dbgout("fw_rs_patch", sprintf("Type 2 routine: loc=%05X", (pos($bank)) - length($1) + $Current{'fw_rbank'}));
 
 		if ($testmode)
 		{

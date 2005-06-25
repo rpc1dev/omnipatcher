@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Media : Main module
 #
-# Modified: 2005/06/15, C64K
+# Modified: 2005/06/25, C64K
 #
 
 sub media_refresh_listitem # ( idx )
@@ -425,7 +425,7 @@ sub media_import_code # ( idx, text )
 
 		if ( (length($pmid) == 0 || $pmid =~ /^[0-9A-Z]/) &&
 		     (length($ptid) == 0 || $ptid =~ /^[0-9A-Za-z]/) &&
-			$pmid =~ /^[\x20-\x7F]*$/ && $ptid =~ /^[\x20-\x7F]*$/ && $prid < 0x10 )
+		     $pmid =~ /^[\x20-\x7F]*$/ && $ptid =~ /^[\x20-\x7F]*$/ && $prid < 0x10 )
 		{
 			$pokay = 1;
 		}
@@ -495,7 +495,7 @@ sub media_import_code # ( idx, text )
 sub media_cleandisp # ( str )
 {
 	my($str) = @_;
-	op_dbgout("media_cleandisp", "Cleaned code [$str]") if ($str =~ s/[\x00-\x1F]/ /sg);
+	op_dbgout("media_cleandisp", "Bytes in the 00-1F range found in [$str]") if ($str =~ s/[\x00-\x1F]/ /sg);
 	return $str;
 }
 

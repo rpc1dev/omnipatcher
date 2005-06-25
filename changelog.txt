@@ -1,3 +1,14 @@
+2.3.0 (25 Jun 2005)
+	* Added: Experimental write strategy reassignment support for slimtype drives.
+	* Added: LED blink options for 1673S and newer drives.
+	* Fixed: The read speed patch is now available for the PDS6 firmware.
+	* Fixed: Removed the faulty 10x option for DVD�R9 read speeds (10x for pressed DVD-DL is still available).
+	* Fixed: Resolved a few small potential bugs related to media support.
+	* Changed: Refined the way certain firmware revisions are displayed in the status area above the command buttons.
+	* Changed: Slightly changed how the default save name is constructed.
+	* Other: Improved some inefficient code to slightly improve OmniPatcher's load and save times.
+	* Other: Updated the internal list of OEM rebadges.
+
 2.2.2 (18 Jun 2005)
 	* Fixed: Updated the slimtype table scanner so that the final three entries of the -R table in PDS6 are no longer omitted by OmniPatcher.
 	* Other: [v2.2.2.1] Updated to Perl 5.8.7 and switched the icon back to the original chip icon (who was I to break with tradition? ;-)).
