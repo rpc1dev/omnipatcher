@@ -2,8 +2,8 @@
 # Code Guys Perl Projects
 # Common : XFlash functions
 #
-# Modified: 2005/06/25, C64K
-# Revision: 2.2.0
+# Modified: 2005/06/26, C64K
+# Revision: 2.2.1
 #
 # Implicit dependencies: common_util.pl
 #
@@ -467,6 +467,13 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 					$rndkey = substr($data, $offset + 0x400 * $i, 0x400);
 
 					($bin_fw, $exkey) = com_xf_scram3(substr($data, $start, $bins[$i][2]), $rndkey, $bins[$i][0], $andkey);
+
+					if ($exkey == 0xFF && $xfvernum >= 20200 && length($bin_fw) < 0x40000)
+					{
+						# Force an exkey of 0x00 to fix an issue with extracting 9S CD-ROM firmwares
+						($bin_fw, $exkey) = com_xf_scram3(substr($data, $start, $bins[$i][2]), $rndkey, $bins[$i][0], $andkey, 0x00);
+					}
+
 					$ext_info = [ $rndkey, $andkey, $exkey ];
 				}
 				else
@@ -490,7 +497,7 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 
 					for ($bank = 0; $bank < length($bin_fw); $bank += 0x10000)
 					{
-						$verify_good = 0 if (substr($bin_fw, $bank, 1) ne "\x02");
+						$verify_good = 0 if (substr($bin_fw, $bank, 1) !~ /[\x02\x80]/s);
 					}
 
 					# If the verification failed, give it a second chance

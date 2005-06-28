@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : Constants and initialization
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/06/28, C64K
 #
 
 ##
@@ -50,17 +50,30 @@ $FW_RS_NAME[$FW_RS_DVDR9 ] = 'DVD±R9';
 ##
 # Quick-n-Dirty speed/index converter, in the form of an array
 #
-@{$FW_RS_SPD2IDX[$FW_RS_DVDROM]} = @{$FW_RS_SPD2IDX[$FW_RS_DVDR]} = @{$FW_RS_SPD2IDX[$FW_RS_DVDRW]} = @{$FW_RS_SPD2IDX[$FW_RS_DVDR9]} =
-(
+$FW_RS_IDX2SPD_ = [ 4, 6, 8, 12, 16 ];
+$FW_RS_SPD2IDX_ =
+[
 	0, 0, 0, 0, 0,	# 0-4
 	1, 1,				# 5-6
 	2, 2,				# 7-8
 	3, 3, 3, 3,		# 9-12
 	4, 4, 4,	4,		# 13-16
-);
+];
 
-@{$FW_RS_SPD2IDX[$FW_RS_DVD9]} =
-(
+$FW_RS_IDX2SPD_10 = [ 4, 6, 8, 10, 12, 16 ];
+$FW_RS_SPD2IDX_10 =
+[
+	0, 0, 0, 0, 0,	# 0-4
+	1, 1,				# 5-6
+	2, 2,				# 7-8
+	3, 3,				# 9-10
+	4, 4,				# 11-12
+	5, 5, 5, 5,		# 13-16
+];
+
+$FW_RS_IDX2SPD_1014 = [ 4, 6, 8, 10, 12, 14, 16 ];
+$FW_RS_SPD2IDX_1014 =
+[
 	0, 0, 0, 0, 0,	# 0-4
 	1, 1,				# 5-6
 	2, 2,				# 7-8
@@ -68,13 +81,7 @@ $FW_RS_NAME[$FW_RS_DVDR9 ] = 'DVD±R9';
 	4, 4,				# 11-12
 	5, 5,				# 13-14
 	6, 6,				# 15-16
-);
-
-@{$FW_RS_IDX2SPD[$FW_RS_DVDROM]} = @{$FW_RS_IDX2SPD[$FW_RS_DVDR]} = @{$FW_RS_IDX2SPD[$FW_RS_DVDRW]} = @{$FW_RS_IDX2SPD[$FW_RS_DVDR9]} =
-	( 4, 6, 8, 12, 16 );
-
-@{$FW_RS_IDX2SPD[$FW_RS_DVD9]} =
-	( 4, 6, 8, 10, 12, 14, 16 );
+];
 
 ##
 # Format of each entry of the read-speed table
@@ -86,7 +93,7 @@ $FW_RS_NAME[$FW_RS_DVDR9 ] = 'DVD±R9';
 # LED Stuff
 #
 $FW_LED_MINRATE = 5;
-$FW_LED_MAXRATE = 35;
+$FW_LED_MAXRATE = 40;
 
 @FW_LED_LABELS = ("Select LED Behavior", "Blink Rate");
 

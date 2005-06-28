@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Event handlers
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/06/27, C64K
 #
 
 ################################################################################
@@ -31,21 +31,15 @@
 
 	sub Main_DropFiles
 	{
-		my($hDrop) = @_;
-		
-		my($buflen) = 1024;
-		my($buffer) = chr(" ") x $buflen;
+		my(@files) = ui_getdropfiles(@_);
 
-		if (Win32::GUI::DragQueryFile($hDrop, 0xFFFFFFFF, $buffer, $buflen) != 1)
+		if ($#files == 0)
 		{
-			Win32::GUI::DragFinish($hDrop);
-			ui_error("Only one file can be opened at a time.");
+			fw_load($files[0]);
 		}
 		else
 		{
-			my($bytes) = Win32::GUI::DragQueryFile($hDrop, 0, $buffer, $buflen);
-			Win32::GUI::DragFinish($hDrop);
-			fw_load(substr($buffer, 0, $bytes));
+			ui_error("Only one file can be opened at a time.");
 		}
 
 		return 1;

@@ -2,8 +2,8 @@
 # Code Guys Perl Projects
 # Common : General utility functions
 #
-# Modified: 2005/06/25, C64K
-# Revision: 1.1.2
+# Modified: 2005/06/26, C64K
+# Revision: 1.1.3
 #
 # Implicit dependencies: (none)
 #
@@ -250,9 +250,9 @@ sub getfwid # ( &str[, relax_rules, internal_fwlen ] )
 	#
 	my(@internal_fwpats) =
 	(
-		'\x7D(.)\x90.{19,23}' x 16,
-		'\x7B(.)\x7D.{10,12}' x 16,
-		'\x7D(.)\x7F.{5,8}' x 16,
+		'\x7D([\x00\x20-\x7F])\x90.{19,23}' x 16,
+		'\x7B([\x00\x20-\x7F])\x7D.{10,12}' x 16,
+		'\x7D([\x00\x20-\x7F])\x7F.{5,8}' x 16,
 	);
 
 	# Extract the internal firmware version...

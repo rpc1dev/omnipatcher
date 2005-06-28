@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Main module
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/06/27, C64K
 #
 
 use Win32::GUI;
@@ -287,6 +287,25 @@ use Win32::GUI;
 	sub ui_doevents # ( )
 	{
 		Win32::GUI::DoEvents();
+	}
+
+	sub ui_getdropfiles # ( hDrop )
+	{
+		my($hDrop) = @_;
+		my(@files);
+
+		my($buflen) = 1024;
+		my($buffer) = chr(0x00) x $buflen;
+		my($bytes);
+
+		foreach my $i (0 .. Win32::GUI::DragQueryFile($hDrop, 0xFFFFFFFF, $buffer, $buflen) - 1)
+		{
+			$bytes = Win32::GUI::DragQueryFile($hDrop, $i, $buffer, $buflen);
+			push(@files, substr($buffer, 0, $bytes));
+		}
+
+		Win32::GUI::DragFinish($hDrop);
+		return @files;
 	}
 
 	sub ui_reflow_patches # ( )

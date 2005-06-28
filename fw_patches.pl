@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : General patches
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/06/28, C64K
 #
 
 ##
@@ -873,7 +873,7 @@ sub fw_pat_cf # ( testmode, patchmode )
 			my($bsub_call_pattern) = quotemeta("\x90$check_addr\x02");
 			my($bank0) = substr(${$fw}, 0, 0x10000);
 
-			while ($bank0 =~ /($bsub_call_pattern)/sg)
+			while ($bank0 =~ /($bsub_call_pattern|\x90\xFF\xF0\x02)/sg)
 			{
 				$match = $1;
 				$bsub_call_pt = (pos($bank0)) - length($1);

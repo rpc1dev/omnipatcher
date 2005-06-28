@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Media : Data processing
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/06/27, C64K
 #
 
 sub media_istype # ( type, general_type )
@@ -273,7 +273,7 @@ sub media_parse # ( )
 	}
 }
 
-sub media_parse_1s # ( )
+sub media_parse_1s # ( &table )
 {
 	my($table) = @_;
 
@@ -397,7 +397,7 @@ sub media_parse_1s # ( )
 	}
 }
 
-sub media_parse_3s # ( )
+sub media_parse_3s # ( &table )
 {
 	my($table) = @_;
 
@@ -552,7 +552,7 @@ sub media_parse_3s # ( )
 	} # End: for each entry in @tables3s
 }
 
-sub media_parse_slim # ( )
+sub media_parse_slim # ( &table )
 {
 	my($table) = @_;
 

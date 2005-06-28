@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : Specifications/parameters table
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/06/27, C64K
 #
 
 %FW_PARAMS =
@@ -102,7 +102,7 @@ push( @{$FW_PARAMS{'T'}}, [
 push( @{$FW_PARAMS{'A'}}, [
 	[ 'LITE-ON' , 'DVDRW SOHW-1613S' ],
 	[ 'DVDRW'   , 'DRW-3S161'        ],
-	[ 'SONY'    , 'DVD RW DW-D21A'   ],
+	[ 'SONY'    , 'DVD RW DW-U21A'   ],
 ] );
 
 push( @{$FW_PARAMS{'B'}}, [
@@ -136,6 +136,7 @@ push( @{$FW_PARAMS{'J'}}, [
 	[ 'SONY'    , 'DVD RW DW-D26A'   ],
 	[ 'GIGABYTE', 'GO-W1616A'        ],
 	[ 'HP'      , 'DVD Writer 635d'  ],	# Not verified
+	[ 'IMATION' , 'IMWDVRW16DLE'     ],
 	[ 'IMATION' , 'IMWDVRW16DLI'     ],
 	[ 'Memorex' , 'DVD16+/-DL4RWlD2' ],
 	[ 'TEAC'    , 'DV-W516GB'        ],

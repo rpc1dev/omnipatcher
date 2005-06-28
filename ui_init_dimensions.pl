@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # User Interface : Initialization, part 1: Establishing dimensions
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/06/27, C64K
 #
 
 ################################################################################
@@ -96,7 +96,7 @@
 	$ui_dim_rsdrop = [ $temp / ($#FW_RS_NAME + 1), 21 ];
 	$ui_dim_rsgroup = [ $ui_width_patchesframe, $UI_FONTHEIGHT_TAHOMA + $ui_dim_rsdrop->[1] + $UI_MARGINS_GROUP->[1] + $UI_MARGINS_GROUP->[3] + 1 ];
 
-	$ui_width_leddrop[1]= 72;
+	$ui_width_leddrop[1]= $ui_dim_rsdrop->[0] + ($ui_dim_rsextra > 0);
 	$ui_width_leddrop[0] = $ui_width_patchesframe - ($ui_width_leddrop[1] + $UI_MARGINS_GENERAL + 2 * $UI_MARGINS_GROUP->[0]);
 }
 

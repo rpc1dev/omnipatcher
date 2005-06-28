@@ -1,3 +1,8 @@
+2.3.1 (27 Jun 2005)
+	* Other: Improved the way OmniPatcher determines which read speeds it should allow the user to select.
+	* Other: Updated the internal list of OEM rebadges... yet again.
+	* Fixed: [v2.3.1.1] OmniPatcher's ability to remove a crossflashing patch (why would people be removing the patch in the first place?) was partially broken in 2.3.0; this has now been fixed.
+
 2.3.0 (25 Jun 2005)
 	* Added: Experimental write strategy reassignment support for slimtype drives.
 	* Added: LED blink options for 1673S and newer drives.

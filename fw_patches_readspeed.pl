@@ -2,7 +2,7 @@
 # OmniPatcher for LiteOn DVD-Writers
 # Firmware : DVD read speeds
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/06/27, C64K
 #
 
 sub fw_rs_parse # ( )
@@ -28,6 +28,25 @@ sub fw_rs_parse # ( )
 			foreach my $i (@FW_RS_IDX)
 			{
 				$Current{'fw_rs'}->[$i][0] = $Current{'fw_rs'}->[$i][1] = ord(substr($Current{'fw'}, $Current{'fw_rs'}->[$i][2][0], 1));
+			}
+		}
+
+		map { $FW_RS_SPD2IDX[$_] = $FW_RS_SPD2IDX_ } @FW_RS_IDX;
+		map { $FW_RS_IDX2SPD[$_] = $FW_RS_IDX2SPD_ } @FW_RS_IDX;
+
+		if ($Current{'fw_gen'} >= 0x033 && $Current{'fw_gen'} < 0x040)
+		{
+			# 3S-v2
+			#
+			$FW_RS_SPD2IDX[$FW_RS_DVDROM] = $FW_RS_SPD2IDX[$FW_RS_DVD9] = $FW_RS_SPD2IDX_1014;
+			$FW_RS_IDX2SPD[$FW_RS_DVDROM] = $FW_RS_IDX2SPD[$FW_RS_DVD9] = $FW_RS_IDX2SPD_1014;
+
+			if (($Current{'fw_rs_status'} & 0x0F) == 0x02)
+			{
+				# Type 2 routine
+				#
+				$FW_RS_SPD2IDX[$FW_RS_DVDR] = $FW_RS_SPD2IDX[$FW_RS_DVDRW] = $FW_RS_SPD2IDX[$FW_RS_DVDR9] = $FW_RS_SPD2IDX_10;
+				$FW_RS_IDX2SPD[$FW_RS_DVDR] = $FW_RS_IDX2SPD[$FW_RS_DVDRW] = $FW_RS_IDX2SPD[$FW_RS_DVDR9] = $FW_RS_IDX2SPD_10;
 			}
 		}
 	}
