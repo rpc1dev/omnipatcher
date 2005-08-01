@@ -1,8 +1,8 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # User Interface : Main module
 #
-# Modified: 2005/06/27, C64K
+# Modified: 2005/07/17, C64K
 #
 
 use Win32::GUI;
@@ -15,6 +15,7 @@ use Win32::GUI;
 	$FlagWarnedNonRSpeed = 0;
 	$FlagWarnedPatchFF = 0;
 	$FlagWarnedPatchDL = 0;
+	$FlagWarnedPatchNSX = 0;
 	$FlagWarnedSlimStrat = 0;
 
 	# By default, all controls are "really visible", meaning that they
@@ -26,6 +27,7 @@ use Win32::GUI;
 	#
 	%FlagInvisibleControl = ( );
 	%FlagOnInvisibleTab = ( );
+	@FlagTabEnabledStatus = ( );
 }
 
 ################################################################################
@@ -278,6 +280,12 @@ use Win32::GUI;
 	{
 		my($obj, $str) = @_;
 		$obj->Append($str);
+	}
+
+	sub ui_maxlength # ( obj, len )
+	{
+		my($obj, $len) = @_;
+		$obj->MaxLength($len);
 	}
 }
 

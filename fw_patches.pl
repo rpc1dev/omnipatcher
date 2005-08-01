@@ -1,8 +1,8 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # Firmware : General patches
 #
-# Modified: 2005/06/28, C64K
+# Modified: 2005/08/01, C64K
 #
 
 ##
@@ -103,31 +103,31 @@ sub fw_pat_fbs_812s # ( testmode, patchmode )
 	if ($bank9 =~ /\xE0\xB4\x01\x07...(..)/sg)
 	{
 		$fwdep[0] = $1;
-		op_dbgout("fw_pat_fbs_812s", sprintf("... fwdep[0]: %04X at 9%04X", unicode2int($fwdep[0]), (pos($bank9)) - length($1)));
+		op_dbgout("fw_pat_fbs_812s", sprintf("... fwdep[0]: %04X at 9%04X", be16b2int($fwdep[0]), (pos($bank9)) - length($1)));
 	} else { return -1 }
 
 	if ($bank5 =~ /\x60\x08\x90(..)(\x74\x01\xF0\x80\x05)/sg)
 	{
 		$fwdep[1] = $1;
-		op_dbgout("fw_pat_fbs_812s", sprintf("... fwdep[1]: %04X at 5%04X", unicode2int($fwdep[1]), (pos($bank5)) - (length($1) + length($2))));
+		op_dbgout("fw_pat_fbs_812s", sprintf("... fwdep[1]: %04X at 5%04X", be16b2int($fwdep[1]), (pos($bank5)) - (length($1) + length($2))));
 		pos($bank5) = 0;
 	} else { return -1 }
 
 	if ($bank5 =~ /(\xD3\x10\xAF\x01\xC3\xC0\xD0)(\x30...)(..)/sg)
 	{
 		$fwdep[2] = $3;
-		$fwdep[4] = int2unicode((pos($bank5)) - (length($2) + length($3)));
+		$fwdep[4] = int2be16b((pos($bank5)) - (length($2) + length($3)));
 		$header_pt = (pos($bank5)) - (length($1) + length($2) + length($3)) + 0x50000;
-		op_dbgout("fw_pat_fbs_812s", sprintf("... fwdep[2]: %04X at 5%04X", unicode2int($fwdep[2]), (pos($bank5)) - length($3)));
+		op_dbgout("fw_pat_fbs_812s", sprintf("... fwdep[2]: %04X at 5%04X", be16b2int($fwdep[2]), (pos($bank5)) - length($3)));
 	} else { return -1 }
 
 	if ($bank5 =~ /\xE4\xF5\x43\x12(..)/sg)
 	{
 		$fwdep[3] = $1;
-		op_dbgout("fw_pat_fbs_812s", sprintf("... fwdep[3]: %04X at 5%04X", unicode2int($fwdep[3]), (pos($bank5)) - length($1)));
+		op_dbgout("fw_pat_fbs_812s", sprintf("... fwdep[3]: %04X at 5%04X", be16b2int($fwdep[3]), (pos($bank5)) - length($1)));
 	} else { return -1 }
 
-	op_dbgout("fw_pat_fbs_812s", sprintf("... fwdep[4]: %04X", unicode2int($fwdep[4])));
+	op_dbgout("fw_pat_fbs_812s", sprintf("... fwdep[4]: %04X", be16b2int($fwdep[4])));
 	op_dbgout("fw_pat_fbs_812s", sprintf("... header_pt: %05X", $header_pt));
 	op_dbgout("fw_pat_fbs_812s", "... applying patch");
 
@@ -194,17 +194,17 @@ sub fw_pat_fbs_sony # ( testmode, patchmode )
 		if (${$fw} =~ /\x7F\x3D\x7E\x01\x12(..)/sg)
 		{
 			$fwdep[0] = $1;
-			op_dbgout("fw_pat_fbs_sony", sprintf("... fwdep[0]: %04X at %04X", unicode2int($fwdep[0]), (pos(${$fw})) - length($1)));
+			op_dbgout("fw_pat_fbs_sony", sprintf("... fwdep[0]: %04X at %04X", be16b2int($fwdep[0]), (pos(${$fw})) - length($1)));
 
 			pos(${$fw}) = 0;
 		} else { return -1 }
-		
+
 		# Find the booktype init routine
 		#
 		if (${$fw} =~ /\x90..\xE0\x54\xEF\xF0\xE0\x54\xF7\xF0\x90..\xE0\x54\xBF\xF0\x90..\xE0\x54\xFB\xF0(\xE4\x90)(..)(\xF0\x22)/sg)
 		{
 			$fwdep[1] = $2;
-			op_dbgout("fw_pat_fbs_sony", sprintf("... fwdep[1]: %04X at %04X", unicode2int($fwdep[1]), (pos(${$fw})) - length("$2$3")));
+			op_dbgout("fw_pat_fbs_sony", sprintf("... fwdep[1]: %04X at %04X", be16b2int($fwdep[1]), (pos(${$fw})) - length("$2$3")));
 
 			$ppoint[1] = (pos(${$fw})) - (length("$1$2$3"));
 			op_dbgout("fw_pat_fbs_sony", sprintf("... ppoint[1]: %05X", $ppoint[1]));
@@ -224,12 +224,12 @@ sub fw_pat_fbs_sony # ( testmode, patchmode )
 
 		substr($patch, 0x05, 2, $fwdep[0]);
 		substr($patch, 0x08, 2, $fwdep[1]);
-		
+
 		# Insert main patch into real estate and add in a call to the
 		# inserted patch point.
 		#
 		substr(${$fw}, $ppoint[2], length($patch), $patch);
-		substr(${$fw}, $ppoint[1], 6, chr(0x02) . int2unicode($ppoint[2] & 0xFFFF) . "\x00\x00\x00");
+		substr(${$fw}, $ppoint[1], 6, chr(0x02) . int2be16b($ppoint[2] & 0xFFFF) . "\x00\x00\x00");
 
 		ui_settext($PatchesTab->{'FBS'}, "$FW_PATCHES{'FBS'}->[0] (Booktype saving: ON)") if ($testmode);
 		return 0;
@@ -407,7 +407,7 @@ sub fw_pat_led # ( testmode, patchmode )
 	if (${$fw} =~ /\xE0\x54\xDF\xF0\x90(..)\x74\x01\xF0/s)
 	{
 		$fdvar = $1;
-		op_dbgout("fw_pat_led", sprintf("... fdvar: %04X", unicode2int($fdvar)));
+		op_dbgout("fw_pat_led", sprintf("... fdvar: %04X", be16b2int($fdvar)));
 	} else { return -1 }
 
 	##
@@ -433,7 +433,7 @@ sub fw_pat_led # ( testmode, patchmode )
 	if ($callsearch[0] =~ /\x12(..)/s)
 	{
 		$fdcall[0] = $1;
-		op_dbgout("fw_pat_led", sprintf("... fdcall[0]: %04X", unicode2int($fdcall[0])));
+		op_dbgout("fw_pat_led", sprintf("... fdcall[0]: %04X", be16b2int($fdcall[0])));
 	} else { return -1 }
 
 	##
@@ -442,7 +442,7 @@ sub fw_pat_led # ( testmode, patchmode )
 	if ($callsearch[1] =~ /\x12..\xEF\x30\xE0..(..)/s)
 	{
 		$fdcall[1] = $1;
-		op_dbgout("fw_pat_led", sprintf("... fdcall[1]: %04X", unicode2int($fdcall[1])));
+		op_dbgout("fw_pat_led", sprintf("... fdcall[1]: %04X", be16b2int($fdcall[1])));
 	} else { return -1 }
 
 	##
@@ -451,7 +451,7 @@ sub fw_pat_led # ( testmode, patchmode )
 	if (${$fw} =~ /\xE0\x30\xE1.\x12..\x12..\x7F\xC8\x7E\x00......\x12(..)/s)
 	{
 		$fdcall[2] = $1;
-		op_dbgout("fw_pat_led", sprintf("... fdcall[2]: %04X", unicode2int($fdcall[2])));
+		op_dbgout("fw_pat_led", sprintf("... fdcall[2]: %04X", be16b2int($fdcall[2])));
 	} else { return -1 }
 
 	##
@@ -460,7 +460,7 @@ sub fw_pat_led # ( testmode, patchmode )
 	my(@pcount, @patch);
 
 	$patch[0] = chr(0x80) . chr($jmpofs[0]) . chr(0x00);
-	$patch[1] = chr(0x90) . int2unicode($insert_pt) . chr(0x12) . int2unicode($Current{'fw_bank0call'}->[0]) . chr(0x80) . chr($jmpofs[1]);
+	$patch[1] = chr(0x90) . int2be16b($insert_pt) . chr(0x12) . int2be16b($Current{'fw_bank0call'}->[0]) . chr(0x80) . chr($jmpofs[1]);
 
 	foreach my $i (0 .. $Current{'fw_nbanks'} - 1)
 	{
@@ -520,8 +520,8 @@ sub fw_pat_ide # ( testmode, patchmode )
 
 	while (${$fw} =~ /\x12(..)\x78\x02\x74(\x04\xF2)/sg)
 	{
-		$calls{unicode2int($2)} = 1;
-		op_dbgout("fw_pat_ide", sprintf("... Found: loc=%05X, call=%04X", (pos(${$fw})) - length($2), unicode2int($1)));
+		$calls{be16b2int($2)} = 1;
+		op_dbgout("fw_pat_ide", sprintf("... Found: loc=%05X, call=%04X", (pos(${$fw})) - length($2), be16b2int($1)));
 		substr(${$fw}, (pos(${$fw})) - length($2), 1, chr(0x08));
 	}
 
@@ -866,7 +866,7 @@ sub fw_pat_cf # ( testmode, patchmode )
 		{
 			$check_addr = substr($work, $check_addr + 1, 2);
 
-			op_dbgout("fw_pat_cf", sprintf("Checksum function found at 0x%X", $Current{'fw_ebank'} + unicode2int($check_addr)));
+			op_dbgout("fw_pat_cf", sprintf("Checksum function found at 0x%X", $Current{'fw_ebank'} + be16b2int($check_addr)));
 			op_dbgout("fw_pat_cf", sprintf("Checksum XOR value: 0x%02X", ord($1))) if ($work =~ /\x90..\xE0\x64(.)\xFF\xF0\x22/s);
 
 			my($count, $match, $bsub_call_pt);
@@ -962,7 +962,7 @@ sub fw_pat_cf # ( testmode, patchmode )
 					if ($patchmode && $patch_area ne $spd_patch_a)
 					{
 						substr($work, $addr_end - 0x21, 0x20, $spd_patch_a);
-						substr($work, 0xFFB0, 0x23, $patch_area . chr(0x02) . int2unicode($addr_end - 0x01));
+						substr($work, 0xFFB0, 0x23, $patch_area . chr(0x02) . int2be16b($addr_end - 0x01));
 						substr(${$fw}, 0xF0000, 0x10000, $work);
 					}
 					elsif (!$patchmode && $patch_area eq $spd_patch_a)
@@ -982,6 +982,89 @@ sub fw_pat_cf # ( testmode, patchmode )
 	}
 
 	return -1;
+}
+
+sub fw_pat_nsx # ( testmode, patchmode )
+{
+	my($testmode, $patchmode) = @_;
+
+	##
+	# Establish the framework for testmode
+	#
+	my($fw, $fw_testmode);
+
+	if ($testmode)
+	{
+		$fw_testmode = $Current{'fw'};
+		$fw = \$fw_testmode;
+	}
+	else
+	{
+		$fw = \$Current{'fw'};
+	}
+
+	if ($testmode)
+	{
+		my($v, $n);
+
+		while (${$fw} =~ /(VIDEO_TS)|(NOSMARTX)/sg)
+		{
+			++$v if (length($1));
+			++$n if (length($2));
+		}
+
+		return 0 if ($v && !$n);
+		return 1 if (!$v && $n);
+		return -1;
+	}
+	else
+	{
+		my($ret) = ($patchmode) ?
+		${$fw} =~ s/VIDEO_TS/NOSMARTX/sg :
+		${$fw} =~ s/NOSMARTX/VIDEO_TS/sg ;
+
+		return ($ret) ? !$patchmode : -1;
+	}
+
+	return -1;
+}
+
+sub fw_pat_mtk # ( testmode, patchmode )
+{
+	my($testmode, $patchmode) = @_;
+
+	##
+	# Establish the framework for testmode
+	#
+	my($fw, $fw_testmode);
+
+	if ($testmode)
+	{
+		$fw_testmode = $Current{'fw'};
+		$fw = \$fw_testmode;
+	}
+	else
+	{
+		$fw = \$Current{'fw'};
+	}
+
+	my($ret) = -1;
+
+	op_dbgout("fw_pat_mtk", "Looking for patch points");
+
+	while (${$fw} =~ /\x90(?#1)(..)\xE0\x78(?#2)(.)\x30\xE4\x06\xE2(?#3)(\x54\xFD\xF2\x80\x04\xE2\x44\x02\xF2)|\x78(?#4)(.)\xB4\x11[\x05-\x07]\xE2\x44\x02\xF2.{1,3}?\xE2(?#5)(\x54\xFD\xF2)/sg)
+	{
+		$ret = 0;
+
+		my($ppos) = (pos(${$fw})) - length("$3$5");
+		my($dptr) = be16b2int($1);
+		my($reg) = ord($2) + ord($4);
+
+		op_dbgout("fw_pat_mtk", sprintf("... pos=%06X, eject_reg=%04X, mtk_reg=%02X", $ppos, $dptr, $reg));
+		substr(${$fw}, $ppos, 2, "\x44\x02");
+	}
+
+	return $ret;
 }
 
 1;

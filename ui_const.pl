@@ -1,8 +1,8 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # User Interface : Constants and initialization
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/07/15, C64K
 #
 
 ##
@@ -32,6 +32,7 @@ $UI_MEDIA_TXTID_RID = 2;
 $UI_MEDIA_TXT[$UI_MEDIA_TXTID_MID] = "Manufacturer ID:";
 $UI_MEDIA_TXT[$UI_MEDIA_TXTID_TID] = "Type ID:";
 $UI_MEDIA_TXT[$UI_MEDIA_TXTID_RID] = "Rev. ID:";
+$UI_MEDIA_TXT_ALT[$UI_MEDIA_TXTID_RID] = "P. Ver., EC:";
 
 $UI_MAX_LEN[$UI_MEDIA_TXTID_MID] = 8;	# 12 for -R
 $UI_MAX_LEN[$UI_MEDIA_TXTID_TID] = 3;

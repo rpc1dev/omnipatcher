@@ -1,17 +1,18 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # Media : Recommended tweaks table
 #
-# Modified: 2005/06/13, C64K
+# Modified: 2005/07/15, C64K
 #
 
-$MEDIA_TWEAKS_REV = 'Revision 3-01 (2005/06/10)';
+$MEDIA_TWEAKS_REV = 'Revision 3-02 (2005/07/15)';
 
-@MEDIA_TWEAKS =
-(
+$MEDIA_TWEAKS{'lo'} =
+[
 	[ [ 'CMC MAG',  'R01', 0x00 ], [                         ], [ 0b00000110 ], sub { $_[0] >= 0x011 && $_[0] < 0x012 } ],
 	[ [ 'CMC MAG',  'R01', 0x00 ], [                         ], [ 0b00011110 ], sub { $_[0] >= 0x012 && $_[0] < 0x030 } ],
 	[ [ 'CMC MAG',  'R01', 0x00 ], [ 'CMC MAG',  'M01', 0x00 ], [            ], sub { $_[0] >= 0x031 && $_[0] < 0x040 } ],
+	[ [ 'CMC MAG',  'E01', 0x00 ], [ 'CMC MAG',  'M01', 0x00 ], [            ], sub { $_[0] >= 0x033 && $_[0] < 0x040 } ],
 	[ [ 'MCC',      '002', 0x00 ], [                         ], [ 0b00011110 ], sub { $_[0] >= 0x012 && $_[0] < 0x030 } ],
 	[ [ 'MCC',      '002', 0x00 ], [ 'MCC',      '003', 0x00 ], [            ], sub { $_[0] >= 0x031 && $_[0] < 0x040 } ],
 	[ [ 'OPTODISC', 'OR4', 0x00 ], [ 'PRODISC',  'R03', 0x00 ], [            ], sub { $_[0] >= 0x012 && $_[0] < 0x040 } ],
@@ -28,8 +29,6 @@ $MEDIA_TWEAKS_REV = 'Revision 3-01 (2005/06/10)';
 	[ [ 'YUDEN000', 'T01', 0x00 ], [ 'YUDEN000', 'T02', 0x00 ], [            ], sub { $_[0] >= 0x031 && $_[0] < 0x040 } ],
 	[ [ 'YUDEN000', 'T01', 0x01 ], [                         ], [ 0b00011110 ], sub { $_[0] >= 0x011 && $_[0] < 0x030 } ],
 	[ [ 'YUDEN000', 'T01', 0x01 ], [ 'YUDEN000', 'T02', 0x00 ], [            ], sub { $_[0] >= 0x031 && $_[0] < 0x040 } ],
-	[ [ 'YUDEN000', 'T02', 0x00 ], [ 'YUDEN000', 'T03', 0x00 ], [            ], sub { $_[0] >= 0x031 && $_[0] < 0x033 } ],
-	[ [ 'YUDEN000', 'T02', 0x00 ], [                         ], [ 0b01111100 ], sub { $_[0] >= 0x033 && $_[0] < 0x040 } ],
 
 	[ [ 'FUJIFILM03',      0x52 ], [ 'TYG02',           0x52 ], [            ], sub { $_[0] >= 0x012 && $_[0] < 0x030 } ],
 	[ [ 'MCC 01RG20  ',    0x52 ], [ 'MCC 02RG20  ',    0x52 ], [            ], sub { $_[0] >= 0x012 && $_[0] < 0x030 } ],
@@ -39,12 +38,13 @@ $MEDIA_TWEAKS_REV = 'Revision 3-01 (2005/06/10)';
 	[ [ 'RITEKG04',        0x52 ], [ 'RITEKG05',        0x52 ], [            ], sub { $_[0] >= 0x031 && $_[0] < 0x040 } ],
 	[ [ 'RITEKG05',        0x52 ], [ 'RITEKG06',        0x52 ], [            ], sub { $_[0] >= 0x012 && $_[0] < 0x030 } ],
 	[ [ 'TYG01',           0x52 ], [ 'TYG02',           0x52 ], [            ], sub { $_[0] >= 0x012 && $_[0] < 0x040 } ],
-);
+];
 
 ###
 # Revision History
 # ================
 #
+# 3-02 (2005/07/15) - Removed YUDEN000T02->T03.  Added E01->M01 for CMC +R.
 # 3-01 (2005/06/10) - Reformatted the table for OmniPatcher 2.
 # 2-15 (2005/05/03) - Removed 1673S/1693S YUDEN000T02 to T03 startegy switch.
 #                     Increased 1673S/1693S YUDEN000T02 burn speed to 16x.

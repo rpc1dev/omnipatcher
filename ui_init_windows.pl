@@ -1,8 +1,8 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # User Interface : Initialization, part 2: Object creation
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/07/25, C64K
 #
 
 ################################################################################
@@ -17,6 +17,7 @@
 {
 	$FontTahoma = Win32::GUI::Font->new
 	(
+		-charset	=> 0,	# ANSI_CHARSET
 		-face		=> "Tahoma",
 		-size		=> 8,
 		-bold		=> 0,
@@ -26,6 +27,7 @@
 
 	$FontTahomaBold = Win32::GUI::Font->new
 	(
+		-charset	=> 0,	# ANSI_CHARSET
 		-face		=> "Tahoma",
 		-size		=> 8,
 		-bold		=> 1,
@@ -35,6 +37,7 @@
 
 	$FontTahomaItalic = Win32::GUI::Font->new
 	(
+		-charset	=> 0,	# ANSI_CHARSET
 		-face		=> "Tahoma",
 		-size		=> 8,
 		-bold		=> 0,
@@ -44,6 +47,7 @@
 
 	$FontCourierNew = Win32::GUI::Font->new
 	(
+		-charset	=> 0,	# ANSI_CHARSET
 		-face		=> "Courier New",
 		-size		=> 10,
 		-bold		=> 0,
@@ -53,6 +57,7 @@
 
 	$FontCourierNewSmall = Win32::GUI::Font->new
 	(
+		-charset	=> 0,	# ANSI_CHARSET
 		-face		=> "Courier New",
 		-size		=> 8,
 		-bold		=> 0,
@@ -89,6 +94,8 @@
 	$ObjMain->Text($PROGRAM_TITLE);
 	$ObjMain->ChangeIcon($OPIconLg);
 	$ObjMain->ChangeSmallIcon($OPIconSm);
+
+	#$ObjMainMaintenanceTimer = new Win32::GUI::Timer($ObjMain, "MainMaintenanceTimer", 1000) or ui_abort('Initialization Error.');
 }
 
 ################################################################################
@@ -153,6 +160,20 @@
 			}
 		}
 	}
+
+	$ObjMainDisabledTabText = new Win32::GUI::Label
+	(
+		$ObjMain,
+
+		-name		=> 'MainDisabledTabText',
+		-text		=> 'The contents of this tab are not available for this firmware.',
+		-pos		=> ui_addpairs($ui_pos_disabledtab, ui_getpos($ObjMainTabs[0]{'Frame'})),
+		-size		=> $ui_dim_disabledtab,
+		-align	=> center,
+		-font		=> $FontTahoma,
+		-visible	=> 0,
+
+	) or ui_abort('Initialization Error.');
 
 	$ObjMainCmdGrp = new Win32::GUI::Groupbox
 	(
@@ -219,12 +240,14 @@
 	my($namepre) = "MainTabs$tid";
 	my($group) = $ObjMainTabs[$tid];
 
+	$FlagTabEnabledStatus[$tid] = 1;
+
 	$group->{'InfoFrame'} = new Win32::GUI::Groupbox
 	(
 		($UI_USE_ROOT) ? $ObjMain : $group->{'Frame'},
 
 		-name	=> $namepre . "InfoFrame",
-		-text	=> 'Current Drive ID Information',
+		-text	=> 'General Drive Information for this Firmware',
 		-pos	=> ui_addpairs($ui_pos_driveupleft, ui_getpos_cond($group->{'Frame'})),
 		-size	=> $ui_dim_drivefrinfo,
 		-font	=> $FontTahomaBold,
@@ -250,7 +273,7 @@
 		($UI_USE_ROOT) ? $ObjMain : $group->{'Frame'},
 
 		-name	=> $namepre . "ChangeFrame",
-		-text	=> 'Change Drive ID',
+		-text	=> 'Change the Drive ID for this Firmware',
 		-pos	=> ui_addpairs([ 0, $ui_dim_drivefrinfo->[1] + 2 * $UI_MARGINS_GENERAL ], ui_getpos($group->{'InfoFrame'})),
 		-size	=> $ui_dim_drivefrchng,
 		-font	=> $FontTahomaBold,
@@ -312,6 +335,8 @@
 	my($tid) = $UI_TABID_MEDIA;
 	my($namepre) = "MainTabs$tid";
 	my($group) = $ObjMainTabs[$tid];
+
+	$FlagTabEnabledStatus[$tid] = 0;
 
 	$group->{'List'} = new Win32::GUI::Listbox
 	(
@@ -386,9 +411,9 @@
 		-text			=> $UI_STRATLABEL[0],
 		-pos			=> ui_addpairs([ 0, $UI_MARGINS_GENERAL + $ui_dim_medialist->[1] ], ui_getpos($group->{'List'})),
 		-size			=> $ui_dim_medialabel,
-		-font			=> $FontTahomaItalic,
 		-align		=> center,
 		-disabled	=> 1,
+		-font			=> $FontTahomaItalic,
 		-sunken		=> 1,
 
 	) or ui_abort('Initialization Error.');
@@ -469,6 +494,8 @@
 	my($tid) = $UI_TABID_PATCHES;
 	my($namepre) = "MainTabs$tid";
 	my($group) = $ObjMainTabs[$tid];
+
+	$FlagTabEnabledStatus[$tid] = 0;
 
 	foreach my $key (@FW_PATCH_KEYS)
 	{
@@ -583,6 +610,8 @@
 	my($namepre) = "MainTabs$tid";
 	my($group) = $ObjMainTabs[$tid];
 
+	$FlagTabEnabledStatus[$tid] = 1;
+
 	$group->{'Log'} = new Win32::GUI::Textfield
 	(
 		($UI_USE_ROOT) ? $ObjMain : $group->{'Frame'},
@@ -590,7 +619,7 @@
 		-name				=> $namepre . 'Log',
 		-pos				=> ui_addpairs([ 0 * $UI_MARGINS_BLANKGROUP->[0], 0 * $UI_MARGINS_BLANKGROUP->[1] ], ui_getpos_cond($group->{'Frame'})),
 		-size				=> ui_addpairs([ -0 * $UI_MARGINS_BLANKGROUP->[0], -0 * $UI_MARGINS_BLANKGROUP->[1] ], $ui_dim_frame),
-		-addstyle		=> WS_VSCROLL | WS_HSCROLL,
+		-addstyle		=> WS_VSCROLL | WS_HSCROLL | ES_WANTRETURN,
 		-font				=> $FontCourierNewSmall,
 		-keepselection	=> 1,
 		-multiline		=> 1,

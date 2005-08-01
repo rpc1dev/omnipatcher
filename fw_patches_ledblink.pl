@@ -1,18 +1,18 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # Firmware : LED blink control
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/07/20, C64K
 #
 
 sub fw_led_parse # ( )
 {
-	if ($Current{'fw_gen'} >= 0x033 && $Current{'fw_gen'} < 0x040 && ($Current{'fw_led_status'} = fw_led_patch(1, 1)) >= 0)
+	if ($Current{'fw_manuf'} eq 'lo' && $Current{'fw_type'} eq 'dvdrw' && $Current{'fw_gen'} >= 0x033 && $Current{'fw_gen'} < 0x040 && ($Current{'fw_led_status'} = fw_led_patch(1, 1)) >= 0)
 	{
 		if ($Current{'fw_led_status'})
 		{
-			my($writeblink) = (unicode2int(substr($Current{'fw'}, $Current{'fw_led_pts'}->{'write_patch'} + 1, 2)) == $Current{'fw_led_pts'}->{'blink_entry'});
-			my($readblink) = (unicode2int(substr($Current{'fw'}, $Current{'fw_led_pts'}->{'read_patch'} + 1, 2)) == $Current{'fw_led_pts'}->{'blink_entry'});
+			my($writeblink) = (be16b2int(substr($Current{'fw'}, $Current{'fw_led_pts'}->{'write_patch'} + 1, 2)) == $Current{'fw_led_pts'}->{'blink_entry'});
+			my($readblink) = (be16b2int(substr($Current{'fw'}, $Current{'fw_led_pts'}->{'read_patch'} + 1, 2)) == $Current{'fw_led_pts'}->{'blink_entry'});
 
 			$Current{'fw_led_type'} = 0 if ($writeblink && !$readblink);
 			$Current{'fw_led_type'} = 1 if (!$writeblink && $readblink);
@@ -47,8 +47,8 @@ sub fw_led_save # ( )
 		my($writeblink) = (ui_getselected($PatchesTab->{'LEDDrops'}[0]) == 0 || ui_getselected($PatchesTab->{'LEDDrops'}[0]) == 2);
 		my($readblink) = (ui_getselected($PatchesTab->{'LEDDrops'}[0]) == 1 || ui_getselected($PatchesTab->{'LEDDrops'}[0]) == 2);
 
-		substr($Current{'fw'}, $Current{'fw_led_pts'}->{'write_patch'}, 3, chr(0x02) . int2unicode(($writeblink) ? $Current{'fw_led_pts'}->{'blink_entry'} : $Current{'fw_led_pts'}->{'solid_entry'}));
-		substr($Current{'fw'}, $Current{'fw_led_pts'}->{'read_patch'}, 3, chr(0x02) . int2unicode(($readblink) ? $Current{'fw_led_pts'}->{'blink_entry'} : $Current{'fw_led_pts'}->{'solid_entry'}));
+		substr($Current{'fw'}, $Current{'fw_led_pts'}->{'write_patch'}, 3, chr(0x02) . int2be16b(($writeblink) ? $Current{'fw_led_pts'}->{'blink_entry'} : $Current{'fw_led_pts'}->{'solid_entry'}));
+		substr($Current{'fw'}, $Current{'fw_led_pts'}->{'read_patch'}, 3, chr(0x02) . int2be16b(($readblink) ? $Current{'fw_led_pts'}->{'blink_entry'} : $Current{'fw_led_pts'}->{'solid_entry'}));
 		substr($Current{'fw'}, $Current{'fw_led_pts'}->{'blink_rate'}, 1, chr(ui_getselected($PatchesTab->{'LEDDrops'}[1]) + $FW_LED_MINRATE));
 	}
 }
@@ -98,8 +98,8 @@ sub fw_led_patch # ( testmode, patchmode )
 		# Construct the code to insert
 		my($ppt_insert) = 0x3FE0;
 		my(@patch) = ($3, $5);
-		substr($patch[0], -3, 3, "\x20\xE0\x03\x02" . int2unicode($pt_off));
-		substr($patch[1], -2, 2, "\x02" . int2unicode($pt_ret));
+		substr($patch[0], -3, 3, "\x20\xE0\x03\x02" . int2be16b($pt_off));
+		substr($patch[1], -2, 2, "\x02" . int2be16b($pt_ret));
 
 		$Current{'fw_led_pts'} =
 		{

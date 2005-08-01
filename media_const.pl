@@ -1,8 +1,8 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # Media : Constants and initialization
 #
-# Modified: 2005/06/18, C64K
+# Modified: 2005/07/22, C64K
 #
 
 ##
@@ -41,7 +41,7 @@ $MEDIA_DATA_INT = 0x01;
 ##
 # Media code samples...
 #
-$MEDIA_SAMPLES[$MEDIA_TYPE_DVD_PR] = join( '|', map { (quotemeta($_), quotemeta(str2unicode($_))) }
+$MEDIA_SAMPLES[$MEDIA_TYPE_DVD_PR] = join( '|', map { (quotemeta($_), quotemeta(str2be16b($_))) }
 (
 	"RICOHJPNR0",
 	"YUDEN000T0",
@@ -49,13 +49,13 @@ $MEDIA_SAMPLES[$MEDIA_TYPE_DVD_PR] = join( '|', map { (quotemeta($_), quotemeta(
 	"PRODISC\x00R0",
 ) );
 
-$MEDIA_SAMPLES[$MEDIA_TYPE_DVD_PRW] = join( '|', map { (quotemeta($_), quotemeta(str2unicode($_))) }
+$MEDIA_SAMPLES[$MEDIA_TYPE_DVD_PRW] = join( '|', map { (quotemeta($_), quotemeta(str2be16b($_))) }
 (
 	"MKM\x00\x00\x00\x00\x00A0",
 	"RICOHJPNW",
 ) );
 
-$MEDIA_SAMPLES[$MEDIA_TYPE_DVD_PR9] = join( '|', map { (quotemeta($_), quotemeta(str2unicode($_))) }
+$MEDIA_SAMPLES[$MEDIA_TYPE_DVD_PR9] = join( '|', map { (quotemeta($_), quotemeta(str2be16b($_))) }
 (
 	"RICOHJPND00",
 ) );
@@ -77,7 +77,7 @@ $MEDIA_SAMPLES[$MEDIA_TYPE_DVD_DR9] = join( '|', map { quotemeta }
 	"MKM 01RD30",
 ) );
 
-$MEDIA_SAMPLES_SHORT[$MEDIA_TYPE_DVD_PR] = join( '|', map { (quotemeta($_), quotemeta(str2unicode($_))) }
+$MEDIA_SAMPLES_SHORT[$MEDIA_TYPE_DVD_PR] = join( '|', map { (quotemeta($_), quotemeta(str2be16b($_))) }
 (
 	"RICOHJPNR00",
 ) );
@@ -93,7 +93,7 @@ $MEDIA_SAMPLES_SHORT[$MEDIA_TYPE_DVD_DR] = join( '|', map { quotemeta }
 # flag, so some type 0 firmwares are actually type 1 (the patches should
 # be 100% identical except for the lack of the revision flag in bank 0)
 #
-# Also note that the various addresses used for type 5/6 patches can vary!
+# Also note that the various addresses used for type 5/6/7 patches can vary!
 # The addresses are determined dynamically by the patching function.
 #
 # List of status/type flags, the insert address, and the table start address
@@ -105,6 +105,7 @@ $MEDIA_SAMPLES_SHORT[$MEDIA_TYPE_DVD_DR] = join( '|', map { quotemeta }
 # Type 4: [ 0xFF00, 0xFF40 ] Patched using patch_strat3 (Obsolete)
 # Type 5: [ 0x0000, 0x0000 ] Patched using media_strat_p1s (Active)
 # Type 6: [ 0x0000, 0x0000 ] Patched using media_strat_p3s (Active)
+# Type 7: [ 0x0000, 0x0000 ] Patched using media_strat_ps3s (Active)
 #
 $MEDIA_STRAT_REVLOC = 0x0FFEF;
 
@@ -167,8 +168,8 @@ $MEDIA_STDSPD2IDX[16] = 6;
 #	$type_id(0),
 #	$table_entry_id(1),
 #	{ -> (2) (original)
-#		field1 => [ $value(0), [ $datatype, $unicode ](1), $len(2), [ $addr, $addr2? ](3) ],
-#		field2 => [ $value(0), [ $datatype, $unicode ](1), $len(2), [ $addr, $addr2? ](3) ],
+#		field1 => [ $value(0), [ $datatype, $encoding ](1), $len(2), [ $addr, $addr2? ](3) ],
+#		field2 => [ $value(0), [ $datatype, $encoding ](1), $len(2), [ $addr, $addr2? ](3) ],
 #		...
 #	},
 #	$strat_id(3), (values can be changed by UI)
@@ -178,6 +179,10 @@ $MEDIA_STDSPD2IDX[16] = 6;
 #	},
 #	$disp(5),
 #]
+#
+#$encoding = 0;	# 8 bits;					can use << encoding to translate position/length
+#$encoding = 1;	# 16 bits, big-endian;	can use << encoding to translate position/length
+#$encoding = 2;	# 32 bits, big-endian;	can use << encoding to translate position/length
 #
 #$sample =
 #[

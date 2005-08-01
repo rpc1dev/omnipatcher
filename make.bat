@@ -10,8 +10,8 @@ goto EndOfPerl
 # Step 0: Initialize
 #
 
-	$PL_FILE = 'dvdrw_omnipatcher.pl';
-	$EXE_FILE = 'dvdrw_omnipatcher.exe';
+	$PL_FILE = 'omnipatcher.pl';
+	$EXE_FILE = 'omnipatcher.exe';
 	$ICO_FILE = 'chip.ico';
 	$ICO_ID = '!';
 	$USE_GUI = 1;
@@ -35,7 +35,9 @@ goto EndOfPerl
 	($app_title, $app_ver_int, $app_ver_disp) = split(/\n/, join('', <file>));
 	close file;
 
-	$stamp = gmtime();
+	$curtime = time();
+	$stamp = gmtime($curtime);
+	$stamp_raw = pack("V", $curtime);
 
 	open file, ">appinfo.pl";
 	print file qq(\$PROGRAM_TITLE = '$app_title';\n);
@@ -83,7 +85,7 @@ goto EndOfPerl
 	&execute("upx -9 $EXE_FILE");
 
 ###
-# Step 4: Strip UPX tags
+# Step 4: Strip UPX tags and set the executable's build time
 #
 
 	$null4 = "\x00" x 4;
@@ -93,9 +95,10 @@ goto EndOfPerl
 	read(file, $data, -s file);
 	close file;
 
-	$data =~ s/UPX0/$null4/;
-	$data =~ s/UPX1/$null4/;
-	$data =~ s/1\.2\d\x00UPX/$null4$null4/;
+	$data =~ s/UPX0/$null4/s;
+	$data =~ s/UPX1/$null4/s;
+	$data =~ s/1\.2\d\x00UPX/$null4$null4/s;
+	$data =~ s/(PE\x00\x00....)..../$1$stamp_raw/s;
 
 	open file, ">$EXE_FILE";
 	binmode file;

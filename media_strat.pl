@@ -1,16 +1,25 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # Media : Write strategy reassignment
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/07/20, C64K
 #
 
 sub media_strat_init # ( )
 {
 	##
+	# Strat works only for LiteOn drives for now
+	#
+	if ($Current{'fw_type'} ne 'dvdrw' || $Current{'fw_manuf'} ne 'lo')
+	{
+		$Current{'media_strat_status'} = -1;
+		return;
+	}
+
+	##
 	# Check the status flag area
 	#
-	$Current{'media_strat_revloc'} = ($Current{'fw_gen'} < 0x100) ? $MEDIA_STRAT_REVLOC : $MEDIA_STRAT_REVLOC - 0x28;
+	$Current{'media_strat_revloc'} = ($Current{'fw_gen'} >= 0x110 && $Current{'fw_gen'} < 0x130) ? $MEDIA_STRAT_REVLOC - 0x28 : $MEDIA_STRAT_REVLOC;
 
 	if ( substr($Current{'fw'}, $Current{'media_strat_revloc'} - 8, 8) eq chr(0x00) x 8 &&
 	     substr($Current{'fw'}, $Current{'media_strat_revloc'} + 1, 1) eq chr(0x00) )
@@ -18,7 +27,7 @@ sub media_strat_init # ( )
 		$Current{'media_strat_status'} = ord(substr($Current{'fw'}, $Current{'media_strat_revloc'}, 1));
 		op_dbgout("media_strat_init", sprintf("Status flag area is valid; flag value is: %d", $Current{'media_strat_status'}));
 
-		if ($Current{'media_strat_status'} > 6)
+		if ($Current{'media_strat_status'} > 7)
 		{
 			$Current{'media_strat_status'} = -1;
 			op_dbgout("media_strat_init", "FAILURE: Cannot interpret status flag!");
@@ -68,6 +77,8 @@ sub media_strat_save # ( )
 {
 	my(@strat_indices, $code, $type);
 
+	return if ($Current{'media_strat_status'} == -1);
+
 	foreach $code (@{$Current{'media_table'}})
 	{
 		$strat_indices[$code->[0]] .= chr($code->[1]) . chr($code->[3]) if ($code->[1] != $code->[3]);
@@ -107,17 +118,21 @@ sub media_strat_p # ( testmode, patchmode )
 
 	if ($Current{'media_strat_type'} == 5 || (substr($Current{'fw'}, $Current{'media_dbank'}, 0x10000) =~ /\xC2\xAF..\x0B..\x08\x90..\x74.\xF0\x80\x06\x90..\x74.\xF0/s) || ($Current{'fw_gen'} >= 0x110 && $Current{'fw_gen'} < 0x130))
 	{
-		# 1S/2S/1213S/Slim
-		#
+		# 1S/2S/1213S/Slim1S/Slim2S
 		$Current{'media_strat_type'} = 5;
 		return media_strat_p1s(@_);
 	}
 	elsif ($Current{'media_strat_type'} == 6 || ($Current{'fw_gen'} >= 0x030 && $Current{'fw_gen'} < 0x040))
 	{
 		# 3S
-		#
 		$Current{'media_strat_type'} = 6;
 		return media_strat_p3s(@_);
+	}
+	elsif ($Current{'media_strat_type'} == 7 || ($Current{'fw_gen'} >= 0x130 && $Current{'fw_gen'} < 0x140))
+	{
+		# Slim3S
+		$Current{'media_strat_type'} = 7;
+		return media_strat_ps3s(@_);
 	}
 	else
 	{
@@ -194,7 +209,7 @@ sub media_strat_p1s # ( testmode, patchmode )
 		{
 			push(@switch_points, (pos($type->[1])) - (length($1) + length($2) + length($3)));
 			$is_patched = (!defined($is_patched)) ? $1 eq chr(0x12) : (($is_patched == ($1 eq chr(0x12))) ? $is_patched : -1);
-			$temp_addr = (!defined($temp_addr)) ? unicode2int($2) : (($temp_addr == unicode2int($2)) ? $temp_addr : -1);
+			$temp_addr = (!defined($temp_addr)) ? be16b2int($2) : (($temp_addr == be16b2int($2)) ? $temp_addr : -1);
 		}
 
 		if ($switch_check->($#switch_points) || $is_patched == -1 || $temp_addr == -1)
@@ -221,8 +236,8 @@ sub media_strat_p1s # ( testmode, patchmode )
 				}
 
 				$insert_pt = $temp_addr;
-				$table_pt = unicode2int($1);
-				$dptr_val = unicode2int($2);
+				$table_pt = be16b2int($1);
+				$dptr_val = be16b2int($2);
 				$size_of_area = $base + length($potential_insert_area) - $insert_pt;
 			}
 			else
@@ -256,7 +271,7 @@ sub media_strat_p1s # ( testmode, patchmode )
 		#
 		$Current{'media_strat'}->[$type->[0]]{'status'} = ($is_patched) ? $Current{'media_strat_type'} : 0;
 		$Current{'media_strat'}->[$type->[0]]{'table'} = $table_pt + $type->[2];
-		$Current{'media_strat'}->[$type->[0]]{'table_maxlen'} = ((($size_of_area - ($table_pt - $insert_pt)) >> 1) << 1);
+		$Current{'media_strat'}->[$type->[0]]{'table_maxlen'} = ($size_of_area - ($table_pt - $insert_pt) - 2) & 0xFFE;
 
 		op_dbgout("media_strat_p1s", sprintf("... Insertion and table points: %04X / %04X", $insert_pt, $table_pt));
 		op_dbgout("media_strat_p1s", sprintf("... Max table length: %3d bytes", $Current{'media_strat'}->[$type->[0]]{'table_maxlen'}));
@@ -272,7 +287,7 @@ sub media_strat_p1s # ( testmode, patchmode )
 			#
 			foreach $switch_pt (@switch_points)
 			{
-				substr($type->[1], $switch_pt, 3, chr(0x90) . int2unicode($dptr_val));
+				substr($type->[1], $switch_pt, 3, chr(0x90) . int2be16b($dptr_val));
 			}
 		}
 		else
@@ -281,13 +296,13 @@ sub media_strat_p1s # ( testmode, patchmode )
 			#
 			foreach $switch_pt (@switch_points)
 			{
-				substr($type->[1], $switch_pt, 3, chr(0x12) . int2unicode($insert_pt));
+				substr($type->[1], $switch_pt, 3, chr(0x12) . int2be16b($insert_pt));
 			}
 
 			$insert = $template;
 			substr($insert, $template_offset_type, 1, $type->[3]);
-			substr($insert, $template_offset_table, 2, int2unicode($table_pt));
-			substr($insert, $template_offset_dptr, 2, int2unicode($dptr_val));
+			substr($insert, $template_offset_table, 2, int2be16b($table_pt));
+			substr($insert, $template_offset_dptr, 2, int2be16b($dptr_val));
 			substr($type->[1], $insert_pt, length($insert), $insert);
 		}
 
@@ -381,7 +396,7 @@ sub media_strat_p3s # ( testmode, patchmode )
 			$size_of_area = 0xF0;
 			$insert_pt = 0xFF00;
 			$table_pt = 0xFF40;
-			$dptr_val = unicode2int(substr($type->[1], ($rev_flag == 2) ? 0xFF29 : 0xFF22, 2));
+			$dptr_val = be16b2int(substr($type->[1], ($rev_flag == 2) ? 0xFF29 : 0xFF22, 2));
 		}
 		elsif ($rev_flag == 6 && $type->[1] =~ /(\x24\x40\x24\x40\x24\x40\xFF\x90)(\xFF.)/sg)
 		{
@@ -389,8 +404,8 @@ sub media_strat_p3s # ( testmode, patchmode )
 			$is_patched = 1;
 
 			$insert_pt = (pos($type->[1])) - (length($1) + length($2));
-			$table_pt = unicode2int($2);
-			$dptr_val = unicode2int(substr($type->[1], $insert_pt + $template_offset_dptr, 2));
+			$table_pt = be16b2int($2);
+			$dptr_val = be16b2int(substr($type->[1], $insert_pt + $template_offset_dptr, 2));
 			$size_of_area = 0xFFF0 - $insert_pt;
 		}
 		else
@@ -495,9 +510,9 @@ sub media_strat_p3s # ( testmode, patchmode )
 				#
 				if (!$is_patched && $dptr_val == 0)
 				{
-					$dptr_val = unicode2int(substr($type->[1], $pat_point + 1, 2));
+					$dptr_val = be16b2int(substr($type->[1], $pat_point + 1, 2));
 				}
-				elsif (!$is_patched && $dptr_val != unicode2int(substr($type->[1], $pat_point + 1, 2)))
+				elsif (!$is_patched && $dptr_val != be16b2int(substr($type->[1], $pat_point + 1, 2)))
 				{
 					$fail->(sprintf("Unexpected dptr mismatch with patch point %04X", $raw_point->[0]));
 					next TYPELOOP;
@@ -532,7 +547,7 @@ sub media_strat_p3s # ( testmode, patchmode )
 		#
 		$Current{'media_strat'}->[$type->[0]]{'status'} = ($is_patched) ? $Current{'media_strat_type'} : 0;
 		$Current{'media_strat'}->[$type->[0]]{'table'} = $table_pt + $type->[2];
-		$Current{'media_strat'}->[$type->[0]]{'table_maxlen'} = ((($size_of_area - ($table_pt - $insert_pt)) >> 1) << 1);
+		$Current{'media_strat'}->[$type->[0]]{'table_maxlen'} = ($size_of_area - ($table_pt - $insert_pt) - 2) & 0xFFE;
 
 		op_dbgout("media_strat_p3s", sprintf("... Insertion and table points: %04X / %04X", $insert_pt, $table_pt));
 		op_dbgout("media_strat_p3s", sprintf("... Max table length: %3d bytes", $Current{'media_strat'}->[$type->[0]]{'table_maxlen'}));
@@ -551,14 +566,14 @@ sub media_strat_p3s # ( testmode, patchmode )
 			if ($patchmode == 0)
 			{
 				($pat_point->[2] == 0) ?
-				substr($type->[1], $pat_point->[0], 3, chr(0x90) . int2unicode($dptr_val)) :
-				substr($type->[1], $pat_point->[0], 4, chr(0x90) . int2unicode($dptr_val) . $pat_point->[3]);
+				substr($type->[1], $pat_point->[0], 3, chr(0x90) . int2be16b($dptr_val)) :
+				substr($type->[1], $pat_point->[0], 4, chr(0x90) . int2be16b($dptr_val) . $pat_point->[3]);
 			}
 			else
 			{
 				($pat_point->[2] == 0) ?
-				substr($type->[1], $pat_point->[0], 3, "\x02" . int2unicode($pat_point->[1])) :
-				substr($type->[1], $pat_point->[0], 4, "$pat_point->[3]\x02" . int2unicode($pat_point->[1]));
+				substr($type->[1], $pat_point->[0], 3, "\x02" . int2be16b($pat_point->[1])) :
+				substr($type->[1], $pat_point->[0], 4, "$pat_point->[3]\x02" . int2be16b($pat_point->[1]));
 			}
 		}
 
@@ -569,11 +584,11 @@ sub media_strat_p3s # ( testmode, patchmode )
 			foreach my $ret_pt (@return_points)
 			{
 				op_dbgout("media_strat_p3s", sprintf("... > Return point: %02X->%04X", @{$ret_pt}));
-				substr($insert, $ret_pt->[0], 2, int2unicode($ret_pt->[1]));
+				substr($insert, $ret_pt->[0], 2, int2be16b($ret_pt->[1]));
 			}
 
-			substr($insert, $template_offset_table, 2, int2unicode($table_pt));
-			substr($insert, $template_offset_dptr, 2, int2unicode($dptr_val));
+			substr($insert, $template_offset_table, 2, int2be16b($table_pt));
+			substr($insert, $template_offset_dptr, 2, int2be16b($dptr_val));
 			substr($type->[1], $insert_pt, length($insert), $insert);
 		}
 
@@ -582,6 +597,223 @@ sub media_strat_p3s # ( testmode, patchmode )
 		substr(${$fw}, $type->[2], 0x10000, $type->[1]);
 
 		op_dbgout("media_strat_p3s", "... Done!");
+
+	} # End: for each media format
+
+	my($status_code) = ($patchmode) ? $Current{'media_strat_type'} : 0;
+	my($return_code) = max($Current{'media_strat'}->[$MEDIA_TYPE_DVD_PR]{'status'}, $Current{'media_strat'}->[$MEDIA_TYPE_DVD_DR]{'status'});
+
+	substr(${$fw}, $Current{'media_strat_revloc'}, 1, chr($status_code)) if ($return_code >= 0);
+
+	return $return_code;
+}
+
+sub media_strat_ps3s # ( testmode, patchmode )
+{
+	my($testmode, $patchmode) = @_;
+
+	##
+	# Establish the framework for testmode
+	#
+	my($fw, $fw_testmode);
+
+	if ($testmode)
+	{
+		$fw_testmode = $Current{'fw'};
+		$fw = \$fw_testmode;
+	}
+	else
+	{
+		$fw = \$Current{'fw'};
+	}
+
+	##
+	# Establish the patch information
+	#
+	my($base) = 0xFF00;
+
+	my($template) = join '', map { chr }
+	(
+		#  0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F
+		0x90,    0,    0, 0x80, 0x03, 0x90,    0,    0, 0xE5, 0x24, 0xB4,    0, 0x1E, 0xE0, 0xFF, 0xC0,
+		0x82, 0xC0, 0x83, 0x90, 0xFF,    0, 0xE4, 0x93, 0x60, 0x0B, 0x6F, 0x60, 0x04, 0xA3, 0xA3, 0x80,
+		0xF5, 0x74, 0x01, 0x93, 0xFF, 0xD0, 0x83, 0xD0, 0x82, 0xEF, 0xF0, 0x22
+	);
+
+	my($template_offset_type) = 0x0B;
+	my($template_offset_table) = 0x14;
+
+	my($insert_pattern) = '\x90(..)\x80\x03\x90(..)\xE5\x24\xB4[\x90\x94]\x1E\xE0\xFF\xC0\x82\xC0\x83\x90(\xFF.)\xE4\x93\x60\x0B\x6F\x60\x04\xA3\xA3\x80\xF5\x74\x01\x93\xFF\xD0\x83\xD0\x82\xEF\xF0\x22';
+
+	##
+	# Find the patch points
+	#
+	my($pdata) = substr($Current{'fw'}, $Current{'media_pbank'}, 0x10000);
+	my($ddata) = substr($Current{'fw'}, $Current{'media_dbank'}, 0x10000);
+	my($found) = '\x90..\xE0\x44\x80\xF0';
+
+	my(@ppoints, @dpoints);
+
+	while ($pdata =~ /\x90..\xE0\x64\x0C\x60\x03\x02..\xE5\x24\x64\x94\x60\x03\x02..((?:\x90..|\x12\xFF.)(?:\xE0\x60(.))?)/sg)
+	{
+		my($ppoint) = (pos($pdata)) + ((ord($2)) ? ord($2) : -ord($1));
+		push(@ppoints, $ppoint) if (substr($pdata, $ppoint, 2) =~ /\x90.|\x12\xFF/s);
+	}
+
+	while ($ddata =~ /(?:$found\xE5\x24\x64\x90\x70.)?((?:\x90..|\x12\xFF.)\xE0[\xFD-\xFF](?:\xC3\x94.\x50.\x90..[\xED-\xEF]\xF0|\x90..\xF0(?:$found)?))/sg)
+	{
+		my($dpoint) = (pos($ddata)) - length($1);
+		push(@dpoints, $dpoint);
+	}
+
+	@ppoints = (0, 0) if ($#ppoints != 0);
+	@dpoints = (0, 0) if (($#dpoints != 0 && $#dpoints != 1) || ($#dpoints == 1 && substr($ddata, $dpoints[0], 3) eq substr($ddata, $dpoints[1], 3)) || ($#dpoints == 1 && substr($ddata, $dpoints[0], 1) ne substr($ddata, $dpoints[1], 1)));
+	push(@ppoints, 0) if ($#ppoints == 0);
+	push(@dpoints, 0) if ($#dpoints == 0);
+
+	##
+	# Process each bank
+	#
+	foreach my $type ( [ $MEDIA_TYPE_DVD_PR, $pdata, $Current{'media_pbank'}, chr(0x94), \@ppoints ],
+	                   [ $MEDIA_TYPE_DVD_DR, $ddata, $Current{'media_dbank'}, chr(0x90), \@dpoints ] )
+	{
+		op_dbgout("media_strat_ps3s", "Processing the $MEDIA_TYPE_NAME[$type->[0]] bank");
+
+		my($fail) = sub { $Current{'media_strat'}->[$type->[0]]{'status'} = -1; op_dbgout("media_strat_ps3s", "... Error: $_[0]"); };
+
+		my(@patch_pts, $is_patched);
+		my($insert_pt, $table_pt, $size_of_area);
+		my($insert, $potential_insert_area);
+
+		# Quit if there are no patch points to patch
+		#
+		if ($type->[4][0] == 0 && $type->[4][1] == 0)
+		{
+			$fail->("No patch points defined for this bank");
+			next;
+		}
+
+		# Define the patch points...
+		# [ patch_point(0), call_entry_point(1), dptr_val(2) ]
+		#
+		my(@patch_pts) =
+		(
+			[ $type->[4][0], 0x05, ($type->[4][0]) ? be16b2int(substr($type->[1], $type->[4][0] + 1, 2)) : 0 ],
+			[ $type->[4][1], 0x00, ($type->[4][1]) ? be16b2int(substr($type->[1], $type->[4][1] + 1, 2)) : 0 ]
+		);
+
+		# Determine the current patch state
+		#
+		if (substr($type->[1], $type->[4][0], 1) eq chr(0x12) && ord(substr(${$fw}, $Current{'media_strat_revloc'}, 1)))
+		{
+			$is_patched = 1;
+		}
+		elsif (substr($type->[1], $type->[4][0], 1) eq chr(0x12) || ord(substr(${$fw}, $Current{'media_strat_revloc'}, 1)))
+		{
+			$fail->("Conflicting patch status!");
+			next;
+		}
+		else
+		{
+			$is_patched = 0;
+		}
+
+		# And now, to take care of the patch insert point...
+		#
+		if ($is_patched)
+		{
+			op_dbgout("media_strat_ps3s", "... This bank is already patched; looking for patch");
+			$potential_insert_area = substr($type->[1], $base, 0x10000 - ($base + 0x10));
+
+			# Read the patch to extract information
+			#
+			if ($potential_insert_area =~ /$insert_pattern/sg)
+			{
+				$insert_pt = (pos($potential_insert_area)) - length($template) + $base;
+				$table_pt = be16b2int($3);
+				$patch_pts[0][2] = be16b2int($2);
+				$patch_pts[1][2] = be16b2int($1);
+				$size_of_area = $base + length($potential_insert_area) - $insert_pt;
+			}
+			else
+			{
+				$fail->("Um, the patch can't be found!");
+				next;
+			}
+		}
+		else
+		{
+			op_dbgout("media_strat_ps3s", "... This bank has not been patched");
+			$potential_insert_area = substr($type->[1], $base - 2, 0x10000 - ($base + 0x10) + 2);
+
+			# Search for a suitable patch spot
+			#
+			if ($potential_insert_area !~ /$insert_pattern/s && $potential_insert_area =~ /\x00{2}(\x00{60,})$/sg)
+			{
+				$size_of_area = length($1);
+				$insert_pt = (pos($potential_insert_area)) - $size_of_area + ($base - 2);
+				$table_pt = $insert_pt + length($template);
+			}
+			else
+			{
+				$fail->("Unable to allocate space!");
+				next;
+			}
+		}
+
+		# If we've made it this far, then we're good to go!
+		#
+		$Current{'media_strat'}->[$type->[0]]{'status'} = ($is_patched) ? $Current{'media_strat_type'} : 0;
+		$Current{'media_strat'}->[$type->[0]]{'table'} = $table_pt + $type->[2];
+		$Current{'media_strat'}->[$type->[0]]{'table_maxlen'} = ($size_of_area - ($table_pt - $insert_pt) - 2) & 0xFFE;
+
+		op_dbgout("media_strat_ps3s", sprintf("... Insertion and table points: %04X / %04X", $insert_pt, $table_pt));
+		op_dbgout("media_strat_ps3s", sprintf("... Max table length: %3d bytes", $Current{'media_strat'}->[$type->[0]]{'table_maxlen'}));
+
+		# Diagnostic info
+		#
+		op_dbgout("media_strat_ps3s", "... Patch point info:");
+
+		foreach my $point (@patch_pts)
+		{
+			op_dbgout("media_strat_ps3s", sprintf("... > pt=%04X, entry=%04X, dptr=%04X", $point->[0], $insert_pt + $point->[1], $point->[2]));
+		}
+
+		# Start by clearing away the region
+		#
+		substr($type->[1], $insert_pt, $size_of_area, chr(0x00) x $size_of_area);
+
+		if ($patchmode == 0)
+		{
+			# Remove the patch
+			#
+			foreach my $point (@patch_pts)
+			{
+				substr($type->[1], $point->[0], 3, chr(0x90) . int2be16b($point->[2])) if ($point->[0]);
+			}
+		}
+		else
+		{
+			$insert = $template;
+
+			# Apply the patch
+			#
+			foreach my $point (@patch_pts)
+			{
+				substr($type->[1], $point->[0], 3, chr(0x12) . int2be16b($insert_pt + $point->[1])) if ($point->[0]);
+				substr($insert, $point->[1] + 1, 2, int2be16b($point->[2]));
+			}
+
+			substr($insert, $template_offset_type, 1, $type->[3]);
+			substr($insert, $template_offset_table, 2, int2be16b($table_pt));
+			substr($type->[1], $insert_pt, length($insert), $insert);
+		}
+
+		# Apply the changes to the firmware
+		#
+		substr(${$fw}, $type->[2], 0x10000, $type->[1]);
+
+		op_dbgout("media_strat_ps3s", "... Done!");
 
 	} # End: for each media format
 

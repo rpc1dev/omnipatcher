@@ -1,8 +1,8 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # Media : Main module
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/07/25, C64K
 #
 
 sub media_refresh_listitem # ( idx )
@@ -47,6 +47,8 @@ sub media_proc_listclick # ( idx )
 			ui_setdisable($MediaTab->{'Fields'}[$i]);
 			ui_settext($MediaTab->{'Fields'}[$i], '');
 		}
+
+		ui_settext($MediaTab->{'FieldLabels'}[$UI_MEDIA_TXTID_RID], $UI_MEDIA_TXT[$UI_MEDIA_TXTID_RID]);
 	}
 	else
 	{
@@ -82,7 +84,16 @@ sub media_proc_listclick # ( idx )
 		#
 		foreach $i (0 .. $#{$MediaTab->{'Fields'}})
 		{
-			$MediaTab->{'Fields'}[$i]->MaxLength((media_istype($code->[0], $MEDIA_TYPE_DVD_P)) ? 8 : 12) if ($i == $UI_MEDIA_TXTID_MID);
+			if (media_istype($code->[0], $MEDIA_TYPE_DVD_P))
+			{
+				ui_maxlength($MediaTab->{'Fields'}[$i], 8) if ($i == $UI_MEDIA_TXTID_MID);
+				ui_settext($MediaTab->{'FieldLabels'}[$i], $UI_MEDIA_TXT[$i]) if ($i == $UI_MEDIA_TXTID_RID);;
+			}
+			else
+			{
+				ui_maxlength($MediaTab->{'Fields'}[$i], 12) if ($i == $UI_MEDIA_TXTID_MID);
+				ui_settext($MediaTab->{'FieldLabels'}[$i], $UI_MEDIA_TXT_ALT[$i]) if ($i == $UI_MEDIA_TXTID_RID);;
+			}
 
 			if ($i == $UI_MEDIA_TXTID_TID && media_istype($code->[0], $MEDIA_TYPE_DVD_D))
 			{
@@ -131,7 +142,7 @@ sub media_proc_spdchange # ( )
 		if (!$FlagWarnedNonRSpeed && $code->[0] != $MEDIA_TYPE_DVD_PR && $code->[0] != $MEDIA_TYPE_DVD_DR)
 		{
 			$FlagWarnedNonRSpeed = 1;
-			ui_warning("Adjusting ±RW or ±R9 speeds is not recommended!\n\nPlease refer to the documentation for more information.\n\nYou will not see this message again until the next time this program\nis run.");
+			ui_warning("Adjusting DVD RW or DVD R9 speeds is not recommended!\n\nPlease refer to the documentation for more information.\n\nYou will not see this message again until the next time this program\nis run.");
 		}
 
 		$code->[4]{'SPD'} = 0;
@@ -181,7 +192,7 @@ sub media_proc_tweaks # ( idx )
 	my($idx) = @_;
 	my($entry, $src, $dst, $st_count, $sp_count);
 
-	foreach $entry (@MEDIA_TWEAKS)
+	foreach $entry (@{$MEDIA_TWEAKS{$Current{'fw_manuf'}}})
 	{
 		next unless ($entry->[3]($Current{'fw_gen'}));
 
@@ -244,6 +255,7 @@ sub media_save_report # ( filename )
 		}
 
 		$field_speeds =~ s/, (\s*)$/$1/;
+		$field_speeds = substr($field_speeds, 2) if ($field_speeds =~ /^\s{2,}$/g);
 
 		push(@{$typelists[$code->[0]]}, "$field_idx$code->[5]  [ $field_speeds ]$field_strat\n");
 	}
@@ -264,7 +276,7 @@ sub media_save_report # ( filename )
 
 	$report .= $make_header->("DVD Media Support Summary");
 	$report .= $make_infopair->("Total media codes", $Current{'media_count'});
-	map { $report .= $make_infopair->("$MEDIA_TYPE_NAME[$_] media codes", sprintf("%3d", $Current{'media_type_count'}->[$_])) } grep { $Current{'media_type_count'}->[$_] > 0 } (@{$MEDIA_TYPES[$MEDIA_TYPE_DVD_P]}, @{$MEDIA_TYPES[$MEDIA_TYPE_DVD_D]});
+	map { $report .= $make_infopair->("DVD$MEDIA_TYPE_NAME[$_] media codes", sprintf("%3d", $Current{'media_type_count'}->[$_])) } grep { $Current{'media_type_count'}->[$_] > 0 } (@{$MEDIA_TYPES[$MEDIA_TYPE_DVD_P]}, @{$MEDIA_TYPES[$MEDIA_TYPE_DVD_D]});
 	$report .= "\n";
 
 	foreach $i (0 .. $#typelists)
@@ -273,7 +285,7 @@ sub media_save_report # ( filename )
 		{
 			@{$typelists[$i]} = sort(@{$typelists[$i]}) if ($MEDIA_REPORT_MODE > 1);
 
-			$report .= $make_header->("$MEDIA_TYPE_NAME[$i] Media Codes ($Current{'media_type_count'}->[$i])");
+			$report .= $make_header->("DVD$MEDIA_TYPE_NAME[$i] Media Codes ($Current{'media_type_count'}->[$i])");
 			$report .= join('', @{$typelists[$i]}) . "\n";
 		}
 	}
@@ -315,7 +327,7 @@ sub media_load_report # ( filename )
 
 	foreach my $line (@lines)
 	{
-		if ($line =~ /^([+-]R[W9]?) Media Codes/s && exists($name2type{$1}))
+		if ($line =~ /^(?:DVD)?([+-]R[W9]?) Media Codes/s && exists($name2type{$1}))
 		{
 			$type = $name2type{$1};
 			next;

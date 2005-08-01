@@ -1,8 +1,8 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # Main : Application-specific configuration overrides
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/08/01, C64K
 #
 
 ##
@@ -15,6 +15,7 @@ $OP_SAVE_LOG = 0;
 #
 $FW_ALLOW_CUSTOM_DRIVEIDS = 0;
 $FW_ALLOW_ADVANCED_AUTOBS = 0;
+$FW_ALLOW_ENABLE_MTKFLASH = 0;
 
 ##
 # Media Options

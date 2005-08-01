@@ -1,3 +1,21 @@
+2.4.0 (17 Jul 2005)
+	* Added: Drive renaming and DVD read speed support for LiteOn-based DVD-ROM and DVD-ROM/CD-RW combo drives.
+	* Added: Full support for 3rd-generation LiteOn-based slimtype DVD-writers (SOSW-8?3S and equivalents).
+	* Added: General information display for other LiteOn-based drives (no patching).
+	* Changed: Adjusted some of the on-screen text for better clarity.
+	* Changed: 1653S firmwares that have a 1633S name and 1633S security checksum (BYX?, BS41, and B8S3) are now classified differently.
+	* Changed: Tweaked the text for the IDE activity indicator light patch.
+	* Other: Changed the program name.
+	* Other: Updated the recommended tweaks list to 3-02.
+	* Other: Updated the internal list of OEM rebadges.
+	* Other: Updated documentation.
+	* Fixed: [v2.4.0.1] Fixed the incorrect maximum write speed limits for slimtype drives.
+	* Other: [v2.4.0.1] Write strategy reassignment has been verified for the SDW-431S; warning message removed.
+	* Other: [v2.4.0.2] Made a very minor tweak to the format of the media code report file.
+	* Other: [v2.4.0.2] Added an additional note to the read speed patching section of the documentation.
+	* Fixed: [v2.4.0.3] Restricted the characters displayed by OmniPatcher to the ASCII character set (0x00 to 0x7F) to fix display corruption problems on systems that use non-ANSI character sets (e.g., Chinese character sets) and made a few minor wording changes.
+	* Fixed: [v2.4.0.3] Drag-file-to-open will no longer be available when it is inappropriate (e.g., in the middle of another file open operation).
+
 2.3.1 (27 Jun 2005)
 	* Other: Improved the way OmniPatcher determines which read speeds it should allow the user to select.
 	* Other: Updated the internal list of OEM rebadges... yet again.

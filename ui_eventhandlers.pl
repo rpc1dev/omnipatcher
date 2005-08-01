@@ -1,8 +1,8 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # User Interface : Event handlers
 #
-# Modified: 2005/06/27, C64K
+# Modified: 2005/07/25, C64K
 #
 
 ################################################################################
@@ -33,9 +33,11 @@
 	{
 		my(@files) = ui_getdropfiles(@_);
 
+		return 0 if ($ObjStBox->IsVisible() || $ObjMIDBox->IsVisible());
+
 		if ($#files == 0)
 		{
-			fw_load($files[0]);
+			fw_load($files[0]) if ($ObjMainCmd->{'Load'}->IsEnabled());
 		}
 		else
 		{
@@ -47,27 +49,43 @@
 
 	sub MainTabstrip_Change
 	{
-		my($i);
+		my($cursel) = ui_getselected($ObjMainTabstrip);
+
+		if ($FlagTabEnabledStatus[$cursel])
+		{
+			ui_setinvisible($ObjMainDisabledTabText);
+		}
+		else
+		{
+			ui_setvisible($ObjMainDisabledTabText);
+			$cursel = -1;
+		}
 
 		if ($UI_USE_ROOT)
 		{
-			foreach $i (0 .. $#ObjMainTabs)
+			foreach my $i (0 .. $#ObjMainTabs)
 			{
-				($i == ui_getselected($ObjMainTabstrip)) ?
+				($i == $cursel) ?
 				map { (ref($ObjMainTabs[$i]{$_}) eq 'ARRAY') ? map { ui_setvisible_tabchng($_) } @{$ObjMainTabs[$i]{$_}} : ui_setvisible_tabchng($ObjMainTabs[$i]{$_}) } keys(%{$ObjMainTabs[$i]}) :
 				map { (ref($ObjMainTabs[$i]{$_}) eq 'ARRAY') ? map { ui_setinvisible_tabchng($_) } @{$ObjMainTabs[$i]{$_}} : ui_setinvisible_tabchng($ObjMainTabs[$i]{$_}) } grep { $_ ne 'Frame' } keys(%{$ObjMainTabs[$i]});
 			}
 		}
 		else
 		{
-			foreach $i (0 .. $#ObjMainTabs)
+			foreach my $i (0 .. $#ObjMainTabs)
 			{
-				($i == ui_getselected($ObjMainTabstrip)) ?
+				($i == $cursel) ?
 				ui_setvisible_tabchng($ObjMainTabs[$i]{'Frame'}) :
 				ui_setinvisible_tabchng($ObjMainTabs[$i]{'Frame'});
 			}
 		}
 
+		return 1;
+	}
+
+	sub MainMaintenanceTimer_Timer
+	{
+		$MediaTab->{'InfoBox'}->InvalidateRect(1);
 		return 1;
 	}
 }
@@ -166,10 +184,10 @@
 		     ($code->[0] == $MEDIA_TYPE_DVD_PR || $code->[0] == $MEDIA_TYPE_DVD_DR) &&
 		     $Current{'media_strat'}->[$code->[0]]{'status'} >= 0 )
 		{
-			if ($Current{'fw_gen'} >= 0x110 && $Current{'fw_gen'} < 0x130 && !$FlagWarnedSlimStrat)
+			if ($Current{'fw_gen'} >= 0x120 && $Current{'fw_gen'} < 0x140 && !$FlagWarnedSlimStrat)
 			{
 				$FlagWarnedSlimStrat = 1;
-				ui_warning("Write strategy reassignment for slimtype drives is an experimental\nfeature in this version of OmniPatcher!\n\nYou will not see this message again until the next time this program\nis run.");
+				ui_warning("Write strategy reassignment for this drive type is an untested\nfeature in this version of OmniPatcher!\n\nPlease contact us if you would like to help verify whether write\nstrategy reassignment works.\n\nYou will not see this message again until the next time this program\nis run.");
 			}
 
 			@StratList = grep { $_->[0] == $code->[0] } @{$Current{'media_table'}};
@@ -207,6 +225,11 @@
 	sub MainTabs1Fields0_Change { media_proc_fieldchange() unless ($FlagIgnoreMediaChange); return 1; }
 	sub MainTabs1Fields1_Change { media_proc_fieldchange() unless ($FlagIgnoreMediaChange); return 1; }
 	sub MainTabs1Fields2_Change { media_proc_fieldchange() unless ($FlagIgnoreMediaChange); return 1; }
+
+	sub MainTabs1InfoBox_GotFocus
+	{
+		return MainMaintenanceTimer_Timer();
+	}
 
 	sub MainTabs1Tweak_Click
 	{
@@ -349,6 +372,17 @@
 		{
 			$FlagWarnedPatchDL = 1;
 			ui_warning("Please note that this is an experimental patch!\n\nYou should not use this patch unless you are experiencing\nproblems with deteriorating burns.\n\nPlease refer to the documentation for more information.\n\nYou will not see this message again until the next time this program\nis run.");
+		}
+
+		return 1;
+	}
+
+	sub MainTabs2PatchNSX_Click
+	{
+		if ($PatchesTab->{'NSX'}->GetCheck() && !$FlagWarnedPatchNSX)
+		{
+			$FlagWarnedPatchNSX = 1;
+			ui_infobox("In most cases, this patch is NOT necessary.\n\nPlease refer to the documentation for more information.\n\nYou will not see this message again until the next time this program\nis run.", "Notice");
 		}
 
 		return 1;

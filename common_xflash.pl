@@ -2,8 +2,8 @@
 # Code Guys Perl Projects
 # Common : XFlash functions
 #
-# Modified: 2005/06/26, C64K
-# Revision: 2.2.1
+# Modified: 2005/07/06, C64K
+# Revision: 2.2.2
 #
 # Implicit dependencies: common_util.pl
 #
@@ -217,10 +217,28 @@ sub com_xf_extract # ( f_in[, ret_extended ] )
 	#$COM_XF_EXTR_UNSCRAMBLE = 1 if (-f $COM_XF_UPX);
 
 	###
-	# Determine Mode
+	# Check the PE headers
 	#
 	$COM_XF_OUT_DEBUG->("Performing initial analysis");
 
+	open file, $f_in;
+	binmode file;
+	read(file, $data, 0x400);
+	close file;
+
+	if (substr($data, 0, 2) eq "MZ" && $data =~ /PE\x00\x00....(....)/s)
+	{
+		$COM_XF_OUT_DEBUG->(sprintf("... This file was compiled on %s GMT", scalar(gmtime(unpack("V", $1)))));
+	}
+	else
+	{
+		$COM_XF_OUT_DEBUG->("... This file is not an executable!");
+		return [ [ ], [ ] ];
+	}
+
+	###
+	# Determine Mode
+	#
 	$loaded = 0;
 
 	if ($COM_XF_EXTR_SCRAMSIZE == -1)

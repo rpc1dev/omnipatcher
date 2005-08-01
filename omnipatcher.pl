@@ -1,8 +1,8 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # Main : Main module
 #
-# Modified: 2005/06/25, C64K
+# Modified: 2005/08/01, C64K
 #
 
 require "appinfo.pl";
@@ -10,8 +10,8 @@ require "appinfo.pl";
 require "common_util.pl";
 require "common_xflash.pl";
 
-require "dvdrw_omnipatcher_config.pl";
-require "dvdrw_omnipatcher_misc.pl";
+require "omnipatcher_config.pl";
+require "omnipatcher_misc.pl";
 
 load_extconfig();
 
@@ -20,9 +20,11 @@ load_extconfig();
 #
 require "fw.pl";
 require "fw_const.pl";
+require "fw_mtk.pl";
 require "fw_patches.pl";
 require "fw_patches_ledblink.pl";
 require "fw_patches_readspeed.pl";
+require "fw_patches_rpc.pl";
 require "fw_specs.pl";
 
 require "media.pl";
@@ -42,19 +44,7 @@ require "ui_init_dimensions.pl";
 require "ui_init_windows.pl";
 
 ##
-# Process command line parameters...
+# Process command line parameters and enter the main GUI loop
 #
-if ($ARGV[0] eq "-savelog")
-{
-	$OP_SAVE_LOG = 1;
-	fw_load($ARGV[1]) if ($ARGV[1] ne "");
-}
-elsif ($ARGV[0] ne "")
-{
-	fw_load($ARGV[0]);
-}
-
-##
-# Enter GUI loop...
-#
+op_proc_args();
 Win32::GUI::Dialog();

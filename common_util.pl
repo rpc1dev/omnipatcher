@@ -2,8 +2,8 @@
 # Code Guys Perl Projects
 # Common : General utility functions
 #
-# Modified: 2005/06/26, C64K
-# Revision: 1.1.3
+# Modified: 2005/07/22, C64K
+# Revision: 1.1.6
 #
 # Implicit dependencies: (none)
 #
@@ -94,46 +94,44 @@ sub str2hex # ( str )
 	return join(' ', map { sprintf('%02X', ord($_)) } split (//, $_[0]));
 }
 
-sub str2unicode # ( str )
+sub str2be16b # ( str )
 {
 	##
-	# Converts a string to a Unicode string.
+	# Converts a standard 8-bit string to a 16-bit string.
 	#
 	return chr(0x00) . join(chr(0x00), split(//, $_[0]));
 }
 
-sub unicode2str # ( unicode )
+sub be16b2str # ( be16b )
 {
 	##
-	# Converts a Unicode string to a string.
+	# Converts a 16-bit string to a standard 8-bit string.
 	#
-	my($unicode) = @_;
+	my($be16b) = @_;
 	my($ret, $i);
 
-	for ($i = 1; $i < length($unicode); $i += 2)
+	for ($i = 1; $i < length($be16b); $i += 2)
 	{
-		$ret .= substr($unicode, $i, 1);
+		$ret .= substr($be16b, $i, 1);
 	}
 
 	return $ret;
 }
 
-sub int2unicode # ( int )
+sub int2be16b # ( int )
 {
 	##
-	# Converts an integer to Unicode (as a 2-byte string).
-	# Works only with values from 0-FFFF.
+	# Converts an integer to a string representing a 16-bit big endian integer.
 	#
-	return chr($_[0] >> 8) . chr($_[0] & 0xFF);
+	return pack("n", $_[0]);
 }
 
-sub unicode2int # ( unicode )
+sub be16b2int # ( be16b )
 {
 	##
-	# Converts a Unicode number (as a 2-byte string) to an integer.
-	# Works only with values from 0-FFFF.
+	# Converts a string representing a 16-bit big endian integer to an integer.
 	#
-	return (ord(substr($_[0], 0, 1)) << 8) + ord(substr($_[0], 1, 1));
+	return unpack("n", $_[0]);
 }
 
 sub notstr # ( str )
@@ -144,11 +142,12 @@ sub notstr # ( str )
 	return join('', map { chr(ord($_) ^ 0xFF) } split(//, $_[0]));
 }
 
-sub flipsig # ( str )
+sub rev_end # ( str )
 {
 	##
-	# Treats an 8-bit string as a 16-bit string and reverse the
-	# LSB and MSB of each 16-bit "character"
+	# Chunks a string of 8-bit bytes into a string of 16-bit words and
+	# then flips the LSB and MSB of each word; useful because IDE drive
+	# identifications are byte-swapped like this (ATAPI is "normal").
 	#
 	my($str) = @_;
 	my($ret, $i);
@@ -226,25 +225,66 @@ sub writebinary # ( filename, &buffer )
 ##
 # Firmware utilities
 #
-sub getfwid # ( &str[, relax_rules, internal_fwlen ] )
+sub getfwid_mtk # ( &str, rule_levels, internal_fwlen )
 {
 	##
 	# Extracts basic firmware information.
-	# Returns: (vid, pid, fwrev, timestamp, int_fwrev)
-	# Notes: Does not work with LTD-166S and older drives
+	# Returns: (rule_level, vid, pid, fwrev, timestamp, int_fwrev)
 	#
-	my($str, $relax_rules, $internal_fwlen) = @_;
-	my($core) = substr(${$str}, 0x4000);
-	my($internal_fwrev);
+	my($str, $rule_levels, $internal_fwlen) = @_;
+	my(@ret);
 
-	# Rule relaxations for OP...
-	# Fudge the internal firmware length a wee bit for the display
-	# of extended info, and fudge the drive ID detection a bit so that
-	# it'll detect some very old DVDRW drives (and mis-detect some DVD-ROM
-	# drives, which is why only OP can fudge on these rules).
+	# Run getfwid_mtk_helper with different levels of search rule relaxations
+	# until a result is found or until we run out of rule relaxation levels
 	#
-	$internal_fwlen = ($relax_rules) ? 10 : 8 unless (defined($internal_fwlen));
-	my($idbyte) = ($relax_rules) ? '[\x1F\x5B]' : '\x5B';
+	foreach my $rule_level (@{$rule_levels})
+	{
+		@ret = getfwid_mtk_helper($str, $rule_level, $internal_fwlen);
+
+		if ($ret[0])
+		{
+			$ret[0] = $rule_level;
+			last;
+		}
+	}
+
+	return @ret;
+}
+
+sub getfwid_mtk_helper # ( &str, rule_level, internal_fwlen )
+{
+	##
+	# Extracts basic firmware information.
+	# Returns: (found, vid, pid, fwrev, timestamp, int_fwrev)
+	#
+	my($str, $rule_level, $internal_fwlen) = @_;
+	my($core, $pattern, $internal_fwrev);
+
+	# Rule relaxations: Weaker pattern rules means more matches, especially
+	# for the older firmwares, but also increases the risk of false positives...
+	# most DVDRW drives should be fine with level 1, most drives with level 2,
+	# and level 3 will cover the legacy drives.
+	#
+	if ($rule_level == 1)
+	{
+		$core = substr(${$str}, 0x4000);
+		$pattern = '\x05\x80\x00\x32\x5B\x00{3}(.{8})(.{16})(.{4})(.{16})';
+	}
+	elsif ($rule_level == 2)
+	{
+		$core = substr(${$str}, 0x4000);
+		$pattern = '\x05\x80\x00\x32[\x1F\x5B]\x00{3}(.{8})(.{16})(.{4})(.{16})';
+	}
+	elsif ($rule_level == 3)
+	{
+		$core = substr(${$str}, 0x4000);
+		$pattern = '\x05\x80\x00[\x31\x32][\x1F\x5B]\x00{3}(.{8})(.{16})(.{4})(.{0})';
+	}
+	elsif ($rule_level == 4)
+	{
+		$core = substr(${$str}, 0x0000);
+		$pattern = '\x05\x80\x00[\x31\x32][\x1F\x5B]\x00{3}(.{8})(.{16})(.{4})(.{0})';
+	}
 
 	# Regexp patterns for finding the internal firmware version...
 	#
@@ -269,12 +309,12 @@ sub getfwid # ( &str[, relax_rules, internal_fwlen ] )
 	my(@ret) =
 	(
 		map { my($x) = $_; $x =~ s/\x00/ /sg; $x; }
-		($core =~ /\x05\x80\x00\x32$idbyte\x00{3}(.{8})(.{16})(.{4})(.{16})/s) ?
-		($1, $2, $3, $4, $internal_fwrev) :
-		('', '', '', '', $internal_fwrev)
+		($core =~ /$pattern/s) ?
+		(1, $1, $2, $3, $4, $internal_fwrev) :
+		(0, '', '', '', '', $internal_fwrev)
 	);
 
-	$ret[3] = '' if ($relax_rules && $ret[3] !~ /(?:199|20[01])\d/);
+	$ret[4] = '' if ($ret[4] !~ /(?:199|20[01])\d/s);
 
 	return @ret;
 }

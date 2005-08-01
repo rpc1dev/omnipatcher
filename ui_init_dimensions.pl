@@ -1,8 +1,8 @@
 ##
-# OmniPatcher for LiteOn DVD-Writers
+# OmniPatcher for Optical Drives
 # User Interface : Initialization, part 1: Establishing dimensions
 #
-# Modified: 2005/06/27, C64K
+# Modified: 2005/07/25, C64K
 #
 
 ################################################################################
@@ -12,8 +12,8 @@
 
 	# Font heights
 	#
-	$UI_FONTHEIGHT_TAHOMA = {Win32::GUI::Font->new(-face => "Tahoma", -size => 8)->GetMetrics()}->{'-height'};
-	$UI_FONTHEIGHT_CNEW = {Win32::GUI::Font->new(-face => "Courier New", -size => 10)->GetMetrics()}->{'-height'};
+	$UI_FONTHEIGHT_TAHOMA = {Win32::GUI::Font->new(-charset => 0, -face => "Tahoma", -size => 8)->GetMetrics()}->{'-height'};
+	$UI_FONTHEIGHT_CNEW = {Win32::GUI::Font->new(-charset => 0, -face => "Courier New", -size => 10)->GetMetrics()}->{'-height'};
 
 	# Experimentally-determined dimensions
 	#
@@ -72,6 +72,8 @@
 	$ui_dim_frame = [ $ui_dim_tabstrip->[0] - ($UI_MARGINS_TABSTRIP->[0] + $UI_MARGINS_TABSTRIP->[2]), $ui_dim_tabstrip->[1] - ($UI_MARGINS_TABSTRIP->[1] + $UI_MARGINS_TABSTRIP->[3])];
 	$ui_dim_cmdgrp = [ $ui_dim_tabstrip->[0], $UI_HEIGHT_BUTTON + $UI_MARGINS_GROUP->[1] + $UI_MARGINS_GROUP->[3] ];
 	$ui_dim_cmd = [ 80, $UI_HEIGHT_BUTTON ];
+	$ui_dim_disabledtab = [ $ui_dim_frame->[0] - 4, $UI_FONTHEIGHT_TAHOMA ];
+	$ui_pos_disabledtab = [ ($ui_dim_frame->[0] - $ui_dim_disabledtab->[0]) >> 1, ($ui_dim_frame->[1] - $ui_dim_disabledtab->[1]) >> 1 ];
 
 	$ui_dim_window = [ $ui_dim_tabstrip->[0] + 2 * $UI_MARGINS_GENERAL + $UI_NC_WIDTH, $ui_dim_tabstrip->[1] + $ui_dim_cmdgrp->[1] + 3 * $UI_MARGINS_GENERAL + $UI_NC_HEIGHT ];
 
