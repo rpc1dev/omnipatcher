@@ -1,3 +1,6 @@
+2.4.1 (3 Aug 2005)
+	* Fixed: Undamaged SOSW-833S firmwares are no longer mis-classified as damaged.
+
 2.4.0 (17 Jul 2005)
 	* Added: Drive renaming and DVD read speed support for LiteOn-based DVD-ROM and DVD-ROM/CD-RW combo drives.
 	* Added: Full support for 3rd-generation LiteOn-based slimtype DVD-writers (SOSW-8?3S and equivalents).

@@ -2,7 +2,7 @@
 # OmniPatcher for Optical Drives
 # Firmware : Main module
 #
-# Modified: 2005/08/01, C64K
+# Modified: 2005/08/03, C64K
 #
 
 sub fw_load # ( filename )
@@ -167,7 +167,7 @@ sub fw_parse_lo # ( )
 			{
 				op_dbgout("fw_parse_lo", "Firmware rebanking is required");
 				$Current{'fw_rebanked'} = 1;
-				$Current{'fw_common_len'} = ($Current{'fw_fwrev'} =~ /^[UV]/ && substr($Current{'fw'}, -16) eq "SONY CORPORATION") ? 0x3000 : 0x4000;
+				$Current{'fw_common_len'} = ($Current{'fw_fwrev'} =~ /^[UV]/ && substr($Current{'fw'}, -16) =~ /^[A-Z ]+$/s) ? 0x3000 : 0x4000;
 				$Current{'fw'} = fw_mtk_rebank(\$Current{'fw'}, \$Current{'fw_bootcode'}, 1, $Current{'fw_common_len'});
 			}
 			else
@@ -207,7 +207,7 @@ sub fw_parse_lo # ( )
 				{
 					$fw_letter = lc($fw_letter);
 
-					if (substr($Current{'fw'}, -16) ne "SONY CORPORATION")
+					if (substr($Current{'fw'}, -16) !~ /^[A-Z ]+$/s)
 					{
 						$Current{'fw_saveable'} = 0;
 						$Current{'fw_enable_driveid'} = 0;
