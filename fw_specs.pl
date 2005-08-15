@@ -2,7 +2,7 @@
 # OmniPatcher for Optical Drives
 # Firmware : Specifications/parameters table
 #
-# Modified: 2005/08/01, C64K
+# Modified: 2005/08/15, C64K
 #
 
 ##
@@ -81,6 +81,7 @@ push( @{$FW_PARAMS_LO_DVDRW{'U'}}, [
 	[ 'FREECOM_', 'DVD+/-RW8J1'      ],
 	[ 'GIGABYTE', 'GO-W0808A'        ],
 	[ 'HIVISION', 'DRW2S81'          ],
+	[ 'IOMEGA'  , 'DVDRW8440E2D-B'   ],
 	[ 'Memorex' , 'DVD+/-RW True8XI' ],
 	[ 'TEAC'    , 'DV-W58G-A'        ],
 ] );
@@ -284,6 +285,7 @@ push( @{$FW_PARAMS_LO_DVDROM{'G'}}, [
 	[ 'CREATIVE', 'DVD-ROM DVD1640E' ],	# Not verified
 	[ 'Maxell'  , 'MDVD-ROM16'       ],
 	[ 'Memorex' , 'DVD-MAXX 1648 AJ' ],
+	[ '_NEC'    , 'DV-5800B'         ],	# Not verified
 	[ 'LITEON'  , 'DVD-ROM LTD163D'  ],
 	[ 'JLMS'    , 'XJ-HD163D'        ],
 ] );
@@ -304,6 +306,7 @@ push( @{$FW_PARAMS_LO_DVDROM{'D'}}, [
 	[ 'GIGABYTE', 'GO-D1600A'        ],	# Not verified
 	[ 'LEMEL'   , 'LDV-1648L'        ],	# Not verified
 	[ 'Memorex' , '16X DVD-ROM AJiA' ],
+	[ '_NEC'    , 'DV-5800C'         ],	# Not verified
 ] );
 
 push( @{$FW_PARAMS_LO_DVDROM{'9'}}, [
@@ -318,6 +321,7 @@ push( @{$FW_PARAMS_LO_DVDROM{'F'}}, [
 	[ 'LITE-ON' , 'DVD SOHD-16P9S'   ],
 	[ 'DVD-ROM' , 'DVD-9S16P'        ],
 	[ 'SONY'    , 'DVD-ROM DDU1615'  ],
+	[ '_NEC'    , 'DV-5800D'         ],
 	[ 'TEAC'    , 'DV-516G'          ],
 ] );
 

@@ -2,7 +2,7 @@
 # OmniPatcher for Optical Drives
 # Firmware : General patches
 #
-# Modified: 2005/08/01, C64K
+# Modified: 2005/08/15, C64K
 #
 
 ##
@@ -869,11 +869,21 @@ sub fw_pat_cf # ( testmode, patchmode )
 			op_dbgout("fw_pat_cf", sprintf("Checksum function found at 0x%X", $Current{'fw_ebank'} + be16b2int($check_addr)));
 			op_dbgout("fw_pat_cf", sprintf("Checksum XOR value: 0x%02X", ord($1))) if ($work =~ /\x90..\xE0\x64(.)\xFF\xF0\x22/s);
 
+			my($ins_loc) = 0xFFF0;
+
+			if ( ($orig eq $off && substr($work, $ins_loc, 8) ne chr(0x00) x 8 && substr($work, $ins_loc + 8, 8) eq chr(0x00) x 8) ||
+			     ($orig ne $off && substr($work, $ins_loc, 8) ne $insert       && substr($work, $ins_loc + 8, 8) eq $insert      ) )
+			{
+				$ins_loc += 8;
+			}
+
+			op_dbgout("fw_pat_cf", sprintf("Insertion offset set to: 0x%X", $Current{'fw_ebank'} + $ins_loc));
+
 			my($count, $match, $bsub_call_pt);
 			my($bsub_call_pattern) = quotemeta("\x90$check_addr\x02");
 			my($bank0) = substr(${$fw}, 0, 0x10000);
 
-			while ($bank0 =~ /($bsub_call_pattern|\x90\xFF\xF0\x02)/sg)
+			while ($bank0 =~ /($bsub_call_pattern|\x90\xFF[\xF0\xF8]\x02)/sg)
 			{
 				$match = $1;
 				$bsub_call_pt = (pos($bank0)) - length($1);
@@ -888,7 +898,7 @@ sub fw_pat_cf # ( testmode, patchmode )
 
 				if ($patchmode)
 				{
-					$check_1 = "\x90\xFF\xF0\x02";
+					$check_1 = "\x90" . int2be16b($ins_loc) . "\x02";
 					$check_2 = $insert;
 				}
 				else
@@ -908,10 +918,10 @@ sub fw_pat_cf # ( testmode, patchmode )
 					substr(${$fw}, ($bank << 16) + $bsub_call_pt, 4, $check_1);
 				}
 
-				if ( substr(${$fw}, $Current{'fw_ebank'} + 0xFFF0, 8) eq chr(0x00) x 8 ||
-				     substr(${$fw}, $Current{'fw_ebank'} + 0xFFF0, 8) eq $insert )
+				if ( substr(${$fw}, $Current{'fw_ebank'} + $ins_loc, 8) eq chr(0x00) x 8 ||
+				     substr(${$fw}, $Current{'fw_ebank'} + $ins_loc, 8) eq $insert )
 				{
-					substr(${$fw}, $Current{'fw_ebank'} + 0xFFF0, 8, $check_2);
+					substr(${$fw}, $Current{'fw_ebank'} + $ins_loc, 8, $check_2);
 				}
 				else
 				{
