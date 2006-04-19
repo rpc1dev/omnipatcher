@@ -125,7 +125,8 @@ sub fw_rs_patch_lo_w # ( testmode, patchmode )
 
 	my($bank) = substr(${$fw}, $Current{'fw_rbank'}, 0x10000);
 
-	if ($bank =~ /(?#1)((?:\x02(?#2:insert_addr)(\xFF.)\x00|\xE5\x24\x24\x7E)(?#type_detection)(?#type82)(?:\x60.)\x14(?#type83)(?:\x60.).+?\x24.\x70.(?:(?#3:speed_assignment)((?:\x7F.\x80.)+)\x7F[\x01\x02](?!\x80)|.{146,162}?\x75\x3E.\xAF\x3E)(?#4:return_point)(.*?\x22))/sg)
+#	if ($bank =~ /(?#1)((?:\x02(?#2:insert_addr)(\xFF.)\x00|\xE5\x24\x24\x7E)(?#type_detection)(?#type82)(?:\x60.)\x14(?#type83)(?:\x60.).+?\x24.\x70.(?:(?#3:speed_assignment)((?:\x7F.\x80.)+)\x7F[\x01\x02](?!\x80)|.{146,162}?\x75\x3E.\xAF\x3E)(?#4:return_point)(.*?\x22))/sg)
+	if ($bank =~ /(?#1)((?:\x02(?#2:insert_addr)(\xFF.)\x00|\xE5\x24\x24\x7E)(?#type_detection)(?#type82)(?:\x60.)\x14(?#type83)(?:\x60.).+?\x24.\x70.(?:(?#3:speed_assignment)((?:\x7F.\x80.).+?\x7F.\x80.(?:(?:\x7F.\x80.)+))\x7F[\x01\x02](?!\x80)|.{146,162}?\x75\x3E.\xAF\x3E)(?#4:return_point)(.*?\x22))/sg)
 	{
 		# Type 1 function (401S thru 1673S)
 		#

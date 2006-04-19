@@ -2,7 +2,7 @@
 # OmniPatcher for Optical Drives
 # Main : Main module
 #
-# Modified: 2005/08/01, C64K
+# Modified: 2006/04/11, CK
 #
 
 require "appinfo.pl";

@@ -869,7 +869,8 @@ sub fw_pat_cf # ( testmode, patchmode )
 			op_dbgout("fw_pat_cf", sprintf("Checksum function found at 0x%X", $Current{'fw_ebank'} + be16b2int($check_addr)));
 			op_dbgout("fw_pat_cf", sprintf("Checksum XOR value: 0x%02X", ord($1))) if ($work =~ /\x90..\xE0\x64(.)\xFF\xF0\x22/s);
 
-			my($ins_loc) = 0xFFF0;
+			my($ins_loc) = ($Current{'fw_gen'} < 0x034) ? 0xFFF0 : 0xFFE0;
+#			op_dbgout("fw_debug", "Got here");
 
 			if ( ($orig eq $off && substr($work, $ins_loc, 8) ne chr(0x00) x 8 && substr($work, $ins_loc + 8, 8) eq chr(0x00) x 8) ||
 			     ($orig ne $off && substr($work, $ins_loc, 8) ne $insert       && substr($work, $ins_loc + 8, 8) eq $insert      ) )

@@ -1,3 +1,9 @@
+2.4.4 (11 Apr 2006)
+	* Added: 16P1S DVD-ROM read speed patch allows 12x/16x for R9/ROM9 dual layer
+	
+2.4.3 (29 Dec 2005)
+	* Fixed: Read speed patch disabled with latest firmware releases
+
 2.4.2 (15 Aug 2005)
 	* Fixed: The crossflashing patch now works for KY04.
 	* Other: Updated the internal list of OEM rebadges.

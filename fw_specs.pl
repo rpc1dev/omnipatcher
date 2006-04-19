@@ -2,6 +2,7 @@
 # OmniPatcher for Optical Drives
 # Firmware : Specifications/parameters table
 #
+# Modified: 2005/11/21, CK
 # Modified: 2005/08/15, C64K
 #
 
@@ -11,6 +12,7 @@
 %FW_PARAMS_LO_DVDRW =
 (
 	# fw_letter => [ 'fw_gen', 'fw_family', 'fw_ebank', 'fw_rbank', 'media_pbank', 'media_dbank', 'media_limits'->[ pr, prw, pr9, dr, drw, dr9 ], 'media_count_expected', 'fw_rs_limits'->list, 'fw_rs_defaults'->list, 'fw_idlist' ]
+	#  ebank = eeprom routine, rbank = read speed, 
 	#
 	# Note that the speed limits encoded here are done
 	# so in the order indicated in media_const.pl.
@@ -31,6 +33,8 @@
 	'C' => [ 0x032, 'SOHW-1653S',     0x090000, 0x020000, 0x0E0000, 0x090000, [ 16, 4, 4, 12, 4, 0 ], 220, [ 16, 16, 16, 16, 12 ], [ 16, 8, 8, 8, 6 ] ],
 	'J' => [ 0x033, 'SOHW-1673S',     0x0A0000, 0x020000, 0x0B0000, 0x100000, [ 16, 8, 4, 16, 6, 0 ], 250, [ 16, 16, 16, 16, 12 ], [ 16, 8, 8, 8, 6 ] ],
 	'K' => [ 0x033, 'SOHW-1693S',     0x0A0000, 0x020000, 0x0B0000, 0x100000, [ 16, 8, 4, 16, 6, 4 ], 250, [ 16, 16, 16, 16, 12 ], [ 16, 8, 8, 8, 6 ] ],
+#	'Y' => [ 0x034, 'SOHW-1635S',     0x090000, 0x010000, 0x090000, 0x0F0000, [ 16, 8, 8, 16, 6, 4 ], 250, [ 16, 16, 16, 16, 12 ], [ 16, 8, 8, 8, 6 ] ],
+#	'L' => [ 0x034, 'SOHW-16H5S',     0x090000, 0x010000, 0x090000, 0x0F0000, [ 16, 8, 8, 16, 6, 4 ], 250, [ 16, 16, 16, 16, 12 ], [ 16, 8, 8, 8, 6 ] ],
 
 	'L' => [ 0x111, 'SDW-421S',       0x000000, 0x030000, 0x000000, 0x000000, [  4, 2, 0,  0, 0, 0 ],   0, [  8,  8,  8,  8,  8 ], [  8, 6, 6, 6, 4 ] ],
 	'M' => [ 0x111, 'SDW-431S',       0x0C0000, 0x040000, 0x0A0000, 0x0D0000, [  4, 2, 0,  2, 2, 0 ],  90, [  8,  8,  8,  8,  8 ], [  8, 6, 6, 6, 4 ] ],
@@ -160,6 +164,11 @@ push( @{$FW_PARAMS_LO_DVDRW{'K'}}, [
 	[ 'SONY'    , 'DVD RW DW-Q28A'   ],
 ] );
 
+#push( @{$FW_PARAMS_LO_DVDRW{'L'}}, [
+#	[ 'LITE-ON' , 'DVDRW SHW-16H5S ' ],
+#	[ 'SONY'    , 'DVD RW DW-Q31A'   ],
+#] );
+
 push( @{$FW_PARAMS_LO_DVDRW{'L'}}, [
 	[ 'Slimtype', 'DVD+RW SDW-421S'  ],
 ] );
@@ -188,6 +197,12 @@ push( @{$FW_PARAMS_LO_DVDRW{'v'}}, [
 	[ 'Slimtype', 'DVDRW SOSW-833S'  ],
 	[ 'SONY'    , 'DVD RW DW-Q60A'   ],	# Not verified
 ] );
+
+#push( @{$FW_PARAMS_LO_DVDRW{'Y'}}, [
+#	[ 'LITE-ON' , 'DVDRW SHW-1635S ' ],
+#	[ 'SONY'    , 'DVD RW DW-Q30A'   ],
+#] );
+
 
 ##
 # Combos
@@ -259,14 +274,14 @@ push( @{$FW_PARAMS_LO_COMBO{'r'}}, [
 (
 	# fw_letter => [ 'fw_family', 'fw_rs_limits'->list, 'fw_rs_defaults'->list, 'fw_idlist' ]
 	#
-	'~' => [ 'DVD-ROM Drive',       [  0,  0,  0,  0,  0 ], [  0, 0, 0, 0, 0 ], [ ] ],
+	'~' => [ 'DVD-ROM Drive',        [  0,  0,  0,  0,  0 ], [  0, 0, 0, 0, 0 ], [ ] ],
 
-	'I' => [ 'LTD-122',             [  0,  0,  0,  0,  0 ], [  0, 0, 0, 0, 0 ] ],
-	'G' => [ 'LTD-163 or LTD-163D', [ 16, 10, 16, 16, 10 ], [ 16, 8, 8, 8, 8 ] ],
-	'C' => [ 'LTD-165H',            [ 16, 10, 16, 16, 10 ], [ 16, 8, 8, 8, 8 ] ],
-	'D' => [ 'LTD-166S',            [ 16, 10, 16, 16, 10 ], [ 16, 8, 8, 8, 8 ] ],
-	'9' => [ 'SOHD-167T',           [ 16, 10, 16, 16, 10 ], [ 16, 8, 8, 8, 8 ] ],
-	'F' => [ 'SOHD-16P9S',          [ 16, 16, 16, 16, 12 ], [ 16, 8, 8, 8, 8 ] ],
+	'I' => [ 'LTD-122',              [  0,  0,  0,  0,  0 ], [  0, 0, 0, 0, 0 ] ],
+	'G' => [ 'LTD-163(D)/SHD-16P1S', [ 16, 16, 16, 16, 12 ], [ 16, 8, 8, 8, 8 ] ],
+	'C' => [ 'LTD-165H',             [ 16, 10, 16, 16, 10 ], [ 16, 8, 8, 8, 8 ] ],
+	'D' => [ 'LTD-166S',             [ 16, 10, 16, 16, 10 ], [ 16, 8, 8, 8, 8 ] ],
+	'9' => [ 'SOHD-167T',            [ 16, 10, 16, 16, 10 ], [ 16, 8, 8, 8, 8 ] ],
+	'F' => [ 'SOHD-16P9S',           [ 16, 16, 16, 16, 12 ], [ 16, 8, 8, 8, 8 ] ],
 );
 
 push( @{$FW_PARAMS_LO_DVDROM{'I'}}, [
