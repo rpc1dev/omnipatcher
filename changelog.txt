@@ -1,3 +1,6 @@
+2.4.7 (15 Sep 2006)
+	* Added: Recognizes and supports read speed patch for later LITEON SHD-16S1S DVD-ROM firmwares
+
 2.4.6 (28 Jul 2006)
 	* Added: Recognizes and supports read speed patch for later SONY DDU1615 DVD-ROM firmwares
 
