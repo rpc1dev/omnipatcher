@@ -1,3 +1,8 @@
+2.4.5 (28 Jul 2006)
+	* Added: Recognizes and supports read speed patch for later 16P1S DVD-ROM firmwares
+
+[NB: THE SOURCE CODE FOR VERSIONS ABOVE THIS IS NOT AVAILABLE]
+
 2.4.4 (11 Apr 2006)
 	* Added: 16P1S DVD-ROM read speed patch allows 12x/16x for R9/ROM9 dual layer
 	
