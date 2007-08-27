@@ -1,3 +1,7 @@
+2.6.0 (27 Aug 2007)
+	* Added: Supports read speed patch for LITEON LTD-163D DVD-ROM GHRB firmware
+	* Added: New "Exit" button on main dialog
+
 2.4.8 (03 Apr 2007)
 	* Added: Recognizes and supports read speed patch for LITEON LH-16D1P DVD-ROM firmwares
 
