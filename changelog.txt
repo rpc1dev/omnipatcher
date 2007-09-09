@@ -1,3 +1,6 @@
+2.6.1 (28 Aug 2007)
+	* Added: Supports read speed patch for LITEON SHD-16S1S DVD-ROM ESxx firmware
+
 2.6.0 (27 Aug 2007)
 	* Added: Supports read speed patch for LITEON LTD-163D DVD-ROM GHRB firmware
 	* Added: New "Exit" button on main dialog
