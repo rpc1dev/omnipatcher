@@ -1,3 +1,6 @@
+2.6.2 (10 Sep 2007)
+	* Added: New look to tab frame
+
 2.6.1 (28 Aug 2007)
 	* Added: Supports read speed patch for LITEON SHD-16S1S DVD-ROM ESxx firmware
 
