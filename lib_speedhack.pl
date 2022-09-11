@@ -84,6 +84,10 @@ sub getmctype # ( )
 			$file_data{'mctype'} = 0;
 			$file_data{'mcpdata'} = [ 0, 0, 0 ];
 		}
+
+		# Begin firmware-specific additions...
+		#
+		push(@{$file_data{'mcpdata'}}, [ 0x1784, 10, 0x0000 ]) if ($file_data{'fwrev'} =~ /^BS0[6AC]$/);
 	}
 }
 

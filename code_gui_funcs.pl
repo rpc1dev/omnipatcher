@@ -61,6 +61,11 @@ sub load_file # ( )
 		$file_data{'fwfamily'} = 'SOHW-1213S';
 		$file_data{'gen'} = 3;
 	}
+	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'A')
+	{
+		$file_data{'fwfamily'} = 'SOHW-1613S';
+		$file_data{'gen'} = 3;
+	}
 	elsif (substr($file_data{'fwrev'}, 0, 1) eq 'B')
 	{
 		$file_data{'fwfamily'} = 'SOHW-1633S';
@@ -101,8 +106,20 @@ sub load_file # ( )
 	}
 	else
 	{
-		$file_data{'pbankpos'} = 0xC0000;
+		$file_data{'pbankpos'} = 0x00000;
 		$file_data{'dbankpos'} = 0x90000;
+
+		$file_data{'pbankpos'} = 0xC0000 if (substr($file_data{'work'}, 0xC0000, 0x10000) =~ /$PLUS_SAMPLE/);
+		$file_data{'pbankpos'} = 0xE0000 if (substr($file_data{'work'}, 0xE0000, 0x10000) =~ /$PLUS_SAMPLE/);
+	}
+
+	$file_data{'timestamp'} = 'Unknown';
+
+	if ($file_data{'work'} =~ /\x07\x01\x03\x00\x78\x00\x78\x00\xE3\x00\x78\x00.{78}(.{16})/s)
+	{
+		$file_data{'timestamp'} = $1;
+		$file_data{'timestamp'} =~ s/\s+$//;
+		$file_data{'timestamp'} =~ s/^\s+//;
 	}
 
 	getmctype();
@@ -110,7 +127,17 @@ sub load_file # ( )
 	$file_data{'codes'} = [ getcodes() ];
 	$file_data{'ncodes'} = scalar(@{$file_data{'codes'}});
 
-	if ($file_data{'gen'} >= 3 && $file_data{'ncodes'} < 120)
+	if ($file_data{'mctype'} == 2 && $file_data{'fwfamily'} =~ /^SOHW-1[26]([13])3S$/)
+	{
+		my($codetbl_expected) = ($1 eq '1') ? 8 : 9;
+		my($codetbl_actual) = scalar(@{$file_data{'mcpdata'}}) + scalar(@{$file_data{'mcddata'}});
+
+		if ($codetbl_actual < $codetbl_expected)
+		{
+			error(sprintf("OmniPatcher expected to find %d media tables in this firmware,\nhowever, only %d tables were recognized.\n\nThere will likely be some media codes in this firmware that\nare present but that are not being reported by OmniPatcher.", $codetbl_expected, $codetbl_actual));
+		}
+	}
+	elsif ($file_data{'gen'} >= 3 && $file_data{'ncodes'} < 120)
 	{
 		$file_data{'codes'} = [ ];
 		$file_data{'ncodes'} = 0;
@@ -424,10 +451,10 @@ sub save_report # ( file_name )
 
 	$report  = "OmniPatcher Media Code Report\n";
 	$report .= "=============================\n\n";
-	$report .= " Firmware revision: $file_data{'fwrev'}\n" if ($file_data{'fwrev'} ne "");
-	$report .= "        Drive type: $file_data{'fwfamily'}\n" if ($file_data{'fwfamily'} ne "");
 	$report .= "         File name: $file_data{'shortname'}\n";
-	$report .= "File last modified: " . localtime((stat($file_data{'longname'}))[9]) . "\n\n\n";
+	$report .= "        Drive type: $file_data{'fwfamily'}\n" if ($file_data{'fwfamily'} ne "");
+	$report .= " Firmware revision: $file_data{'fwrev'}\n" if ($file_data{'fwrev'} ne "");
+	$report .= "Firmware timestamp: $file_data{'timestamp'}\n\n\n";
 
 	foreach $type (@types)
 	{
