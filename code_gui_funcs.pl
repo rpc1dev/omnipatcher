@@ -4,17 +4,19 @@ sub load_file # ( )
 {
 	my($i, $label);
 
+	$file_data{'core'} = substr($file_data{'work'}, 0x4000);
+
 	my($fwr_len) = 16;
 	my($fwr_pat) = '\x7D(.)\x90.{21,23}' x $fwr_len;
 
 	$file_data{'fwrev'} = '';
 	$file_data{'fwfamily'} = '';
 
-	if ($file_data{'work'} =~ /$fwr_pat/s)
+	if ($file_data{'core'} =~ /$fwr_pat/s)
 	{
 		for ($i = 1; $i <= $fwr_len; ++$i)
 		{
-			$file_data{'fwrev'} .= substr($file_data{'work'}, $-[$i], $+[$i] - $-[$i]);
+			$file_data{'fwrev'} .= substr($file_data{'core'}, $-[$i], $+[$i] - $-[$i]);
 		}
 
 		$file_data{'fwrev'} =~ s/\s+$//;
@@ -113,11 +115,22 @@ sub load_file # ( )
 		$file_data{'pbankpos'} = 0xE0000 if (substr($file_data{'work'}, 0xE0000, 0x10000) =~ /$PLUS_SAMPLE/);
 	}
 
+	$file_data{'drivevid'} = 'Unknown';
+	$file_data{'drivepid'} = 'Unknown';
 	$file_data{'timestamp'} = 'Unknown';
 
-	if ($file_data{'work'} =~ /\x07\x01\x03\x00\x78\x00\x78\x00\xE3\x00\x78\x00.{78}(.{16})/s)
+	if ($file_data{'core'} =~ /\x07\x01\x03\x00\x78\x00\x78\x00\xE3\x00\x78\x00.{50}(.{8})(.{16}).{4}(.{16})/s)
 	{
-		$file_data{'timestamp'} = $1;
+		$file_data{'drivevid'} = $1;
+		$file_data{'drivepid'} = $2;
+		$file_data{'timestamp'} = $3;
+
+		$file_data{'drivevid'} =~ s/\s+$//;
+		$file_data{'drivevid'} =~ s/^\s+//;
+
+		$file_data{'drivepid'} =~ s/\s+$//;
+		$file_data{'drivepid'} =~ s/^\s+//;
+
 		$file_data{'timestamp'} =~ s/\s+$//;
 		$file_data{'timestamp'} =~ s/^\s+//;
 	}
@@ -142,6 +155,39 @@ sub load_file # ( )
 		$file_data{'codes'} = [ ];
 		$file_data{'ncodes'} = 0;
 		error("Unable to read the media code table!\n\nYou may need to upgrade to a newer\nversion of OmniPatcher.");
+	}
+
+	if ($file_data{'fwrev'} eq 'BS06')
+	{
+		$file_data{'speed_type'} = 1;
+	}
+	else
+	{
+		$file_data{'speed_type'} = 0;
+
+		for ($i = 0; $i < $file_data{'ncodes'}; ++$i)
+		{
+			if ($file_data{'codes'}->[$i][1][-1] > 0xFF)
+			{
+				$file_data{'speed_type'} = 2;
+				last;
+			}
+			elsif ($file_data{'codes'}->[$i][1][-1] > 0x7F)
+			{
+				$file_data{'speed_type'} = 1;
+			}
+		}
+	}
+
+	if ($file_data{'speed_type'} == 2)
+	{
+		@MEDIA_SPEEDS = @MEDIA_SPEEDS_2;
+		SetTop($ObjSpeeds[6], $ObjSpeeds[5]->Top());
+	}
+	else
+	{
+		@MEDIA_SPEEDS = @MEDIA_SPEEDS_0;
+		SetTop($ObjSpeeds[6], $ObjSpeeds[7]->Top());
 	}
 
 	$file_data{'speeds'} = [ map { $_->[1][-1] } @{$file_data{'codes'}} ];
@@ -214,12 +260,20 @@ sub load_file # ( )
 		$file_data{'patch_status'}->[3] = patch_sf(1, -1);
 		$file_data{'patch_status'}->[4] = patch_ff(1, -1);
 		$file_data{'patch_status'}->[5] = patch_eeprom(1, -1);
+
+		SetText($ObjPatches[0], $PATCH_0_BASE . " to 8x")
 	}
 	elsif ($file_data{'gen'} == 3)
 	{
 		$file_data{'patch_status'}->[0] = patch_rs2(1);
 		$file_data{'patch_status'}->[1] = patch_abs(1, -1);
 		$file_data{'patch_status'}->[5] = patch_eeprom(1, -1);
+
+		SetText($ObjPatches[0], $PATCH_0_BASE . " to 12x")
+	}
+	else
+	{
+		SetText($ObjPatches[0], $PATCH_0_BASE)
 	}
 
 	foreach $i (0 .. $#ObjPatches)
@@ -452,8 +506,10 @@ sub save_report # ( file_name )
 	$report  = "OmniPatcher Media Code Report\n";
 	$report .= "=============================\n\n";
 	$report .= "         File name: $file_data{'shortname'}\n";
-	$report .= "        Drive type: $file_data{'fwfamily'}\n" if ($file_data{'fwfamily'} ne "");
-	$report .= " Firmware revision: $file_data{'fwrev'}\n" if ($file_data{'fwrev'} ne "");
+	$report .= "        Drive type: " . (($file_data{'fwfamily'} ne "") ? "$file_data{'fwfamily'}\n" : "Unknown\n");
+	$report .= "     Vendor string: $file_data{'drivevid'}\n";
+	$report .= "    Product string: $file_data{'drivepid'}\n";
+	$report .= " Firmware revision: " . (($file_data{'fwrev'} ne "") ? "$file_data{'fwrev'}\n" : "Unknown\n");
 	$report .= "Firmware timestamp: $file_data{'timestamp'}\n\n\n";
 
 	foreach $type (@types)
@@ -521,6 +577,15 @@ sub proc_speed
 		{
 			$PlusR9Warned = 1;
 			Win32::GUI::MessageBox($hWndMain, "Adjusting +R9 speeds is not recommended!\n\nYou will not see this warning message again until the next time this\nprogram is run.", "Warning!", MB_OK | MB_ICONWARNING);
+		}
+
+		if ($file_data{'speed_type'} == 1)
+		{
+			SetCheck($ObjSpeeds[7], $ObjSpeeds[6]->GetCheck());
+		}
+		elsif ($file_data{'speed_type'} == 2)
+		{
+			SetCheck($ObjSpeeds[8], $ObjSpeeds[7]->GetCheck());
 		}
 
 		$file_data{'speeds'}->[$idx] = 0;

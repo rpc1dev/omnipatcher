@@ -17,6 +17,11 @@ sub addr2bankstr # ( address )
 	return chr($address / 0x100) . chr($address % 0x100);
 }
 
+sub int2uni # ( val )
+{
+	return chr($_[0] / 0x100) . chr($_[0] % 0x100);
+}
+
 sub getcodes2 # ( )
 {
 	my($data);
@@ -63,6 +68,8 @@ sub getcodes2 # ( )
 			$tid = nulltrim(substr($id, 8, 3));
 			$rid = ord(substr($id, 11, 1));
 			$spd = ord(substr($id, 12, 1));
+
+			$spd += ord(substr($data, ($j + 1) * $PLUS_LEN - 2, 1)) * 0x100;
 
 			push @codes, [ $type, [ $mid, $tid, $rid, $spd ], sprintf("%-8s/%-3s/%02X", $mid, $tid, $rid), $id_offset * 0x40 + $j ];
 		}
@@ -137,8 +144,8 @@ sub setcodes2 # ( )
 		$tid = nullpad($patch->[1], 3);
 
 		$code_id = nullbuf($mid . $tid . chr($patch->[2]));
-		$code_old = $code_id . nullbuf(chr($patch->[3]));
-		$code_new = $code_id . nullbuf(chr($patch->[4]));
+		$code_old = $code_id . int2uni($patch->[3]);
+		$code_new = $code_id . int2uni($patch->[4]);
 		($code_id_m, $code_old_m, $code_new_m) = map { quotemeta } ($code_id, $code_old, $code_new);
 
 		$data =~ s/$code_old_m/$code_new/g;

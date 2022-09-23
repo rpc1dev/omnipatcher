@@ -35,6 +35,26 @@ $hWndMain = 0;
 		return [ $_[0]->Left(), $_[0]->Top() ];
 	}
 
+	sub SetLeft # ( obj, loc )
+	{
+		my($obj, $loc) = @_;
+
+		if ($obj->Left() != $loc)
+		{
+			$obj->Left($loc);
+		}
+	}
+
+	sub SetTop # ( obj, loc )
+	{
+		my($obj, $loc) = @_;
+
+		if ($obj->Top() != $loc)
+		{
+			$obj->Top($loc);
+		}
+	}
+
 	sub SetText # ( obj, str )
 	{
 		my($obj, $str) = @_;
@@ -115,11 +135,17 @@ $hWndMain = 0;
 ################################################################################
 # BEGIN: Section: initialize tool settings
 {
-	@MEDIA_SPEEDS = ( 1, 2, 4, 6, 8, 12, 16, 20 );
+	$MGROUP_NAME = "DVD Media Codes";
+	$PATCH_0_BASE = "Increase DVD±R/R9/RW reading speed";
+
+	@MEDIA_SPEEDS_0 = ( 1, 2, 4, 6, 8, 12, 16, 20, 24 );
+	@MEDIA_SPEEDS_2 = ( 1, 2, 4, 6, 8, 20, 12, 16, 24 );
+
+	@MEDIA_SPEEDS = @MEDIA_SPEEDS_0;
 
 	@PATCH_NAMES =
 	(
-		"Increase DVD±R/R9/RW reading speed",
+		$PATCH_0_BASE,
 		"Enable auto-bitsetting",
 		"Earlier shift (faster burn) for 8x +R",
 		"Utilize \"force-shifting\" for 6x/8x burns",
@@ -139,8 +165,6 @@ $hWndMain = 0;
 		"&Apply",
 		"&Cancel",
 	);
-
-	$MGROUP_NAME = "DVD Media Codes";
 
 } # END: Section: initialize tool settings
 
@@ -310,6 +334,8 @@ $hWndMain = 0;
 		) or abort("Initialization Error.");
 
 	} # END: foreach
+
+	SetTop($ObjSpeeds[7], $ObjSpeeds[6]->Top());
 
 	$ObjSpdRep = new Win32::GUI::Button
 	(
